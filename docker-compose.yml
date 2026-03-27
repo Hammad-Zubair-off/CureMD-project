@@ -15,6 +15,33 @@ services:
     profiles:
       - full
       - frontend
+      - auth         
+      - patient      
+      - doctor       
+      - appointment  
+      - payment      
+      - telemedicine 
+      - ai-symptom   
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - frontend_modules:/app/node_modules
+    environment:
+      - NGINX_HOST=nginx
+    networks:
+      - healthcare-net
+    restart: unless-stopped
+    profiles:
+      - full
+      - frontend
 
   auth-service:
     build:
@@ -193,6 +220,7 @@ services:
       - frontend
 
 volumes:
+  frontend_modules:
   auth_modules:
   patient_modules:
   doctor_modules:

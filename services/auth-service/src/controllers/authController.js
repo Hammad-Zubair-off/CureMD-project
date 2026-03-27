@@ -122,6 +122,14 @@ export const login = async (req, res, next) => {
             });
         }
 
+        if (user.role === 'doctor' && !user.isApproved) {
+            return res.status(403).json({
+                success: false,
+                error: 'DOCTOR_PENDING_APPROVAL',
+                message: 'Your doctor account is pending admin approval.',
+            });
+        }
+
         const token = generateToken(user);
 
         user.lastLogin = new Date();

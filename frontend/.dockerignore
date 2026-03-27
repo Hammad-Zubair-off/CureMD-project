@@ -1,0 +1,40 @@
+# Dependencies — reinstalled inside the image
+node_modules
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Dev-only config
+Dockerfile.dev
+.dockerignore
+.eslintrc*
+.prettierrc*
+vite.config.js.timestamp-*
+
+# Build output — rebuilt inside image
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Git
+.git
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test files
+__tests__/
+*.test.jsx
+*.spec.js
+coverage/
