@@ -1,54 +1,58 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { errorHandler, notFound } from './src/middleware/errorHandler.js';
 import { connectDB } from './src/config/db.js';
+import { connectRabbitMQ } from './src/config/rabbitmq.js';
+import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
+import patientRoutes from './src/routes/patientRoutes.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3006;
 
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') 
+    origin: process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(',')
         : ['http://localhost:5173', 'http://localhost:80'],
-    credentials: true
+    credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check 
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
-        service: process.env.SERVICE_NAME || 'notification',
-        timestamp: new Date().toISOString()
+        service: 'patient-service',
+        timestamp: new Date().toISOString(),
     });
 });
 
-// Routes
+// Routes 
+app.use('/api/patients', patientRoutes);
 
+// Error handling ─
 app.use(notFound);
 app.use(errorHandler);
 
-const startServer = async () => {
-    try {
-        await connectDB();
-        const server = app.listen(PORT, () => {
-            logger.success(`Service running on port ${PORT}`);
-        });
+// Startup const startServer = async () => {
+try {
+    await connectDB();
+    await connectRabbitMQ(); // needed for publishEvent() in controllers
 
-        process.on('SIGTERM', () => {
-            logger.warn('SIGTERM received. Shutting down gracefully...');
-            server.close(() => {
-                logger.info('Server closed.');
-                process.exit(0);
-            });
-        });
-    } catch (error) {
-        logger.error('Failed to start service:', error);
-        process.exit(1);
-    }
-};
+    const server = app.listen(PORT, () => {
+        logger.success(`[patient-service] Running on port ${PORT}`);
+    });
+
+    process.on('SIGTERM', () => {
+        logger.warn('[patient-service] SIGTERM received — shutting down gracefully');
+        server.close(() => process.exit(0));
+    });
+} catch (error) {
+    logger.error('[patient-service] Startup failed:', error);
+    process.exit(1);
+}
 
 startServer();
