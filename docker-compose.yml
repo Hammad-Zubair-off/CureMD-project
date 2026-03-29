@@ -25,19 +25,28 @@ services:
       
   rabbitmq:
     image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    env_file:
+      - ./rabbitmq.env
     ports:
       - "5672:5672"    # services connect here
       - "15672:15672"  # management UI — http://localhost:15672
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: password
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - healthcare-net  
+      - healthcare-net 
+    profiles:
+      - full 
+      - frontend
+      - patient
+      - appointment
+      - payment
+      - notification
+      - telemedicine 
 
   frontend:
     build:
@@ -78,12 +87,12 @@ services:
       - full
       - auth
       - frontend
-      - patient       # ← added: patient dev needs login
-      - doctor        # ← added: doctor dev needs login
-      - appointment   # ← added: booking flow needs login
-      - payment       # ← added: payment flow needs login
-      - telemedicine  # ← added: video session needs login
-      - ai-symptom    # ← added: ai checker needs login
+      - patient       # added: patient dev needs login
+      - doctor        # added: doctor dev needs login
+      - appointment   # added: booking flow needs login
+      - payment       # added: payment flow needs login
+      - telemedicine  # added: video session needs login
+      - ai-symptom    # added: ai checker needs login
 
   patient-service:
     build:
@@ -104,9 +113,9 @@ services:
       - full
       - patient
       - frontend
-      - appointment   # ← added: patient is who books
-      - payment       # ← added: patient is who pays
-      - telemedicine  # ← added: patient is who consults
+      - appointment   # added: patient is who books
+      - payment       # added: patient is who pays
+      - telemedicine  # added: patient is who consults
 
   doctor-service:
     build:
@@ -128,7 +137,7 @@ services:
       - doctor
       - frontend
       - appointment   # already existed — correct
-      - telemedicine  # ← added: doctor is who consults
+      - telemedicine  # added: doctor is who consults
 
   appointment-service:
     build:
@@ -149,8 +158,8 @@ services:
       - full
       - appointment
       - frontend
-      - payment       # ← added: payment verifies appointment
-      - telemedicine  # ← added: video session tied to appointment
+      - payment       # added: payment verifies appointment
+      - telemedicine  # added: video session tied to appointment
 
   payment-service:
     build:
@@ -191,9 +200,9 @@ services:
       - full
       - notification
       - appointment   # already existed — correct
-      - payment       # ← added: payment confirmation
-      - telemedicine  # ← added: session reminders
-      - frontend      # ← added: frontend needs notifications
+      - payment       # added: payment confirmation
+      - telemedicine  # added: session reminders
+      - frontend      # added: frontend needs notifications
 
   telemedicine-service:
     build:
