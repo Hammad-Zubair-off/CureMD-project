@@ -4,7 +4,11 @@ import { logger } from '../utils/logger.js';
 let connection = null;
 let channel = null;
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://admin:password@rabbitmq:5672';
+const RABBITMQ_URL = process.env.RABBITMQ_URL;
+if (!RABBITMQ_URL) {
+    logger.error('[RabbitMQ] RABBITMQ_URL is not set. Check your .env file.');
+    process.exit(1);
+}
 
 export const connectRabbitMQ = async () => {
     try {

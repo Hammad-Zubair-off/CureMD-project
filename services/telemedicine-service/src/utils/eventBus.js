@@ -1,11 +1,3 @@
-// RabbitMQ fire-and-forget.
-// publishEvent  → used in controllers after a main operation succeeds.
-//                 Never throws. Never awaited in a blocking way.
-// subscribeToEvent → used in notification-service index.js to react to events.
-//
-// Publishing services do NOT know who is listening.
-// Consuming services do NOT know who published.
-
 import { getChannel } from '../config/rabbitmq.js';
 import { logger } from './logger.js';
 
