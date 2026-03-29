@@ -5,7 +5,7 @@ import { connectDB } from './src/config/db.js';
 import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
-//import appointmentRoutes from './src/routes/appointmentRoutes.js';
+import appointmentRoutes from './src/routes/appointmentRoutes.js';
 
 dotenv.config();
 
@@ -32,7 +32,7 @@ app.get('/health', (req, res) => {
 });
 
 //  Routes 
-//app.use('/api/appointments', appointmentRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 //  Error handling 
 app.use(notFound);
