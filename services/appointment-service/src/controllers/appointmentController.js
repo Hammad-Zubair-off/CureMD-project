@@ -1,103 +1,68 @@
 import { EventEmitter } from 'events';
-import axios from 'axios';
 import Appointment from '../models/Appointment.js';
 import { logger } from '../utils/logger.js';
+import { publishEvent } from '../utils/eventBus.js';
 
-// ─── Shared SSE EventEmitter ──────────────────────────────────────────────────
+// ─ Shared SSE EventEmitter ─
 // One instance shared across all controller functions
 // Used to push real-time status updates to connected SSE clients
 export const appointmentEvents = new EventEmitter();
 appointmentEvents.setMaxListeners(100); // Allow up to 100 concurrent SSE connections
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const DOCTOR_SERVICE_URL = process.env.DOCTOR_SERVICE_URL || 'http://doctor-service:3003';
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3006';
+// ─ Constants ─
 const APPOINTMENT_EXPIRY_MINUTES = 15;
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Fetches doctor details from doctor-service
- * BLOCKING — appointment cannot proceed without this
- */
-const fetchDoctor = async (doctorId) => {
-    const response = await axios.get(
-        `${DOCTOR_SERVICE_URL}/api/doctors/${doctorId}`,
-        { timeout: 5000 }
-    );
-    return response.data;
-};
-
-/**
- * Sends notification to notification-service
- * NON-BLOCKING — appointment is never affected if this fails
- */
-const sendNotification = async (payload) => {
-    try {
-        await axios.post(
-            `${NOTIFICATION_SERVICE_URL}/api/notify/appointment`,
-            payload,
-            { timeout: 5000 }
-        );
-    } catch (error) {
-        logger.warn('Notification service unavailable:', error.message);
-    }
-};
-
-/**
- * Handles doctor-service call errors consistently
- */
-const handleDoctorServiceError = (error, res) => {
-    if (
-        error.code === 'ECONNREFUSED' ||
-        error.code === 'ENOTFOUND' ||
-        error.code === 'ETIMEDOUT'
-    ) {
-        return res.status(503).json({
-            success: false,
-            error: 'Doctor service unavailable. Please try again later.',
-        });
-    }
-    if (error.response?.status === 404) {
-        return res.status(404).json({
-            success: false,
-            error: 'Doctor not found.',
-        });
-    }
-    return res.status(500).json({
-        success: false,
-        error: 'Failed to verify doctor details.',
-    });
-};
-
-// ─── Controllers ──────────────────────────────────────────────────────────────
+// ─ Controllers ─
 
 /**
  * @desc    Book a new appointment
  * @route   POST /api/appointments
  * @access  Private — patient only
+ *
+ * Method 1: Doctor data (doctorFullName, specialty, consultationFee) comes
+ * from the frontend — patient already saw this on the doctor listing page.
+ * No inter-service call to doctor-service needed.
  */
 export const bookAppointment = async (req, res, next) => {
     try {
-        const { doctorId, appointmentDate, timeSlot, reason, patientPhone } = req.body;
+        const {
+            doctorId,
+            doctorFullName,
+            specialty,
+            consultationFee,
+            appointmentDate,
+            timeSlot,
+            reason,
+            patientPhone,
+        } = req.body;
 
-        if (!doctorId || !appointmentDate || !timeSlot || !reason || !patientPhone) {
+        // Validate required fields 
+        if (!doctorId || !doctorFullName || !specialty || !consultationFee ||
+            !appointmentDate || !timeSlot || !reason || !patientPhone) {
             return res.status(400).json({
                 success: false,
-                error: 'doctorId, appointmentDate, timeSlot, reason and patientPhone are required.',
+                error: 'doctorId, doctorFullName, specialty, consultationFee, appointmentDate, timeSlot, reason and patientPhone are all required.',
             });
         }
 
-        // ── Fetch doctor details from doctor-service (BLOCKING) ────────────
-        let doctor;
-        try {
-            const data = await fetchDoctor(doctorId);
-            doctor = data.doctor || data; // handle different response shapes
-        } catch (error) {
-            return handleDoctorServiceError(error, res);
+        // Validate consultationFee is a positive number 
+        if (typeof consultationFee !== 'number' || consultationFee <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'consultationFee must be a positive number.',
+            });
         }
 
-        // ── Check slot availability ────────────────────────────────────────
+        // Validate appointmentDate is in the future
+        if (new Date(appointmentDate) <= new Date()) {
+            return res.status(400).json({
+                success: false,
+                error: 'Appointment date must be in the future.',
+            });
+        }
+
+        // Check slot availability (own DB — no inter-service call)
         const slotTaken = await Appointment.findOne({
             doctorId,
             appointmentDate: new Date(appointmentDate),
@@ -106,17 +71,19 @@ export const bookAppointment = async (req, res, next) => {
         });
 
         if (slotTaken) {
-            return res.status(400).json({
+            return res.status(409).json({
                 success: false,
                 error: 'This time slot is no longer available. Please select a different slot.',
             });
         }
 
-        // ── Create appointment ─────────────────────────────────────────────
+        // Create appointment
+        // expiresAt: 15 minutes from now — patient must complete payment
+        // MongoDB TTL index auto-deletes if payment not completed in time
         const expiresAt = new Date(Date.now() + APPOINTMENT_EXPIRY_MINUTES * 60 * 1000);
 
         const appointment = await Appointment.create({
-            // Patient info from JWT
+            // Patient info — from JWT (verified, trusted)
             patientId: req.user.id,
             patientFirstName: req.user.firstName,
             patientLastName: req.user.lastName,
@@ -124,11 +91,12 @@ export const bookAppointment = async (req, res, next) => {
             patientEmail: req.user.email,
             patientPhone,
 
-            // Doctor info from doctor-service
+            // Doctor info — Method 1 (from frontend, already validated by patient seeing it)
+            // Saved at booking time so old appointments keep the fee that was agreed
             doctorId,
-            doctorFullName: doctor.fullName || doctor.name,
-            specialty: doctor.specialty,
-            consultationFee: doctor.consultationFee,
+            doctorFullName,
+            specialty,
+            consultationFee,
 
             // Appointment details
             appointmentDate: new Date(appointmentDate),
@@ -138,19 +106,33 @@ export const bookAppointment = async (req, res, next) => {
             // Initial status
             status: 'pending',
             paymentStatus: 'unpaid',
-            statusHistory: [
-                {
-                    status: 'pending',
-                    changedBy: 'patient',
-                    changedAt: new Date(),
-                },
-            ],
+            statusHistory: [{
+                status: 'pending',
+                changedBy: 'patient',
+                changedAt: new Date(),
+            }],
 
-            // TTL — expires in 15 minutes if payment not completed
+            // TTL — auto-expire if payment not completed in 15 minutes
             expiresAt,
         });
 
         logger.info(`Appointment created: ${appointment._id} by patient ${req.user.fullName}`);
+
+        // Publish event (Method 2 — fire and forget)
+        // notification-service sends booking confirmation to patient
+        publishEvent('appointment.created', {
+            appointmentId: appointment._id,
+            patientFullName: appointment.patientFullName,
+            patientEmail: appointment.patientEmail,
+            patientPhone: appointment.patientPhone,
+            doctorId: appointment.doctorId,
+            doctorFullName: appointment.doctorFullName,
+            specialty: appointment.specialty,
+            consultationFee: appointment.consultationFee,
+            appointmentDate: appointment.appointmentDate,
+            timeSlot: appointment.timeSlot,
+            reason: appointment.reason,
+        });
 
         res.status(201).json({
             success: true,
@@ -166,10 +148,22 @@ export const bookAppointment = async (req, res, next) => {
 /**
  * @desc    Confirm appointment after successful payment
  * @route   PATCH /api/appointments/:id/confirm
- * @access  Private — called by payment-service
+ * @access  Internal — payment-service only (Method 3)
+ *
+ * No JWT middleware on this route — secured by internal secret header only.
+ * payment-service calls this directly after Stripe confirms payment.
  */
 export const confirmAppointment = async (req, res, next) => {
     try {
+        // Verify internal secret — must come from payment-service
+        const internalSecret = req.headers['x-internal-secret'];
+        if (!INTERNAL_SECRET || internalSecret !== INTERNAL_SECRET) {
+            return res.status(403).json({
+                success: false,
+                error: 'Unauthorized.',
+            });
+        }
+
         const appointment = await Appointment.findById(req.params.id);
 
         if (!appointment) {
@@ -182,7 +176,14 @@ export const confirmAppointment = async (req, res, next) => {
         if (appointment.status === 'expired') {
             return res.status(400).json({
                 success: false,
-                error: 'Appointment has expired. Please book again.',
+                error: 'Appointment has expired. Patient must book again.',
+            });
+        }
+
+        if (appointment.status === 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                error: 'Appointment has been cancelled.',
             });
         }
 
@@ -193,11 +194,11 @@ export const confirmAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Update appointment ─────────────────────────────────────────────
+        // Update appointment
         appointment.status = 'confirmed';
         appointment.paymentStatus = 'paid';
         appointment.paymentId = req.body.paymentId || null;
-        appointment.expiresAt = null; // Clear TTL — confirmed appointments never expire
+        appointment.expiresAt = null; // clear TTL — confirmed appointments never expire
         appointment.statusHistory.push({
             status: 'confirmed',
             changedBy: 'payment-service',
@@ -206,7 +207,7 @@ export const confirmAppointment = async (req, res, next) => {
 
         await appointment.save();
 
-        // ── Emit SSE event ─────────────────────────────────────────────────
+        // Emit SSE event — frontend shows success screen
         appointmentEvents.emit(appointment._id.toString(), {
             status: 'confirmed',
             changedAt: new Date(),
@@ -215,22 +216,109 @@ export const confirmAppointment = async (req, res, next) => {
 
         logger.success(`Appointment confirmed: ${appointment._id}`);
 
-        // ── Notify patient and doctor (NON-BLOCKING) ───────────────────────
-        await sendNotification({
-            type: 'appointment_confirmed',
+        // Publish event (Method 2 — fire and forget)
+        // notification-service sends confirmation to patient and doctor
+        publishEvent('appointment.confirmed', {
             appointmentId: appointment._id,
-            patientName: appointment.patientFullName,
+            patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
-            doctorName: appointment.doctorFullName,
-            appointmentDate: appointment.appointmentDate,
-            timeSlot: appointment.timeSlot,
+            patientPhone: appointment.patientPhone,
+            doctorId: appointment.doctorId,
+            doctorFullName: appointment.doctorFullName,
             specialty: appointment.specialty,
             consultationFee: appointment.consultationFee,
+            appointmentDate: appointment.appointmentDate,
+            timeSlot: appointment.timeSlot,
+            paymentId: appointment.paymentId,
         });
 
         res.status(200).json({
             success: true,
             message: 'Appointment confirmed successfully.',
+            appointment,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * @desc    Doctor rejects a confirmed appointment
+ * @route   PATCH /api/appointments/:id/reject
+ * @access  Private — doctor only
+ *
+ * Doctor can reject a confirmed appointment with an optional reason.
+ * Status becomes 'cancelled', changedBy is 'doctor'.
+ * payment-service listens for appointment.rejected_by_doctor to trigger refund.
+ */
+export const rejectAppointment = async (req, res, next) => {
+    try {
+        const { reason } = req.body;
+
+        const appointment = await Appointment.findById(req.params.id);
+
+        if (!appointment) {
+            return res.status(404).json({
+                success: false,
+                error: 'Appointment not found.',
+            });
+        }
+
+        // Verify this doctor owns the appointment
+        if (appointment.doctorId !== req.user.id.toString()) {
+            return res.status(403).json({
+                success: false,
+                error: 'You are not authorized to reject this appointment.',
+            });
+        }
+
+        // Only confirmed appointments can be rejected
+        if (appointment.status !== 'confirmed') {
+            return res.status(400).json({
+                success: false,
+                error: `Only confirmed appointments can be rejected. Current status: ${appointment.status}.`,
+            });
+        }
+
+        // Update appointment
+        appointment.status = 'cancelled';
+        appointment.expiresAt = null;
+        appointment.statusHistory.push({
+            status: 'cancelled',
+            changedBy: 'doctor',
+            changedAt: new Date(),
+        });
+
+        await appointment.save();
+
+        // Emit SSE event
+        appointmentEvents.emit(appointment._id.toString(), {
+            status: 'cancelled',
+            changedAt: new Date(),
+            changedBy: 'doctor',
+        });
+
+        logger.warn(`Appointment rejected by doctor: ${appointment._id} — Dr. ${req.user.fullName}`);
+
+        // Publish event (Method 2 — fire and forget)
+        // notification-service notifies patient
+        // payment-service triggers refund
+        publishEvent('appointment.rejected_by_doctor', {
+            appointmentId: appointment._id,
+            patientFullName: appointment.patientFullName,
+            patientEmail: appointment.patientEmail,
+            patientPhone: appointment.patientPhone,
+            doctorFullName: appointment.doctorFullName,
+            appointmentDate: appointment.appointmentDate,
+            timeSlot: appointment.timeSlot,
+            consultationFee: appointment.consultationFee,
+            paymentId: appointment.paymentId,
+            reason: reason || null,
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Appointment rejected successfully.',
             appointment,
         });
     } catch (err) {
@@ -254,6 +342,14 @@ export const rescheduleAppointment = async (req, res, next) => {
             });
         }
 
+        // Validate new date is in the future
+        if (new Date(appointmentDate) <= new Date()) {
+            return res.status(400).json({
+                success: false,
+                error: 'Appointment date must be in the future.',
+            });
+        }
+
         const appointment = await Appointment.findById(req.params.id);
 
         if (!appointment) {
@@ -263,7 +359,7 @@ export const rescheduleAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Verify ownership ───────────────────────────────────────────────
+        // Verify ownership
         if (appointment.patientId !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
@@ -271,7 +367,7 @@ export const rescheduleAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Verify status allows rescheduling ──────────────────────────────
+        // Only pending or confirmed appointments can be rescheduled
         if (!['pending', 'confirmed'].includes(appointment.status)) {
             return res.status(400).json({
                 success: false,
@@ -279,14 +375,7 @@ export const rescheduleAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Validate doctor is still available (BLOCKING) ─────────────────
-        try {
-            await fetchDoctor(appointment.doctorId);
-        } catch (error) {
-            return handleDoctorServiceError(error, res);
-        }
-
-        // ── Check new slot availability ────────────────────────────────────
+        // Check new slot availability (own DB — no inter-service call)
         const slotTaken = await Appointment.findOne({
             _id: { $ne: appointment._id }, // exclude current appointment
             doctorId: appointment.doctorId,
@@ -296,13 +385,16 @@ export const rescheduleAppointment = async (req, res, next) => {
         });
 
         if (slotTaken) {
-            return res.status(400).json({
+            return res.status(409).json({
                 success: false,
                 error: 'This time slot is not available. Please select a different slot.',
             });
         }
 
-        // ── Update appointment ─────────────────────────────────────────────
+        // Update appointment
+        const previousDate = appointment.appointmentDate;
+        const previousSlot = appointment.timeSlot;
+
         appointment.appointmentDate = new Date(appointmentDate);
         appointment.timeSlot = timeSlot;
         appointment.statusHistory.push({
@@ -313,7 +405,7 @@ export const rescheduleAppointment = async (req, res, next) => {
 
         await appointment.save();
 
-        // ── Emit SSE event ─────────────────────────────────────────────────
+        // Emit SSE event
         appointmentEvents.emit(appointment._id.toString(), {
             status: appointment.status,
             changedAt: new Date(),
@@ -321,6 +413,21 @@ export const rescheduleAppointment = async (req, res, next) => {
         });
 
         logger.info(`Appointment rescheduled: ${appointment._id} by patient ${req.user.fullName}`);
+
+        // Publish event (Method 2 — fire and forget)
+        // notification-service notifies both patient and doctor
+        publishEvent('appointment.rescheduled', {
+            appointmentId: appointment._id,
+            patientFullName: appointment.patientFullName,
+            patientEmail: appointment.patientEmail,
+            patientPhone: appointment.patientPhone,
+            doctorId: appointment.doctorId,
+            doctorFullName: appointment.doctorFullName,
+            previousDate,
+            previousSlot,
+            newDate: appointment.appointmentDate,
+            newTimeSlot: appointment.timeSlot,
+        });
 
         res.status(200).json({
             success: true,
@@ -348,7 +455,7 @@ export const cancelAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Verify ownership ───────────────────────────────────────────────
+        // Verify ownership
         if (appointment.patientId !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
@@ -356,7 +463,7 @@ export const cancelAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Verify status allows cancellation ──────────────────────────────
+        // Only pending or confirmed appointments can be cancelled
         if (!['pending', 'confirmed'].includes(appointment.status)) {
             return res.status(400).json({
                 success: false,
@@ -364,7 +471,9 @@ export const cancelAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Update appointment ─────────────────────────────────────────────
+        // Update appointment
+        const wasPaid = appointment.paymentStatus === 'paid';
+
         appointment.status = 'cancelled';
         appointment.expiresAt = null; // clear TTL if still pending
         appointment.statusHistory.push({
@@ -375,7 +484,7 @@ export const cancelAppointment = async (req, res, next) => {
 
         await appointment.save();
 
-        // ── Emit SSE event ─────────────────────────────────────────────────
+        // Emit SSE event
         appointmentEvents.emit(appointment._id.toString(), {
             status: 'cancelled',
             changedAt: new Date(),
@@ -383,6 +492,23 @@ export const cancelAppointment = async (req, res, next) => {
         });
 
         logger.info(`Appointment cancelled: ${appointment._id} by patient ${req.user.fullName}`);
+
+        // Publish event (Method 2 — fire and forget)
+        // notification-service notifies both parties
+        // payment-service handles refund if appointment was paid
+        publishEvent('appointment.cancelled', {
+            appointmentId: appointment._id,
+            patientFullName: appointment.patientFullName,
+            patientEmail: appointment.patientEmail,
+            patientPhone: appointment.patientPhone,
+            doctorId: appointment.doctorId,
+            doctorFullName: appointment.doctorFullName,
+            appointmentDate: appointment.appointmentDate,
+            timeSlot: appointment.timeSlot,
+            cancelledBy: 'patient',
+            refundRequired: wasPaid,
+            paymentId: appointment.paymentId,
+        });
 
         res.status(200).json({
             success: true,
@@ -395,7 +521,7 @@ export const cancelAppointment = async (req, res, next) => {
 };
 
 /**
- * @desc    Mark appointment as completed (after consultation)
+ * @desc    Mark appointment as completed after consultation
  * @route   PATCH /api/appointments/:id/status
  * @access  Private — doctor only
  */
@@ -412,7 +538,7 @@ export const updateAppointmentStatus = async (req, res, next) => {
             });
         }
 
-        // ── Verify ownership ───────────────────────────────────────────────
+        // Verify this doctor owns the appointment
         if (appointment.doctorId !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
@@ -420,7 +546,7 @@ export const updateAppointmentStatus = async (req, res, next) => {
             });
         }
 
-        // ── Only allowed transition: confirmed → completed ─────────────────
+        // Only confirmed → completed transition is allowed
         if (appointment.status !== 'confirmed') {
             return res.status(400).json({
                 success: false,
@@ -428,7 +554,7 @@ export const updateAppointmentStatus = async (req, res, next) => {
             });
         }
 
-        // ── Update appointment ─────────────────────────────────────────────
+        // Update appointment
         appointment.status = 'completed';
         appointment.notes = notes || null;
         appointment.statusHistory.push({
@@ -439,22 +565,23 @@ export const updateAppointmentStatus = async (req, res, next) => {
 
         await appointment.save();
 
-        // ── Emit SSE event ─────────────────────────────────────────────────
+        // Emit SSE event
         appointmentEvents.emit(appointment._id.toString(), {
             status: 'completed',
             changedAt: new Date(),
             changedBy: 'doctor',
         });
 
-        logger.success(`Appointment completed: ${appointment._id} by doctor ${req.user.fullName}`);
+        logger.success(`Appointment completed: ${appointment._id} by Dr. ${req.user.fullName}`);
 
-        // ── Notify patient and doctor (NON-BLOCKING) ───────────────────────
-        await sendNotification({
-            type: 'consultation_completed',
+        // Publish event (Method 2 — fire and forget)
+        // notification-service notifies both patient and doctor
+        publishEvent('consultation.completed', {
             appointmentId: appointment._id,
-            patientName: appointment.patientFullName,
+            patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
-            doctorName: appointment.doctorFullName,
+            patientPhone: appointment.patientPhone,
+            doctorFullName: appointment.doctorFullName,
             appointmentDate: appointment.appointmentDate,
             timeSlot: appointment.timeSlot,
             notes: appointment.notes,
@@ -486,7 +613,7 @@ export const trackAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Verify requester is patient or doctor on this appointment ──────
+        // Verify requester is patient, doctor, or admin
         const isPatient = appointment.patientId === req.user.id.toString();
         const isDoctor = appointment.doctorId === req.user.id.toString();
         const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
@@ -498,21 +625,22 @@ export const trackAppointment = async (req, res, next) => {
             });
         }
 
-        // ── Set SSE headers ────────────────────────────────────────────────
+        // Set SSE headers
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
         res.flushHeaders();
 
-        // ── Push current status immediately on connect ─────────────────────
+        // Push current state immediately on connect
         res.write(`data: ${JSON.stringify({
             status: appointment.status,
             statusHistory: appointment.statusHistory,
             appointmentDate: appointment.appointmentDate,
             timeSlot: appointment.timeSlot,
+            expiresAt: appointment.expiresAt,
         })}\n\n`);
 
-        // ── Register SSE listener for this appointment ─────────────────────
+        // Register listener for this appointment's events
         const appointmentId = appointment._id.toString();
 
         const onStatusChange = (data) => {
@@ -521,12 +649,12 @@ export const trackAppointment = async (req, res, next) => {
 
         appointmentEvents.on(appointmentId, onStatusChange);
 
-        // ── Heartbeat — keeps connection alive through proxies/load balancers
+        // Heartbeat — keeps connection alive through nginxs
         const heartbeat = setInterval(() => {
-            res.write(': heartbeat\n\n`');
+            res.write(': heartbeat\n\n');
         }, 30000);
 
-        // ── Clean up on client disconnect ──────────────────────────────────
+        // Clean up on client disconnect
         req.on('close', () => {
             appointmentEvents.off(appointmentId, onStatusChange);
             clearInterval(heartbeat);
@@ -593,7 +721,7 @@ export const getAppointmentById = async (req, res, next) => {
             });
         }
 
-        // ── Verify requester is authorized to view this appointment ────────
+        // Verify requester is authorized
         const isPatient = appointment.patientId === req.user.id.toString();
         const isDoctor = appointment.doctorId === req.user.id.toString();
         const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
@@ -615,7 +743,7 @@ export const getAppointmentById = async (req, res, next) => {
 };
 
 /**
- * @desc    Get all appointments (admin view) with optional filters
+ * @desc    Get all appointments with optional filters (admin view)
  * @route   GET /api/appointments/all
  * @access  Private — admin only
  */
