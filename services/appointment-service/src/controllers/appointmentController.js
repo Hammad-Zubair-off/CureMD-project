@@ -159,6 +159,7 @@ export const bookAppointment = async (req, res, next) => {
  *
  * No JWT middleware on this route — secured by internal secret header only.
  * payment-service calls this directly after Stripe confirms payment.
+ * Idempotent — returns 200 if already confirmed (safe for payment retries).
  */
 export const confirmAppointment = async (req, res, next) => {
     try {
@@ -194,10 +195,13 @@ export const confirmAppointment = async (req, res, next) => {
             });
         }
 
+        // Idempotency — safe for payment-service retries
+        // If already confirmed return 200 instead of error
         if (appointment.status === 'confirmed') {
-            return res.status(400).json({
-                success: false,
-                error: 'Appointment is already confirmed.',
+            return res.status(200).json({
+                success: true,
+                message: 'Appointment is already confirmed.',
+                appointment,
             });
         }
 
@@ -404,6 +408,12 @@ export const rescheduleAppointment = async (req, res, next) => {
 
         appointment.appointmentDate = new Date(appointmentDate);
         appointment.timeSlot = timeSlot;
+
+        // Reset expiresAt if still pending — patient gets a fresh 30 min window
+        if (appointment.status === 'pending') {
+            appointment.expiresAt = new Date(Date.now() + APPOINTMENT_EXPIRY_MINUTES * 60 * 1000);
+        }
+
         appointment.statusHistory.push({
             status: appointment.status, // preserve current status
             changedBy: 'patient',
