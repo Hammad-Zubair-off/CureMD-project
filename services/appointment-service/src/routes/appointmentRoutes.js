@@ -3,6 +3,7 @@ import { protect, authorize, requireApproved } from '../middleware/auth.js';
 import {
     bookAppointment,
     confirmAppointment,
+    rejectAppointment,
     rescheduleAppointment,
     cancelAppointment,
     updateAppointmentStatus,
@@ -29,7 +30,7 @@ router.get('/all', protect, authorize('admin'), getAllAppointments);
 
 // ─── Booking ──────────────────────────────────────────────────────────────────
 
-// Patient books a new appointment
+// Patient books a new appointment (Method 1 — doctor data from frontend)
 router.post('/', protect, authorize('patient'), bookAppointment);
 
 // ─── Dynamic routes (/:id) ────────────────────────────────────────────────────
@@ -38,7 +39,11 @@ router.post('/', protect, authorize('patient'), bookAppointment);
 router.get('/:id/track', protect, trackAppointment);
 
 // Payment-service confirms appointment after successful payment
-router.patch('/:id/confirm', protect, confirmAppointment);
+// No JWT middleware — secured by internal secret header only
+router.patch('/:id/confirm', confirmAppointment);
+
+// Doctor rejects a confirmed appointment
+router.patch('/:id/reject', protect, authorize('doctor'), requireApproved, rejectAppointment);
 
 // Patient reschedules appointment
 router.patch('/:id/reschedule', protect, authorize('patient'), rescheduleAppointment);
@@ -46,7 +51,7 @@ router.patch('/:id/reschedule', protect, authorize('patient'), rescheduleAppoint
 // Patient cancels appointment
 router.patch('/:id/cancel', protect, authorize('patient'), cancelAppointment);
 
-// Doctor marks appointment as completed
+// Doctor marks appointment as completed after consultation
 router.patch('/:id/status', protect, authorize('doctor'), requireApproved, updateAppointmentStatus);
 
 // Patient, doctor, or admin views a single appointment
