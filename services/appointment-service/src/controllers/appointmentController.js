@@ -141,6 +141,13 @@ export const bookAppointment = async (req, res, next) => {
             expiresAt,
         });
     } catch (err) {
+        // E11000 — duplicate key — slot was taken by a concurrent booking
+        if (err.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                error: 'This time slot was just taken. Please select a different slot.',
+            });
+        }
         next(err);
     }
 };
