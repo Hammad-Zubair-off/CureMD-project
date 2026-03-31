@@ -10,7 +10,7 @@ export const appointmentEvents = new EventEmitter();
 appointmentEvents.setMaxListeners(100); // Allow up to 100 concurrent SSE connections
 
 // ─ Constants ─
-const APPOINTMENT_EXPIRY_MINUTES = 15;
+const APPOINTMENT_EXPIRY_MINUTES = 30; // 30 min buffer — prevents TTL vs payment race
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 // ─ Controllers ─
@@ -78,7 +78,7 @@ export const bookAppointment = async (req, res, next) => {
         }
 
         // Create appointment
-        // expiresAt: 15 minutes from now — patient must complete payment
+        // expiresAt: 30 minutes from now — patient must complete payment
         // MongoDB TTL index auto-deletes if payment not completed in time
         const expiresAt = new Date(Date.now() + APPOINTMENT_EXPIRY_MINUTES * 60 * 1000);
 
@@ -112,7 +112,7 @@ export const bookAppointment = async (req, res, next) => {
                 changedAt: new Date(),
             }],
 
-            // TTL — auto-expire if payment not completed in 15 minutes
+            // TTL — auto-expire if payment not completed in 30 minutes
             expiresAt,
         });
 
@@ -136,7 +136,7 @@ export const bookAppointment = async (req, res, next) => {
 
         res.status(201).json({
             success: true,
-            message: 'Appointment created. Please complete payment within 15 minutes.',
+            message: 'Appointment created. Please complete payment within 30 minutes.',
             appointment,
             expiresAt,
         });
@@ -656,7 +656,7 @@ export const trackAppointment = async (req, res, next) => {
 
         appointmentEvents.on(appointmentId, onStatusChange);
 
-        // Heartbeat — keeps connection alive through nginxs
+        // Heartbeat — keeps connection alive through nginx
         const heartbeat = setInterval(() => {
             res.write(': heartbeat\n\n');
         }, 30000);
