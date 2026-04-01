@@ -13,7 +13,8 @@ const statusHistorySchema = new mongoose.Schema(
         },
         changedBy: {
             type: String,
-            required: true, // 'patient' | 'doctor' | 'payment-service' | 'system'
+            required: true,
+            enum: ['patient', 'doctor', 'payment-service', 'system'],
         },
     },
     { _id: false }
