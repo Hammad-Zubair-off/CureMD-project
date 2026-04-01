@@ -13,6 +13,11 @@ appointmentEvents.setMaxListeners(100); // Allow up to 100 concurrent SSE connec
 const APPOINTMENT_EXPIRY_MINUTES = 30; // 30 min buffer — prevents TTL vs payment race
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
+// ─ Helpers ─
+
+// Normalize incoming date strings to UTC — prevents timezone issues (e.g. IST +5:30)
+const toUTC = (dateStr) => new Date(new Date(dateStr).toISOString());
+
 // ─ Controllers ─
 
 /**
@@ -55,7 +60,7 @@ export const bookAppointment = async (req, res, next) => {
         }
 
         // Validate appointmentDate is in the future
-        if (new Date(appointmentDate) <= new Date()) {
+        if (toUTC(appointmentDate) <= new Date()) {
             return res.status(400).json({
                 success: false,
                 error: 'Appointment date must be in the future.',
@@ -65,7 +70,7 @@ export const bookAppointment = async (req, res, next) => {
         // Check slot availability (own DB — no inter-service call)
         const slotTaken = await Appointment.findOne({
             doctorId,
-            appointmentDate: new Date(appointmentDate),
+            appointmentDate: toUTC(appointmentDate),
             timeSlot,
             status: { $in: ['pending', 'confirmed'] },
         });
@@ -99,7 +104,7 @@ export const bookAppointment = async (req, res, next) => {
             consultationFee,
 
             // Appointment details
-            appointmentDate: new Date(appointmentDate),
+            appointmentDate: toUTC(appointmentDate),
             timeSlot,
             reason,
 
@@ -368,7 +373,7 @@ export const rescheduleAppointment = async (req, res, next) => {
         }
 
         // Validate new date is in the future
-        if (new Date(appointmentDate) <= new Date()) {
+        if (toUTC(appointmentDate) <= new Date()) {
             return res.status(400).json({
                 success: false,
                 error: 'Appointment date must be in the future.',
@@ -404,7 +409,7 @@ export const rescheduleAppointment = async (req, res, next) => {
         const slotTaken = await Appointment.findOne({
             _id: { $ne: appointment._id }, // exclude current appointment
             doctorId: appointment.doctorId,
-            appointmentDate: new Date(appointmentDate),
+            appointmentDate: toUTC(appointmentDate),
             timeSlot,
             status: { $in: ['pending', 'confirmed'] },
         });
@@ -420,7 +425,7 @@ export const rescheduleAppointment = async (req, res, next) => {
         const previousDate = appointment.appointmentDate;
         const previousSlot = appointment.timeSlot;
 
-        appointment.appointmentDate = new Date(appointmentDate);
+        appointment.appointmentDate = toUTC(appointmentDate);
         appointment.timeSlot = timeSlot;
 
         // Reset expiresAt if still pending — patient gets a fresh 30 min window
