@@ -21,7 +21,7 @@ const statusHistorySchema = new mongoose.Schema(
 
 const appointmentSchema = new mongoose.Schema(
     {
-        // ─── Patient Info (from JWT) ──────────────────────────────────────
+        // Patient Info (from JWT)
         patientId: {
             type: String,
             required: [true, 'Patient ID is required'],
@@ -47,7 +47,7 @@ const appointmentSchema = new mongoose.Schema(
             required: [true, 'Patient phone is required'],
         },
 
-        // ─── Doctor Info (from doctor-service) ───────────────────────────
+        // Doctor Info (from doctor-service)
         doctorId: {
             type: String,
             required: [true, 'Doctor ID is required'],
@@ -66,7 +66,7 @@ const appointmentSchema = new mongoose.Schema(
             min: [0, 'Consultation fee cannot be negative'],
         },
 
-        // ─── Appointment Details ──────────────────────────────────────────
+        // Appointment Details
         appointmentDate: {
             type: Date,
             required: [true, 'Appointment date is required'],
@@ -82,7 +82,7 @@ const appointmentSchema = new mongoose.Schema(
             maxlength: [500, 'Reason must not exceed 500 characters'],
         },
 
-        // ─── Status ──────────────────────────────────────────────────────
+        // Status
         status: {
             type: String,
             enum: {
@@ -96,7 +96,7 @@ const appointmentSchema = new mongoose.Schema(
             default: [],
         },
 
-        // ─── Payment ─────────────────────────────────────────────────────
+        // Payment
         paymentId: {
             type: String,
             default: null,
@@ -110,7 +110,7 @@ const appointmentSchema = new mongoose.Schema(
             default: 'unpaid',
         },
 
-        // ─── Post-consultation ────────────────────────────────────────────
+        // Post-consultation
         notes: {
             type: String,
             trim: true,
@@ -118,18 +118,18 @@ const appointmentSchema = new mongoose.Schema(
             default: null,
         },
 
-        // ─── TTL — auto-expire unpaid appointments ────────────────────────
-        // Set to 15 minutes from creation, cleared when payment is confirmed
+        // ─ TTL — auto-expire unpaid appointments ─
+        // Set to 30 minutes from creation, cleared when payment is confirmed
         // MongoDB TTL index deletes the document when expiresAt is reached
         expiresAt: {
             type: Date,
             default: null,
         },
     },
-    { timestamps: true }
+    { timestamps: true, optimisticConcurrency: true }
 );
 
-// ─── Indexes ──────────────────────────────────────────────────────────────────
+// ─ Indexes ─
 
 // TTL index — MongoDB auto-deletes document when expiresAt is reached
 // Only applies when expiresAt is set (non-null) — confirmed appointments
