@@ -37,7 +37,7 @@ export const bookAppointment = async (req, res, next) => {
             patientPhone,
         } = req.body;
 
-        // Validate required fields 
+        // Validate required fields
         if (!doctorId || !doctorFullName || !specialty || !consultationFee ||
             !appointmentDate || !timeSlot || !reason || !patientPhone) {
             return res.status(400).json({
@@ -46,7 +46,7 @@ export const bookAppointment = async (req, res, next) => {
             });
         }
 
-        // Validate consultationFee is a positive number 
+        // Validate consultationFee is a positive number
         if (typeof consultationFee !== 'number' || consultationFee <= 0) {
             return res.status(400).json({
                 success: false,
@@ -249,6 +249,13 @@ export const confirmAppointment = async (req, res, next) => {
             appointment,
         });
     } catch (err) {
+        // VersionError — concurrent update conflict
+        if (err.name === 'VersionError') {
+            return res.status(409).json({
+                success: false,
+                error: 'Appointment was updated by another request. Please try again.',
+            });
+        }
         next(err);
     }
 };
@@ -333,6 +340,13 @@ export const rejectAppointment = async (req, res, next) => {
             appointment,
         });
     } catch (err) {
+        // VersionError — concurrent update conflict
+        if (err.name === 'VersionError') {
+            return res.status(409).json({
+                success: false,
+                error: 'Appointment was updated by another request. Please try again.',
+            });
+        }
         next(err);
     }
 };
@@ -452,6 +466,13 @@ export const rescheduleAppointment = async (req, res, next) => {
             appointment,
         });
     } catch (err) {
+        // VersionError — concurrent update conflict
+        if (err.name === 'VersionError') {
+            return res.status(409).json({
+                success: false,
+                error: 'Appointment was updated by another request. Please try again.',
+            });
+        }
         next(err);
     }
 };
@@ -533,6 +554,13 @@ export const cancelAppointment = async (req, res, next) => {
             appointment,
         });
     } catch (err) {
+        // VersionError — concurrent update conflict
+        if (err.name === 'VersionError') {
+            return res.status(409).json({
+                success: false,
+                error: 'Appointment was updated by another request. Please try again.',
+            });
+        }
         next(err);
     }
 };
@@ -610,6 +638,13 @@ export const updateAppointmentStatus = async (req, res, next) => {
             appointment,
         });
     } catch (err) {
+        // VersionError — concurrent update conflict
+        if (err.name === 'VersionError') {
+            return res.status(409).json({
+                success: false,
+                error: 'Appointment was updated by another request. Please try again.',
+            });
+        }
         next(err);
     }
 };
