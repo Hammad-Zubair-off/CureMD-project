@@ -11,7 +11,6 @@ appointmentEvents.setMaxListeners(100); // Allow up to 100 concurrent SSE connec
 
 // ─ Constants ─
 const APPOINTMENT_EXPIRY_MINUTES = 30; // 30 min buffer — prevents TTL vs payment race
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 // ─ Helpers ─
 
@@ -169,6 +168,8 @@ export const bookAppointment = async (req, res, next) => {
 export const confirmAppointment = async (req, res, next) => {
     try {
         // Verify internal secret — must come from payment-service
+        // Read fresh from env — ensures dotenv has loaded before this is evaluated
+        const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
         const internalSecret = req.headers['x-internal-secret'];
         if (!INTERNAL_SECRET || internalSecret !== INTERNAL_SECRET) {
             return res.status(403).json({
