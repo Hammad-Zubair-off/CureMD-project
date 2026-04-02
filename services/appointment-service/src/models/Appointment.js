@@ -119,6 +119,14 @@ const appointmentSchema = new mongoose.Schema(
             default: null,
         },
 
+        // Rejection reason — set by doctor when rejecting a confirmed appointment
+        rejectionReason: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Rejection reason must not exceed 500 characters'],
+            default: null,
+        },
+
         // ─ TTL — auto-expire unpaid appointments ─
         // Set to 30 minutes from creation, cleared when payment is confirmed
         // MongoDB TTL index deletes the document when expiresAt is reached

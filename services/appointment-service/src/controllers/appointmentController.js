@@ -307,6 +307,7 @@ export const rejectAppointment = async (req, res, next) => {
         // Update appointment
         appointment.status = 'cancelled';
         appointment.expiresAt = null;
+        appointment.rejectionReason = reason || null;
         appointment.statusHistory.push({
             status: 'cancelled',
             changedBy: 'doctor',
