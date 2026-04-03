@@ -689,10 +689,24 @@ export const trackAppointment = async (req, res, next) => {
             res.write(': heartbeat\n\n');
         }, 30000);
 
-        // Clean up on client disconnect
-        req.on('close', () => {
+        // Cleanup helper — used by both timeout and client disconnect
+        const cleanup = () => {
             appointmentEvents.off(appointmentId, onStatusChange);
             clearInterval(heartbeat);
+            clearTimeout(maxDuration);
+        };
+
+        // Max connection duration — closes SSE after 5 minutes to prevent resource leak
+        // Frontend should reconnect if tracking is still needed
+        const maxDuration = setTimeout(() => {
+            logger.info(`SSE max duration reached: appointment ${appointmentId}`);
+            cleanup();
+            res.end();
+        }, 5 * 60 * 1000);
+
+        // Clean up on client disconnect
+        req.on('close', () => {
+            cleanup();
             logger.info(`SSE client disconnected: appointment ${appointmentId}`);
         });
     } catch (err) {
@@ -707,8 +721,8 @@ export const trackAppointment = async (req, res, next) => {
  */
 export const getMyAppointments = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
         const skip = (page - 1) * limit;
 
         const filter = { patientId: req.user.id };
@@ -737,8 +751,8 @@ export const getMyAppointments = async (req, res, next) => {
  */
 export const getDoctorAppointments = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
         const skip = (page - 1) * limit;
 
         const filter = { doctorId: req.user.id };
@@ -805,8 +819,8 @@ export const getAppointmentById = async (req, res, next) => {
 export const getAllAppointments = async (req, res, next) => {
     try {
         const { status, doctorId, patientId, date } = req.query;
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
         const skip = (page - 1) * limit;
 
         // Validate status query param if provided
