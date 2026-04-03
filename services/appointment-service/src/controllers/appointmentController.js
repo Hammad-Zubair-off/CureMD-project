@@ -50,8 +50,9 @@ export const bookAppointment = async (req, res, next) => {
             });
         }
 
-        // Validate consultationFee is a positive number
-        if (typeof consultationFee !== 'number' || consultationFee <= 0) {
+        // Validate consultationFee — parse first to handle both number and string input
+        const fee = Number(consultationFee);
+        if (isNaN(fee) || fee <= 0) {
             return res.status(400).json({
                 success: false,
                 error: 'consultationFee must be a positive number.',
@@ -100,7 +101,7 @@ export const bookAppointment = async (req, res, next) => {
             doctorId,
             doctorFullName,
             specialty,
-            consultationFee,
+            consultationFee: fee,
 
             // Appointment details
             appointmentDate: toUTC(appointmentDate),
@@ -731,12 +732,22 @@ export const trackAppointment = async (req, res, next) => {
  */
 export const getMyAppointments = async (req, res, next) => {
     try {
-        const appointments = await Appointment.find({ patientId: req.user.id })
-            .sort({ appointmentDate: -1 });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const filter = { patientId: req.user.id };
+
+        const [appointments, total] = await Promise.all([
+            Appointment.find(filter).sort({ appointmentDate: -1 }).skip(skip).limit(limit),
+            Appointment.countDocuments(filter),
+        ]);
 
         res.status(200).json({
             success: true,
-            total: appointments.length,
+            total,
+            page,
+            pages: Math.ceil(total / limit),
             appointments,
         });
     } catch (err) {
@@ -751,12 +762,22 @@ export const getMyAppointments = async (req, res, next) => {
  */
 export const getDoctorAppointments = async (req, res, next) => {
     try {
-        const appointments = await Appointment.find({ doctorId: req.user.id })
-            .sort({ appointmentDate: -1 });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const filter = { doctorId: req.user.id };
+
+        const [appointments, total] = await Promise.all([
+            Appointment.find(filter).sort({ appointmentDate: -1 }).skip(skip).limit(limit),
+            Appointment.countDocuments(filter),
+        ]);
 
         res.status(200).json({
             success: true,
-            total: appointments.length,
+            total,
+            page,
+            pages: Math.ceil(total / limit),
             appointments,
         });
     } catch (err) {
@@ -809,6 +830,18 @@ export const getAppointmentById = async (req, res, next) => {
 export const getAllAppointments = async (req, res, next) => {
     try {
         const { status, doctorId, patientId, date } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Validate status query param if provided
+        const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'expired'];
+        if (status && !VALID_STATUSES.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
+            });
+        }
 
         const filter = {};
 
@@ -822,12 +855,16 @@ export const getAllAppointments = async (req, res, next) => {
             filter.appointmentDate = { $gte: start, $lt: end };
         }
 
-        const appointments = await Appointment.find(filter)
-            .sort({ appointmentDate: -1 });
+        const [appointments, total] = await Promise.all([
+            Appointment.find(filter).sort({ appointmentDate: -1 }).skip(skip).limit(limit),
+            Appointment.countDocuments(filter),
+        ]);
 
         res.status(200).json({
             success: true,
-            total: appointments.length,
+            total,
+            page,
+            pages: Math.ceil(total / limit),
             appointments,
         });
     } catch (err) {

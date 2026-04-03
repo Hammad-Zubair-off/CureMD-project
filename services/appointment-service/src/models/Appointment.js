@@ -48,7 +48,7 @@ const appointmentSchema = new mongoose.Schema(
             required: [true, 'Patient phone is required'],
         },
 
-        // Doctor Info (from doctor-service)
+        // Doctor Info (from frontend — Method 1, no inter-service call)
         doctorId: {
             type: String,
             required: [true, 'Doctor ID is required'],
