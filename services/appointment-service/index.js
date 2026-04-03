@@ -40,6 +40,12 @@ app.use(errorHandler);
 
 //  Startup 
 const startServer = async () => {
+    // Fail fast — INTERNAL_SECRET is required for payment-service communication
+    if (!process.env.INTERNAL_SECRET) {
+        logger.error('INTERNAL_SECRET is not set. Shutting down.');
+        process.exit(1);
+    }
+
     try {
         await connectDB();
         await connectRabbitMQ(); // connect before server starts — publishEvent must be ready
