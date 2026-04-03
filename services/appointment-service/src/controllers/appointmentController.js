@@ -39,7 +39,6 @@ export const bookAppointment = async (req, res, next) => {
             doctorId,
             doctorFullName,
             specialty,
-            consultationFee,
             appointmentDate,
             timeSlot,
             reason,

@@ -1,6 +1,12 @@
 // ─ Shared constants ─
 const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'expired'];
 
+// ─ Regex patterns ─
+// Time slot format: HH:MM - HH:MM (e.g. "09:00 - 09:30")
+const TIME_SLOT_REGEX = /^([01]\d|2[0-3]):[0-5]\d - ([01]\d|2[0-3]):[0-5]\d$/;
+// Phone format: 7-15 chars, allows digits, +, -, spaces, parentheses
+const PHONE_REGEX = /^[0-9+\-() ]{7,15}$/;
+
 // ─ Helpers ─
 
 // Normalize incoming date strings to UTC — same helper as in controller
@@ -41,6 +47,14 @@ export const validateBookAppointment = ({
     if (isNaN(fee) || fee <= 0)
         errors.push('consultationFee must be a positive number.');
 
+    // timeSlot — must match HH:MM - HH:MM format
+    if (!TIME_SLOT_REGEX.test(timeSlot))
+        errors.push('Invalid timeSlot format. Expected HH:MM - HH:MM (e.g. "09:00 - 09:30").');
+
+    // patientPhone — basic format validation
+    if (!PHONE_REGEX.test(patientPhone))
+        errors.push('Invalid phone number. Must be 7-15 characters (digits, +, -, spaces, parentheses).');
+
     // appointmentDate — must be in the future
     if (toUTC(appointmentDate) <= new Date())
         errors.push('Appointment date must be in the future.');
@@ -60,8 +74,12 @@ export const validateRescheduleAppointment = ({
     if (!appointmentDate) errors.push('New appointmentDate is required.');
     if (!timeSlot) errors.push('New timeSlot is required.');
 
-    // Early return — no point checking date if it's missing
+    // Early return — no point checking further if required fields are missing
     if (errors.length > 0) return { valid: false, errors };
+
+    // timeSlot — must match HH:MM - HH:MM format
+    if (!TIME_SLOT_REGEX.test(timeSlot))
+        errors.push('Invalid timeSlot format. Expected HH:MM - HH:MM (e.g. "09:00 - 09:30").');
 
     // appointmentDate — must be in the future
     if (toUTC(appointmentDate) <= new Date())
