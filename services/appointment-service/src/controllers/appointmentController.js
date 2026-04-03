@@ -2,6 +2,11 @@ import { EventEmitter } from 'events';
 import Appointment from '../models/Appointment.js';
 import { logger } from '../utils/logger.js';
 import { publishEvent } from '../utils/eventBus.js';
+import {
+    validateBookAppointment,
+    validateRescheduleAppointment,
+    validateStatusQuery,
+} from '../validators/appointmentValidator.js';
 
 // ─ Shared SSE EventEmitter ─
 // One instance shared across all controller functions
@@ -41,30 +46,10 @@ export const bookAppointment = async (req, res, next) => {
             patientPhone,
         } = req.body;
 
-        // Validate required fields
-        if (!doctorId || !doctorFullName || !specialty || !consultationFee ||
-            !appointmentDate || !timeSlot || !reason || !patientPhone) {
-            return res.status(400).json({
-                success: false,
-                error: 'doctorId, doctorFullName, specialty, consultationFee, appointmentDate, timeSlot, reason and patientPhone are all required.',
-            });
-        }
-
-        // Validate consultationFee — parse first to handle both number and string input
-        const fee = Number(consultationFee);
-        if (isNaN(fee) || fee <= 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'consultationFee must be a positive number.',
-            });
-        }
-
-        // Validate appointmentDate is in the future
-        if (toUTC(appointmentDate) <= new Date()) {
-            return res.status(400).json({
-                success: false,
-                error: 'Appointment date must be in the future.',
-            });
+        // Validate request body
+        const { valid, errors, fee } = validateBookAppointment(req.body);
+        if (!valid) {
+            return res.status(400).json({ success: false, errors });
         }
 
         // Check slot availability (own DB — no inter-service call)
@@ -368,19 +353,10 @@ export const rescheduleAppointment = async (req, res, next) => {
     try {
         const { appointmentDate, timeSlot } = req.body;
 
-        if (!appointmentDate || !timeSlot) {
-            return res.status(400).json({
-                success: false,
-                error: 'New appointmentDate and timeSlot are required.',
-            });
-        }
-
-        // Validate new date is in the future
-        if (toUTC(appointmentDate) <= new Date()) {
-            return res.status(400).json({
-                success: false,
-                error: 'Appointment date must be in the future.',
-            });
+        // Validate request body
+        const { valid: rescheduleValid, errors: rescheduleErrors } = validateRescheduleAppointment(req.body);
+        if (!rescheduleValid) {
+            return res.status(400).json({ success: false, errors: rescheduleErrors });
         }
 
         const appointment = await Appointment.findById(req.params.id);
@@ -835,16 +811,12 @@ export const getAllAppointments = async (req, res, next) => {
         const skip = (page - 1) * limit;
 
         // Validate status query param if provided
-        const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'expired'];
-        if (status && !VALID_STATUSES.includes(status)) {
-            return res.status(400).json({
-                success: false,
-                error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
-            });
+        const { valid: statusValid, error: statusError } = validateStatusQuery(status);
+        if (!statusValid) {
+            return res.status(400).json({ success: false, error: statusError });
         }
 
         const filter = {};
-
         if (status) filter.status = status;
         if (doctorId) filter.doctorId = doctorId;
         if (patientId) filter.patientId = patientId;
