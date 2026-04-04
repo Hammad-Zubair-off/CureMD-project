@@ -5,13 +5,13 @@ import { connectDB } from './src/config/db.js';
 import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
-//import appointmentRoutes from './src/routes/appointmentRoutes.js';
+import appointmentRoutes from './src/routes/appointmentRoutes.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3004;
-const SERVICE_NAME = process.env.SERVICE_NAME;
+const SERVICE_NAME = process.env.SERVICE_NAME || 'appointment';
 
 app.use(cors({
     origin: process.env.ALLOWED_ORIGINS
@@ -32,7 +32,7 @@ app.get('/health', (req, res) => {
 });
 
 //  Routes 
-//app.use('/api/appointments', appointmentRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 //  Error handling 
 app.use(notFound);
@@ -40,21 +40,26 @@ app.use(errorHandler);
 
 //  Startup 
 const startServer = async () => {
+    // Fail fast — INTERNAL_SECRET is required for payment-service communication
+    if (!process.env.INTERNAL_SECRET) {
+        logger.error('INTERNAL_SECRET is not set. Shutting down.');
+        process.exit(1);
+    }
+
     try {
         await connectDB();
+        await connectRabbitMQ(); // connect before server starts — publishEvent must be ready
 
         const server = app.listen(PORT, () => {
-            logger.success(`${[SERVICE_NAME]}-service Running on port ${PORT}`);
+            logger.success(`${SERVICE_NAME}-service running on port ${PORT}`);
         });
 
-        await connectRabbitMQ(); // needed for publishEvent() after bookings
-
         process.on('SIGTERM', () => {
-            logger.warn(`${[SERVICE_NAME]}-service SIGTERM received — shutting down gracefully`);
+            logger.warn(`${SERVICE_NAME}-service SIGTERM received — shutting down gracefully`);
             server.close(() => process.exit(0));
         });
     } catch (error) {
-        logger.error(`${[SERVICE_NAME]}-service Startup failed:`, error);
+        logger.error(`${SERVICE_NAME}-service startup failed:`, error);
         process.exit(1);
     }
 };
