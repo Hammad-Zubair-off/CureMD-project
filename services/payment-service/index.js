@@ -5,7 +5,7 @@ import { connectDB } from './src/config/db.js';
 import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
-//import appointmentRoutes from './src/routes/appointmentRoutes.js';
+import paymentRoutes from './src/routes/paymentRoutes.js';
 
 dotenv.config();
 
@@ -19,20 +19,20 @@ app.use(cors({
         : ['http://localhost:5173', 'http://localhost:80'],
     credentials: true,
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/api/payments', paymentRoutes);
 
 //  Health check 
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
-        service: 'appointment-service',
+        service: 'payment-service',
         timestamp: new Date().toISOString(),
     });
 });
-
-//  Routes 
-//app.use('/api/appointments', appointmentRoutes);
 
 //  Error handling 
 app.use(notFound);

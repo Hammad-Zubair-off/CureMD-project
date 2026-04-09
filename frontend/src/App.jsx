@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import AdminDashboard from './pages/AdminDashboard'
+import PaymentPage from './pages/PaymentPage'
 
 function App() {
   return (
@@ -20,6 +21,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path='/payment'
+        element={
+          <ProtectedRoute requiredRole="patient">
+            <PaymentPage />
           </ProtectedRoute>
         }
       />
