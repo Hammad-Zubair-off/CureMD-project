@@ -62,3 +62,27 @@ export const requireApproved = (req, res, next) => {
     }
     next();
 };
+
+// Middleware for validating the 1-hour AI History Token
+export const verifyHistoryToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'No history token provided.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (decoded.purpose !== 'history_access') {
+            return res.status(403).json({ success: false, error: 'Invalid token purpose.' });
+        }
+
+        req.targetPatientId = decoded.id; // Attach the patient ID
+        next();
+    } catch (err) {
+        return res.status(401).json({ success: false, error: 'History token is invalid or has expired.' });
+    }
+};
