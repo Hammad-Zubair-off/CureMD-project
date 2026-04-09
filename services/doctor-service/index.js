@@ -4,6 +4,7 @@ import cors from 'cors';
 import { errorHandler, notFound } from './src/middleware/errorHandler.js';
 import { connectDB } from './src/config/db.js';
 import { logger } from './src/utils/logger.js';
+import doctorRoutes from './src/routes/doctorRoutes.js';
 
 dotenv.config();
 
@@ -27,7 +28,13 @@ app.get('/health', (req, res) => {
     });
 });
 
+app.use((req, res, next) => {
+    console.log(`[DEBUG] ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 // Routes
+app.use('/api/doctors', doctorRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
