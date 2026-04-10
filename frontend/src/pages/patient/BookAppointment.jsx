@@ -5,7 +5,7 @@ import mockDoctors, { SPECIALTIES } from '../../data/mockDoctors';
 import BookingDrawer from '../../components/patient/BookingDrawer';
 import DoctorDetailModal from '../../components/patient/DoctorDetailModal';
 
-// ── Doctor Card ──────────────────────────────────────────────────────────────
+// Doctor Card
 const DoctorCard = ({ doctor, onBookNow, onViewDetails }) => {
     const initials = `${doctor.firstName[0]}${doctor.lastName[0]}`;
 
@@ -67,7 +67,7 @@ const DoctorCard = ({ doctor, onBookNow, onViewDetails }) => {
     );
 };
 
-// ── Main Page ────────────────────────────────────────────────────────────────
+// Main Page
 export default function BookAppointment() {
     const location = useLocation();
     const fromMyAppointments = location.state?.fromMyAppointments || false;
@@ -85,7 +85,7 @@ export default function BookAppointment() {
     // Pre-selected slot coming from DoctorDetailModal (Scenario B)
     const [preSelectedSlot, setPreSelectedSlot] = useState(null);
 
-    // ── Filtered doctors ──
+    // Filtered doctors
     const filteredDoctors = useMemo(() => {
         return mockDoctors.filter((doc) => {
             const matchesName =
@@ -104,7 +104,7 @@ export default function BookAppointment() {
         });
     }, [searchName, selectedSpecialty, maxFee]);
 
-    // ── Handlers ──
+    // Handlers
     const handleBookNow = (doctor) => {
         setPreSelectedSlot(null);
         setBookingDoctor(doctor);
@@ -134,7 +134,7 @@ export default function BookAppointment() {
     return (
         <div className="p-6 lg:p-8 max-w-7xl mx-auto">
 
-            {/* ── Page Header ── */}
+            {/* Page Header */}
             <div className="mb-6">
                 {fromMyAppointments && (
                     <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl mb-4 text-sm font-medium">
@@ -148,7 +148,7 @@ export default function BookAppointment() {
                 </p>
             </div>
 
-            {/* ── Search & Filter Bar ── */}
+            {/* Search & Filter Bar */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-6">
                 <div className="flex flex-col sm:flex-row gap-3">
 
@@ -220,7 +220,7 @@ export default function BookAppointment() {
                 )}
             </div>
 
-            {/* ── Results Count ── */}
+            {/* Results Count */}
             <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-slate-500">
                     {filteredDoctors.length === 0
@@ -235,7 +235,7 @@ export default function BookAppointment() {
                 )}
             </div>
 
-            {/* ── Doctor Grid ── */}
+            {/* Doctor Grid */}
             {filteredDoctors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                     <Search className="w-10 h-10 mb-3 opacity-40" />
@@ -261,7 +261,7 @@ export default function BookAppointment() {
                 </div>
             )}
 
-            {/* ── Doctor Detail Modal (Scenario B) ── */}
+            {/* Doctor Detail Modal (Scenario B) */}
             {detailDoctor && (
                 <DoctorDetailModal
                     doctor={detailDoctor}
@@ -270,7 +270,7 @@ export default function BookAppointment() {
                 />
             )}
 
-            {/* ── Booking Drawer (Scenario A & B) ── */}
+            {/* Booking Drawer (Scenario A & B) */}
             {bookingDoctor && (
                 <BookingDrawer
                     doctor={bookingDoctor}

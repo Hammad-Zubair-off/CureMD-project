@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Star, MapPin, Briefcase, GraduationCap, Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TIME_SLOTS } from '../../data/mockDoctors';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 const getDayLabel = (date) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -33,7 +33,7 @@ const isDoctorAvailable = (doctor, date) => {
     return doctor.availableDays.includes(dayName);
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// Component
 export default function DoctorDetailModal({ doctor, onClose, onBook }) {
     const next7Days = getNext7Days();
     const [selectedDate, setSelectedDate] = useState(null);
@@ -89,7 +89,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
 
                 <div className="p-6 space-y-6">
 
-                    {/* ── Doctor Info ── */}
+                    {/* Doctor Info */}
                     <div className="flex items-start space-x-4">
                         <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl shrink-0">
                             {doctor.firstName[0]}{doctor.lastName[0]}
@@ -121,13 +121,13 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                         </div>
                     </div>
 
-                    {/* ── About ── */}
+                    {/* About */}
                     <div>
                         <h4 className="text-sm font-semibold text-slate-700 mb-2">About</h4>
                         <p className="text-sm text-slate-500 leading-relaxed">{doctor.about}</p>
                     </div>
 
-                    {/* ── Qualifications ── */}
+                    {/* Qualifications */}
                     <div>
                         <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center space-x-2">
                             <GraduationCap className="w-4 h-4 text-blue-600" />
@@ -143,7 +143,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                         </ul>
                     </div>
 
-                    {/* ── Available Days ── */}
+                    {/* Available Days */}
                     <div>
                         <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center space-x-2">
                             <Calendar className="w-4 h-4 text-blue-600" />
@@ -165,7 +165,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                         </div>
                     </div>
 
-                    {/* ── Select Date ── */}
+                    {/* Select Date */}
                     <div>
                         <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
                             <Calendar className="w-4 h-4 text-blue-600" />
@@ -218,7 +218,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                         </div>
                     </div>
 
-                    {/* ── Select Time Slot ── */}
+                    {/* Select Time Slot */}
                     {selectedDate && (
                         <div>
                             <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
@@ -243,7 +243,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                         </div>
                     )}
 
-                    {/* ── Actions ── */}
+                    {/* Actions */}
                     <div className="flex items-center space-x-3 pt-2">
                         <button
                             onClick={onClose}

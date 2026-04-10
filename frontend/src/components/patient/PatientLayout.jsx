@@ -120,12 +120,12 @@ export default function PatientLayout() {
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
 
-            {/* ── Desktop Sidebar ── */}
+            {/* Desktop Sidebar */}
             <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0">
                 <SidebarContent />
             </aside>
 
-            {/* ── Mobile Sidebar Overlay ── */}
+            {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div className="fixed inset-0 z-40 lg:hidden">
                     {/* Backdrop */}
@@ -140,7 +140,7 @@ export default function PatientLayout() {
                 </div>
             )}
 
-            {/* ── Main Content Area ── */}
+            {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
                 {/* Mobile Top Bar */}
