@@ -29,7 +29,7 @@ export default function LoginPage() {
       if (role === 'admin' || role === 'superadmin') {
         navigate('/admin');
       } else {
-        navigate('/dashboard');
+        navigate('/patient/dashboard');
       }
     } catch (err) {
       const message = err.error || err.message || '';
