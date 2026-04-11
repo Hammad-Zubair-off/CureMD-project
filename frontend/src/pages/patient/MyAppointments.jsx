@@ -6,7 +6,7 @@ import {
     ChevronLeft, ChevronRight, X, Loader2,
     Stethoscope, Ban, RotateCcw
 } from 'lucide-react';
-import api from '../../services/api';
+import appointmentService from '../../services/appointmentService';
 import { TIME_SLOTS } from '../../data/mockDoctors';
 
 // Helpers
@@ -377,11 +377,11 @@ export default function MyAppointments() {
         setLoading(true);
         setError('');
         try {
-            const res = await api.get(`/appointments/my?page=${page}&limit=${LIMIT}`);
-            setAppointments(res.data.appointments || []);
-            setTotalPages(res.data.pages || 1);
+            const data = await appointmentService.getMyAppointments(page, LIMIT);
+            setAppointments(data.appointments || []);
+            setTotalPages(data.pages || 1);
         } catch (err) {
-            setError('Failed to load appointments. Please try again.');
+            setError(err.error || 'Failed to load appointments. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -401,12 +401,12 @@ export default function MyAppointments() {
     const handleCancelConfirm = async () => {
         setActionLoading(true);
         try {
-            await api.patch(`/appointments/${cancelTarget._id}/cancel`);
+            await appointmentService.cancelAppointment(cancelTarget._id);
             showToast('Appointment cancelled successfully');
             setCancelTarget(null);
             fetchAppointments();
         } catch (err) {
-            showToast(err.response?.data?.error || 'Failed to cancel appointment', 'error');
+            showToast(err.error || 'Failed to cancel appointment', 'error');
         } finally {
             setActionLoading(false);
         }
@@ -416,15 +416,16 @@ export default function MyAppointments() {
     const handleRescheduleConfirm = async (newDate, newSlot) => {
         setActionLoading(true);
         try {
-            await api.patch(`/appointments/${rescheduleTarget._id}/reschedule`, {
-                appointmentDate: newDate.toISOString(),
-                timeSlot: newSlot,
-            });
+            await appointmentService.rescheduleAppointment(
+                rescheduleTarget._id,
+                newDate.toISOString(),
+                newSlot
+            );
             showToast('Appointment rescheduled successfully');
             setRescheduleTarget(null);
             fetchAppointments();
         } catch (err) {
-            showToast(err.response?.data?.error || 'Failed to reschedule appointment', 'error');
+            showToast(err.error || 'Failed to reschedule appointment', 'error');
         } finally {
             setActionLoading(false);
         }
