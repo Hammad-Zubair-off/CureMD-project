@@ -11,7 +11,8 @@ const appointmentService = {
             const response = await api.post('/appointments', payload);
             return response.data;
         } catch (error) {
-            throw error.response?.data || error;
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
         }
     },
 
@@ -24,7 +25,8 @@ const appointmentService = {
             const response = await api.patch(`/appointments/${appointmentId}/confirm`, { paymentId });
             return response.data;
         } catch (error) {
-            throw error.response?.data || error;
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
         }
     },
 
@@ -37,7 +39,8 @@ const appointmentService = {
             const response = await api.get(`/appointments/my?page=${page}&limit=${limit}`);
             return response.data;
         } catch (error) {
-            throw error.response?.data || error;
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
         }
     },
 
@@ -50,7 +53,8 @@ const appointmentService = {
             const response = await api.patch(`/appointments/${appointmentId}/cancel`);
             return response.data;
         } catch (error) {
-            throw error.response?.data || error;
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
         }
     },
 
@@ -66,7 +70,8 @@ const appointmentService = {
             });
             return response.data;
         } catch (error) {
-            throw error.response?.data || error;
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
         }
     },
 };
