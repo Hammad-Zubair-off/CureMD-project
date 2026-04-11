@@ -7,7 +7,7 @@ import {
     Loader2, AlertCircle, CreditCard, ArrowRight
 } from 'lucide-react';
 import { TIME_SLOTS } from '../../data/mockDoctors';
-import api from '../../services/api';
+import appointmentService from '../../services/appointmentService';
 
 // Helpers 
 
@@ -278,12 +278,10 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack }) =>
         setPaying(true);
         setPayError('');
         try {
-            await api.patch(`/appointments/${appointmentId}/confirm`, {
-                paymentId: `mock_pay_${Date.now()}`,
-            });
+            await appointmentService.confirmAppointment(appointmentId, `mock_pay_${Date.now()}`);
             onPaymentSuccess();
         } catch (err) {
-            setPayError(err.response?.data?.error || 'Payment failed. Please try again.');
+            setPayError(err.error || 'Payment failed. Please try again.');
         } finally {
             setPaying(false);
         }
@@ -444,11 +442,11 @@ export default function BookingDrawer({ doctor, preSelectedSlot, onClose }) {
                 patientPhone: formData.patientPhone.trim(),
             };
 
-            const response = await api.post('/appointments', payload);
-            setAppointmentId(response.data.appointment._id);
+            const data = await appointmentService.createAppointment(payload);
+            setAppointmentId(data.appointment._id);
             setStep(2);
         } catch (err) {
-            setError(err.response?.data?.error || err.response?.data?.errors?.[0] || 'Failed to create appointment. Please try again.');
+            setError(err.error || err.errors?.[0] || 'Failed to create appointment. Please try again.');
         } finally {
             setLoading(false);
         }
