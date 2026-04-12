@@ -199,12 +199,18 @@ export default function PatientDashboard() {
                             <div key={i} className="bg-white p-6 lg:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 group">
                                 <div className="flex items-center space-x-6">
                                     <div className="relative">
-                                        <div className="w-20 h-20 rounded-[2rem] overflow-hidden bg-slate-100">
-                                            <img
-                                                src={app.doctorId?.userId?.image || `https://ui-avatars.com/api/?name=${app.doctorId?.userId?.name}&background=random`}
-                                                alt="Doctor"
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                            />
+                                        <div className="w-20 h-20 rounded-[2rem] overflow-hidden bg-slate-100 flex items-center justify-center">
+                                            {app.doctorImage ? (
+                                                <img
+                                                    src={app.doctorImage}
+                                                    alt="Doctor"
+                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xl">
+                                                    {app.doctorFullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className={`absolute -bottom-1 -right-1 p-1.5 rounded-xl border-2 border-white ${app.status === 'confirmed' ? 'bg-green-500' : 'bg-amber-500'}`}>
                                             <ShieldCheck className="w-3 h-3 text-white" />
@@ -213,14 +219,14 @@ export default function PatientDashboard() {
 
                                     <div className="space-y-1">
                                         <div className="flex items-center space-x-3">
-                                            <h3 className="font-black text-slate-900 truncate">Dr. {app.doctorId?.userId?.name}</h3>
+                                            <h3 className="font-black text-slate-900 truncate">{app.doctorFullName}</h3>
                                             <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${app.status === 'confirmed' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                                                 }`}>
                                                 {app.status}
                                             </span>
                                         </div>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            {app.doctorId?.specialization} • {app.doctorId?.clinicName || 'General Clinic'}
+                                            {app.specialty} • {app.clinicName || 'Clinical Sanctuary'}
                                         </p>
                                         <div className="flex items-center space-x-4 mt-2">
                                             <div className="flex items-center space-x-1.5 text-slate-500">
