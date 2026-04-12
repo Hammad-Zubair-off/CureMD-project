@@ -4,18 +4,27 @@ import mongoose from 'mongoose';
  * MedicalHistorySnapshot
  *
  * A frozen copy of the patient's medical data at the moment they booked
- * an appointment. Created by patient-service when the frontend calls
- * POST /api/patients/snapshot before submitting the booking.
+ * an appointment. Created by appointment-service (Method 3) during booking.
  *
- * The appointment document in appointment-service stores only the
- * snapshotId and sharesMedicalHistory flag — it never stores the data itself.
+ * appointmentId links this snapshot back to the appointment bidirectionally:
+ *   appointment.patientMedicalHistoryId → snapshot._id
+ *   snapshot.appointmentId             → appointment._id
  *
- * When a doctor opens an appointment, doctor-service calls
- * GET /api/patients/snapshot/:snapshotId (Method 3) to fetch this document.
+ * LIFECYCLE:
+ *   Created:   when appointment is booked (sharingMode !== 'none')
+ *   Expires:   30 minutes after creation if payment not completed
+ *              (snapshotExpiresAt mirrors appointment.expiresAt)
+ *   Confirmed: appointment-service calls PATCH /api/patients/snapshot/:id/confirm
+ *              to clear snapshotExpiresAt — snapshot becomes permanent
+ *   Orphan prevention: if payment never happens, MongoDB TTL auto-deletes
+ *              both the appointment AND this snapshot at the same time
  *
- * Because this is a snapshot, it is NEVER updated after creation.
- * If a patient's medications change, a new snapshot is created at the
- * next booking — old appointments keep the historical record intact.
+ * sharingMode:
+ *   'snapshot_only'    → doctor sees only this snapshot for this appointment
+ *   'full_history_24h' → doctor gets 24h access to all snapshots
+ *
+ * IMMUTABLE fields: all medical data fields, appointmentId, userId, sharingMode
+ * MUTABLE fields:   snapshotExpiresAt only (cleared on payment confirmation)
  */
 const medicalHistorySnapshotSchema = new mongoose.Schema(
     {
@@ -26,41 +35,63 @@ const medicalHistorySnapshotSchema = new mongoose.Schema(
             index: true,
         },
 
-        // Always captured (required fields)
-        dateOfBirth: { type: Date, default: null },
-        gender: { type: String, default: null },
-        bloodType: { type: String, default: null },
-        height: { type: Number, default: null },
-        weight: { type: Number, default: null },
+        // Which appointment triggered this snapshot
+        appointmentId: {
+            type: mongoose.Schema.Types.ObjectId,
+            required: true,
+            unique: true, // one snapshot per appointment
+            index: true,
+        },
+
+        // Always captured
+        dateOfBirth: { type: Date,   default: null },
+        gender:      { type: String, default: null },
+        bloodType:   { type: String, default: null },
         emergencyContact: {
-            name: { type: String, default: null },
-            phone: { type: String, default: null },
+            name:         { type: String, default: null },
+            phone:        { type: String, default: null },
             relationship: { type: String, default: null },
         },
 
-        // Captured only if sharesMedicalHistory is true
-        // If false, these arrays are stored empty regardless of what
-        // the patient has saved in their profile.
-        sharesMedicalHistory: {
-            type: Boolean,
+        // Patient's sharing choice for this appointment
+        sharingMode: {
+            type: String,
+            enum: {
+                values: ['snapshot_only', 'full_history_24h'],
+                message: 'sharingMode must be snapshot_only or full_history_24h',
+            },
             required: true,
-            default: false,
         },
-        allergies: { type: [String], default: [] },
-        currentMedications: { type: [String], default: [] },
-        chronicConditions: { type: [String], default: [] },
 
-        // When this snapshot was taken — useful for audit trail
-        snapshotTakenAt: {
+        // Medical data — captured for both sharing modes
+        allergies:          { type: [String], default: [] },
+        currentMedications: { type: [String], default: [] },
+        chronicConditions:  { type: [String], default: [] },
+
+        // TTL - mirrors appointment.expiresAt
+        // Set to 30 minutes from creation when appointment is first booked.
+        // Cleared (set to null) when payment is confirmed via
+        // PATCH /api/patients/snapshot/:id/confirm (called by appointment-service).
+        // If payment never happens, MongoDB TTL auto-deletes this snapshot
+        // at the same time as the appointment — no orphans left behind.
+        snapshotExpiresAt: {
             type: Date,
-            default: Date.now,
-            immutable: true, // never allow updating this field
+            default: null,
         },
     },
     {
-        timestamps: true,
-        // Prevent any updates after creation — snapshots are immutable
-        // (enforced at the controller level, this just makes intent clear)
+        timestamps: true, // createdAt = when the snapshot was taken
+    }
+);
+
+// TTL index — auto-deletes snapshot when snapshotExpiresAt is reached
+// Only applies when snapshotExpiresAt is set (non-null)
+// Confirmed snapshots have snapshotExpiresAt cleared so they are never deleted
+medicalHistorySnapshotSchema.index(
+    { snapshotExpiresAt: 1 },
+    {
+        expireAfterSeconds: 0,
+        partialFilterExpression: { snapshotExpiresAt: { $type: 'date' } },
     }
 );
 
