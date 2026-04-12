@@ -83,6 +83,22 @@ const appointmentSchema = new mongoose.Schema(
             maxlength: [500, 'Reason must not exceed 500 characters'],
         },
 
+        // Medical History Reference — Method 1 (from frontend)
+        // Only stores the reference ID and sharing intent.
+        // sharingMode:
+        patientMedicalHistoryId: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: null,
+        },
+        sharingMode: {
+            type: String,
+            enum: {
+                values: ['none', 'snapshot_only', 'full_history_24h'],
+                message: 'sharingMode must be none, snapshot_only, or full_history_24h',
+            },
+            default: 'none',
+        },
+
         // Status
         status: {
             type: String,
