@@ -1,6 +1,6 @@
 // ─ Shared constants ─
 const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'expired'];
-
+const VALID_SHARING_MODES = ['none', 'snapshot_only', 'full_history_24h'];
 // ─ Regex patterns ─
 // Time slot format: HH:MM - HH:MM (e.g. "09:00 - 09:30")
 const TIME_SLOT_REGEX = /^([01]\d|2[0-3]):[0-5]\d - ([01]\d|2[0-3]):[0-5]\d$/;
@@ -26,6 +26,7 @@ export const validateBookAppointment = ({
     timeSlot,
     reason,
     patientPhone,
+    sharingMode,
 } = {}) => {
     const errors = [];
 
@@ -38,6 +39,12 @@ export const validateBookAppointment = ({
     if (!timeSlot) errors.push('timeSlot is required.');
     if (!reason) errors.push('reason is required.');
     if (!patientPhone) errors.push('patientPhone is required.');
+
+    if (!sharingMode) {
+        errors.push(`sharingMode is required. Must be one of: ${VALID_SHARING_MODES.join(', ')}.`);
+    } else if (!VALID_SHARING_MODES.includes(sharingMode)) {
+        errors.push(`sharingMode must be one of: ${VALID_SHARING_MODES.join(', ')}.`);
+    }
 
     // Early return — no point checking further if required fields are missing
     if (errors.length > 0) return { valid: false, errors, fee: null };

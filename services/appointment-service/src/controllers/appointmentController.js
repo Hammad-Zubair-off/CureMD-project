@@ -7,6 +7,9 @@ import {
     validateRescheduleAppointment,
     validateStatusQuery,
 } from '../validators/appointmentValidator.js';
+import { patientClient } from '../config/services.js';
+import SERVICES from '../config/services.js';
+import { callService } from '../utils/callService.js';
 
 // ─ Shared SSE EventEmitter ─
 // One instance shared across all controller functions
@@ -29,9 +32,10 @@ const toUTC = (dateStr) => new Date(new Date(dateStr).toISOString());
  * @route   POST /api/appointments
  * @access  Private — patient only
  *
- * Method 1: Doctor data (doctorFullName, specialty, consultationFee) comes
- * from the frontend — patient already saw this on the doctor listing page.
- * No inter-service call to doctor-service needed.
+ * COMMUNICATION:
+ * Method 1 — doctor data + sharingMode from frontend
+ * Method 3 — calls patient-service to create snapshot after appointment saved, passes snapshotExpiresAt so snapshot has same TTL as appointment
+ * Method 2 — publishEvent after everything saved (fire and forget)
  */
 export const bookAppointment = async (req, res, next) => {
     try {
@@ -43,6 +47,7 @@ export const bookAppointment = async (req, res, next) => {
             timeSlot,
             reason,
             patientPhone,
+            sharingMode,
         } = req.body;
 
         // Validate request body
@@ -71,6 +76,7 @@ export const bookAppointment = async (req, res, next) => {
         // MongoDB TTL index auto-deletes if payment not completed in time
         const expiresAt = new Date(Date.now() + APPOINTMENT_EXPIRY_MINUTES * 60 * 1000);
 
+        // Step 1 — Save appointment (no snapshotId yet)
         const appointment = await Appointment.create({
             // Patient info — from JWT (verified, trusted)
             patientId: req.user.id,
@@ -91,6 +97,8 @@ export const bookAppointment = async (req, res, next) => {
             appointmentDate: toUTC(appointmentDate),
             timeSlot,
             reason,
+            patientMedicalHistoryId: null,
+            sharingMode,
 
             // Initial status
             status: 'pending',
@@ -105,9 +113,43 @@ export const bookAppointment = async (req, res, next) => {
             expiresAt,
         });
 
-        logger.info(`Appointment created: ${appointment._id} by patient ${req.user.fullName}`);
+        logger.info(`Appointment created: ${appointment._id} | patient: ${req.user.fullName} | sharingMode: ${sharingMode}`);
 
-        // Publish event (Method 2 — fire and forget)
+        // Step 2 — Create snapshot if patient chose to share medical data
+        if (sharingMode !== 'none') {
+ 
+            // METHOD 3 — call patient-service to create the snapshot
+            // Pass snapshotExpiresAt matching appointment.expiresAt so both
+            // get cleaned up together if payment is never completed
+            const snapshotData = await callService(
+                () => patientClient.post(
+                    SERVICES.patient.endpoints.createSnapshot(),
+                    {
+                        sharingMode,
+                        appointmentId:      appointment._id.toString(),
+                        snapshotExpiresAt:  expiresAt.toISOString(),
+                    },
+                    { headers: { Authorization: req.headers.authorization } }
+                ),
+                'patient-service',
+                res
+            );
+ 
+            if (!snapshotData) {
+                // patient-service failed — appointment was already created
+                // appointment still succeeds, doctor will see no medical data
+                logger.warn(`[appointment-service] Snapshot creation failed for appointment: ${appointment._id}`);
+            } else {
+                // Step 3 — Link snapshot to appointment
+                await Appointment.findByIdAndUpdate(appointment._id, {
+                    patientMedicalHistoryId: snapshotData.snapshotId,
+                });
+                appointment.patientMedicalHistoryId = snapshotData.snapshotId;
+                logger.info(`Snapshot linked: ${snapshotData.snapshotId} → appointment: ${appointment._id}`);
+            }
+        }
+ 
+        // Step 4 — Publish event (Method 2 — fire and forget)
         // notification-service sends booking confirmation to patient
         publishEvent('appointment.created', {
             appointmentId: appointment._id,
@@ -146,10 +188,15 @@ export const bookAppointment = async (req, res, next) => {
  * @route   PATCH /api/appointments/:id/confirm
  * @access  Internal — payment-service only (Method 3)
  *
- * No JWT middleware on this route — secured by internal secret header only.
- * payment-service calls this directly after Stripe confirms payment.
- * Idempotent — returns 200 if already confirmed (safe for payment retries).
- */
+ * After confirming the appointment, calls patient-service to confirm
+ * the linked snapshot — clearing its snapshotExpiresAt so it is never
+ * auto-deleted by the TTL index.
+ *
+ * If snapshot confirmation fails, the appointment is still confirmed
+ * and a warning is logged. The snapshot will expire in 30 minutes if
+ * not confirmed — this is an acceptable edge case since the medical
+ * record already exists in the appointment.
+ * */
 export const confirmAppointment = async (req, res, next) => {
     try {
         // Verify internal secret — must come from payment-service
@@ -217,6 +264,29 @@ export const confirmAppointment = async (req, res, next) => {
         });
 
         logger.success(`Appointment confirmed: ${appointment._id}`);
+
+        // Confirm the linked snapshot — clears snapshotExpiresAt so it
+        // is never auto-deleted. Fire and log, never block the response.
+        if (appointment.patientMedicalHistoryId) {
+            patientClient.patch(
+                SERVICES.patient.endpoints.confirmSnapshot(
+                    appointment.patientMedicalHistoryId.toString()
+                ),
+                {},
+                {
+                    headers: {
+                        'x-internal-secret': process.env.INTERNAL_SECRET,
+                    },
+                }
+            ).then(() => {
+                logger.info(`Snapshot confirmed: ${appointment.patientMedicalHistoryId}`);
+            }).catch((err) => {
+                // Non-blocking — appointment is already confirmed
+                // Snapshot will expire in ~30 min if not cleared, which is
+                // an acceptable edge case. Payment confirmation still succeeds.
+                logger.warn(`[appointment-service] Could not confirm snapshot ${appointment.patientMedicalHistoryId}: ${err.message}`);
+            });
+        }
 
         // Publish event (Method 2 — fire and forget)
         // notification-service sends confirmation to patient and doctor
