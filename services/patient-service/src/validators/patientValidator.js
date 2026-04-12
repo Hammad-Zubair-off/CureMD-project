@@ -1,8 +1,9 @@
-const VALID_BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const VALID_GENDERS = ['Male', 'Female', 'Other'];
-const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
+const VALID_BLOOD_TYPES   = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const VALID_GENDERS       = ['Male', 'Female', 'Other'];
+const VALID_SHARING_MODES = ['snapshot_only', 'full_history_24h'];
+const PHONE_REGEX         = /^\+?[0-9]{7,15}$/;
 
-// Reusable field validators
+// Reusable helpers
 
 const validateDOB = (dateOfBirth, errors) => {
     if (!dateOfBirth) {
@@ -20,12 +21,11 @@ const validatePhone = (phone, fieldName, errors) => {
     }
 };
 
-// Booking wall validator
+// Booking wall
 
 /**
- * Validates the required fields a patient must fill before booking.
- * DOB, gender, contact number, blood type, and emergency contact are all required.
- * Sensitive medical fields (allergies etc.) are NOT validated here — they are optional.
+ * Required fields a patient must fill before they can book.
+ * Sensitive medical fields (allergies etc.) are NOT validated here — optional.
  */
 export const validateBookingProfile = ({
     dateOfBirth,
@@ -60,8 +60,8 @@ export const validateBookingProfile = ({
         errors.push('Emergency contact is required.');
     } else {
         const { name, phone, relationship } = emergencyContact;
-        if (!name?.trim()) errors.push('Emergency contact name is required.');
-        if (!phone?.trim()) errors.push('Emergency contact phone is required.');
+        if (!name?.trim())         errors.push('Emergency contact name is required.');
+        if (!phone?.trim())        errors.push('Emergency contact phone is required.');
         if (!relationship?.trim()) errors.push('Emergency contact relationship is required.');
         if (phone) validatePhone(phone, 'Emergency contact phone', errors);
     }
@@ -69,11 +69,10 @@ export const validateBookingProfile = ({
     return { valid: errors.length === 0, errors };
 };
 
-// General profile update validator
+// Profile update
 
 /**
- * Validates optional profile update fields.
- * All fields are optional — only validates what is present in the body.
+ * All fields optional — validates only what is present in the body.
  */
 export const validateProfileUpdate = (body = {}) => {
     const errors = [];
@@ -100,27 +99,34 @@ export const validateProfileUpdate = (body = {}) => {
         if (isNaN(w) || w < 1 || w > 500) errors.push('Weight must be between 1 and 500 kg.');
     }
 
-    if (emergencyContact !== undefined) {
-        const { phone } = emergencyContact;
-        if (phone) validatePhone(phone, 'Emergency contact phone', errors);
-    }
+    if (emergencyContact?.phone)
+        validatePhone(emergencyContact.phone, 'Emergency contact phone', errors);
 
     return { valid: errors.length === 0, errors };
 };
 
-// Snapshot request validator
+// Snapshot request
 
 /**
- * Validates the snapshot creation request.
- * sharesMedicalHistory must be explicitly passed as a boolean.
+ * Called by appointment-service (Method 3) after creating the appointment.
+ *
+ * sharingMode: snapshot_only | full_history_24h
+ * Note: 'none' is NOT a valid mode here — if sharingMode is 'none',
+ * appointment-service skips the snapshot call entirely.
+ *
+ * appointmentId: required — links the snapshot to the appointment.
  */
-export const validateSnapshotRequest = ({ sharesMedicalHistory } = {}) => {
+export const validateSnapshotRequest = ({ sharingMode, appointmentId } = {}) => {
     const errors = [];
 
-    if (sharesMedicalHistory === undefined || sharesMedicalHistory === null) {
-        errors.push('sharesMedicalHistory is required (true or false).');
-    } else if (typeof sharesMedicalHistory !== 'boolean') {
-        errors.push('sharesMedicalHistory must be a boolean.');
+    if (!sharingMode) {
+        errors.push(`sharingMode is required. Must be one of: ${VALID_SHARING_MODES.join(', ')}.`);
+    } else if (!VALID_SHARING_MODES.includes(sharingMode)) {
+        errors.push(`sharingMode must be one of: ${VALID_SHARING_MODES.join(', ')}.`);
+    }
+
+    if (!appointmentId) {
+        errors.push('appointmentId is required.');
     }
 
     return { valid: errors.length === 0, errors };
