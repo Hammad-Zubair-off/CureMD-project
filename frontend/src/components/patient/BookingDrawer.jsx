@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
     X, Calendar, Clock, Phone, FileText,
     ChevronLeft, ChevronRight, Edit2, CheckCircle,
-    Loader2, AlertCircle, CreditCard, ArrowRight
+    Loader2, AlertCircle, CreditCard, ArrowRight,
+    Shield
 } from 'lucide-react';
 import { TIME_SLOTS } from '../../data/mockDoctors';
 import appointmentService from '../../services/appointmentService';
@@ -91,7 +92,8 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
         formData.selectedDate &&
         formData.timeSlot &&
         formData.reason.trim().length >= 10 &&
-        formData.patientPhone.trim().length >= 7;
+        formData.patientPhone.trim().length >= 7 &&
+        formData.sharingMode;
 
     return (
         <div className="space-y-6">
@@ -253,6 +255,28 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
                 </div>
             </div>
 
+            {/* 5. Share Medical History */}
+            <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                    5. Share Medical History
+                </p>
+                <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                        value={formData.sharingMode}
+                        onChange={(e) => setFormData(f => ({ ...f, sharingMode: e.target.value }))}
+                        className="w-full pl-9 pr-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white"
+                    >
+                        <option value="none">Do not share</option>
+                        <option value="snapshot_only">Share Snapshot for this consultation</option>
+                        <option value="full_history_24h">Grant Full History access for 24 hours</option>
+                    </select>
+                </div>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                    Allowing the doctor to securely view your medical history can result in a more accurate diagnosis.
+                </p>
+            </div>
+
             {/* Next Button */}
             <button
                 onClick={onNext}
@@ -313,6 +337,12 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack }) =>
                     <div className="flex justify-between">
                         <span className="text-slate-500">Time</span>
                         <span className="font-medium text-slate-900">{formData.timeSlot}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Medical History Shared</span>
+                        <span className="font-medium text-slate-900">
+                            {formData.sharingMode === 'none' ? 'No' : 'Yes'}
+                        </span>
                     </div>
                     <div className="border-t border-slate-200 pt-2 flex justify-between">
                         <span className="font-semibold text-slate-700">Total</span>
@@ -424,6 +454,7 @@ export default function BookingDrawer({ doctor, preSelectedSlot, onClose }) {
         timeSlot: preSelectedSlot?.timeSlot || '',
         reason: '',
         patientPhone: '',
+        sharingMode: 'none',
     });
 
     // Step 1 Submit — create appointment
@@ -440,6 +471,7 @@ export default function BookingDrawer({ doctor, preSelectedSlot, onClose }) {
                 timeSlot: formData.timeSlot,
                 reason: formData.reason.trim(),
                 patientPhone: formData.patientPhone.trim(),
+                sharingMode: formData.sharingMode,
             };
 
             const data = await appointmentService.createAppointment(payload);

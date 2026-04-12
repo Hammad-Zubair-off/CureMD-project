@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-    Save, 
-    Loader2, 
-    User, 
-    Calendar, 
-    Phone, 
-    Mail, 
-    MapPin, 
-    Droplets, 
-    Ruler, 
-    Weight, 
-    Heart, 
-    Plus, 
+import {
+    Save,
+    Loader2,
+    User,
+    Calendar,
+    Phone,
+    Mail,
+    MapPin,
+    Droplets,
+    Ruler,
+    Weight,
+    Heart,
+    Plus,
     X,
     Activity,
     AlertCircle,
@@ -76,8 +76,8 @@ const BloodTypePicker = ({ value, onChange }) => {
                             }}
                             className={`
                                 py-3 rounded-2xl text-sm font-black transition-all
-                                ${value === type 
-                                    ? 'bg-red-500 text-white shadow-lg shadow-red-200 scale-110' 
+                                ${value === type
+                                    ? 'bg-red-500 text-white shadow-lg shadow-red-200 scale-110'
                                     : 'hover:bg-slate-50 text-slate-600'}
                             `}
                         >
@@ -113,13 +113,13 @@ const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder, color
             <div className="bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-4">
                 <div className="flex flex-wrap gap-2 mb-3">
                     {tags.map((tag, i) => (
-                        <span 
-                            key={i} 
+                        <span
+                            key={i}
                             className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-${colorClass}-100 text-${colorClass}-700 shadow-sm transition-all hover:border-${colorClass}-200`}
                         >
                             <span>{tag}</span>
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 onClick={() => setConfirmDelete(tag)}
                                 className="hover:text-red-500 transition-colors"
                             >
@@ -132,7 +132,7 @@ const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder, color
                     )}
                 </div>
                 <div className="relative">
-                    <input 
+                    <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -140,7 +140,7 @@ const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder, color
                         placeholder={placeholder}
                         className="w-full pl-4 pr-10 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                     />
-                    <button 
+                    <button
                         type="button"
                         onClick={() => { if (input.trim()) { onAdd(input.trim()); setInput(''); } }}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
@@ -150,7 +150,7 @@ const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder, color
                 </div>
             </div>
 
-            <Toast 
+            <Toast
                 isOpen={!!confirmDelete}
                 type="confirm"
                 message={`Remove ${confirmDelete} from ${label.toLowerCase()}?`}
@@ -164,10 +164,10 @@ const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder, color
     );
 };
 
-export default function PatientProfileForm({ 
-    initialData = {}, 
-    onSave, 
-    saving = false, 
+export default function PatientProfileForm({
+    initialData = {},
+    onSave,
+    saving = false,
     mode = 'full', // 'full' or 'minimal'
     showTitle = true
 }) {
@@ -260,12 +260,12 @@ export default function PatientProfileForm({
                         <h2 className="text-base font-bold text-slate-900">Identity & Contact</h2>
                     </div>
                 </div>
-                
+
                 <div className="p-8 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <InputWrapper label="Date of Birth" icon={Calendar} required>
-                            <input 
-                                type="date" 
+                            <input
+                                type="date"
                                 name="dateOfBirth"
                                 value={formData.dateOfBirth}
                                 onChange={handleChange}
@@ -275,7 +275,7 @@ export default function PatientProfileForm({
                         </InputWrapper>
 
                         <InputWrapper label="Gender" icon={User} required>
-                            <select 
+                            <select
                                 name="gender"
                                 value={formData.gender}
                                 onChange={handleChange}
@@ -290,8 +290,8 @@ export default function PatientProfileForm({
                         </InputWrapper>
 
                         <InputWrapper label="Contact Number" icon={Phone} required>
-                            <input 
-                                type="tel" 
+                            <input
+                                type="tel"
                                 name="contactNumber"
                                 value={formData.contactNumber}
                                 onChange={handleChange}
@@ -302,8 +302,8 @@ export default function PatientProfileForm({
                         </InputWrapper>
 
                         <InputWrapper label="Email (Read Only)" icon={Mail}>
-                            <input 
-                                type="email" 
+                            <input
+                                type="email"
                                 value={formData.email}
                                 disabled
                                 className={`${inputClass} bg-slate-100 text-slate-500 cursor-not-allowed`}
@@ -312,7 +312,7 @@ export default function PatientProfileForm({
                     </div>
 
                     <InputWrapper label="Residential Address" icon={MapPin}>
-                        <textarea 
+                        <textarea
                             name="address"
                             value={formData.address}
                             onChange={handleChange}
@@ -337,16 +337,16 @@ export default function PatientProfileForm({
                                 <stat.icon className="w-5 h-5" />
                             </div>
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</label>
-                            
+
                             {stat.isSelect ? (
-                                <BloodTypePicker 
-                                    value={formData.bloodType} 
-                                    onChange={(val) => setFormData(prev => ({ ...prev, bloodType: val }))} 
+                                <BloodTypePicker
+                                    value={formData.bloodType}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, bloodType: val }))}
                                 />
                             ) : (
                                 <div className="flex items-end space-x-2">
-                                    <input 
-                                        type="number" 
+                                    <input
+                                        type="number"
                                         name={stat.name}
                                         value={formData[stat.name]}
                                         onChange={handleChange}
@@ -365,8 +365,8 @@ export default function PatientProfileForm({
             <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
-                        <TagInput 
-                            label="Clinical Conditions" 
+                        <TagInput
+                            label="Clinical Conditions"
                             icon={Activity}
                             tags={formData.chronicConditions}
                             onAdd={(tag) => handleTagAdd('chronicConditions', tag)}
@@ -375,8 +375,8 @@ export default function PatientProfileForm({
                         />
                     </div>
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
-                        <TagInput 
-                            label="Active Medications" 
+                        <TagInput
+                            label="Active Medications"
                             icon={Heart}
                             tags={formData.currentMedications}
                             onAdd={(tag) => handleTagAdd('currentMedications', tag)}
@@ -385,11 +385,11 @@ export default function PatientProfileForm({
                         />
                     </div>
                 </div>
-                
+
                 {mode === 'full' && (
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
-                        <TagInput 
-                            label="Allergies" 
+                        <TagInput
+                            label="Allergies"
                             icon={ShieldAlert}
                             tags={formData.allergies}
                             onAdd={(tag) => handleTagAdd('allergies', tag)}
@@ -413,7 +413,7 @@ export default function PatientProfileForm({
                 </div>
                 <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <InputWrapper label="Full Name" icon={User} required>
-                        <input 
+                        <input
                             name="emergency.name"
                             value={formData.emergencyContact.name}
                             onChange={handleChange}
@@ -423,7 +423,7 @@ export default function PatientProfileForm({
                         />
                     </InputWrapper>
                     <InputWrapper label="Relationship" icon={Heart} required>
-                        <input 
+                        <input
                             name="emergency.relationship"
                             value={formData.emergencyContact.relationship}
                             onChange={handleChange}
@@ -433,7 +433,7 @@ export default function PatientProfileForm({
                         />
                     </InputWrapper>
                     <InputWrapper label="Emergency Phone" icon={Phone} required>
-                        <input 
+                        <input
                             name="emergency.phone"
                             value={formData.emergencyContact.phone}
                             onChange={handleChange}
@@ -448,15 +448,15 @@ export default function PatientProfileForm({
             {/* Submit Buttons */}
             {mode === 'full' && (
                 <div className="flex items-center justify-end space-x-4 pt-4 pb-10">
-                    <button 
+                    <button
                         type="button"
                         onClick={() => window.location.reload()} // Simple discard
                         className="px-8 py-3.5 text-slate-600 text-sm font-bold rounded-2xl hover:bg-slate-100 transition-all"
                     >
                         Discard Changes
                     </button>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={saving}
                         className="px-10 py-3.5 bg-blue-600 text-white text-sm font-bold rounded-2xl hover:bg-blue-700 active:scale-95 disabled:opacity-70 transition-all shadow-xl shadow-blue-600/30 flex items-center space-x-2.5"
                     >
@@ -465,10 +465,10 @@ export default function PatientProfileForm({
                     </button>
                 </div>
             )}
-            
+
             {mode === 'minimal' && (
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     disabled={saving}
                     className="w-full py-4 bg-blue-600 text-white text-sm font-bold rounded-2xl hover:bg-blue-700 active:scale-95 disabled:opacity-70 transition-all shadow-xl shadow-blue-600/20 flex justify-center items-center space-x-2.5"
                 >
