@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Search, SlidersHorizontal, Star, MapPin, Briefcase, ChevronDown, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, SlidersHorizontal, Star, MapPin, Briefcase, ChevronDown, X, AlertCircle, Loader2, Save } from 'lucide-react';
 import mockDoctors, { SPECIALTIES } from '../../data/mockDoctors';
 import BookingDrawer from '../../components/patient/BookingDrawer';
 import DoctorDetailModal from '../../components/patient/DoctorDetailModal';
+import PatientProfileInit from '../../components/patient/PatientProfileInit';
+import patientService from '../../services/patientService';
 
 // Doctor Card
 const DoctorCard = ({ doctor, onBookNow, onViewDetails }) => {
@@ -67,9 +69,71 @@ const DoctorCard = ({ doctor, onBookNow, onViewDetails }) => {
     );
 };
 
+// Complete Profile Modal
+const CompleteProfileModal = ({ onClose, onSuccess }) => {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSave = async (payload) => {
+        setLoading(true);
+        setError('');
+        try {
+            await patientService.saveBookingProfile(payload);
+            onSuccess();
+        } catch (err) {
+            const backendErrors = err.response?.data?.errors;
+            setError(backendErrors || err.response?.data?.message || err.error || 'Failed to complete profile.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={!loading ? onClose : undefined} />
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-white/80 backdrop-blur-md px-8 py-6 border-b border-slate-100 flex items-center justify-between z-10">
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900">Complete Your Profile</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">Please provide your details before booking an appointment.</p>
+                    </div>
+                    <button onClick={onClose} disabled={loading} className="p-2 -mr-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-all">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="p-8">
+                    {error && (
+                        <div className="p-4 mb-8 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl">
+                            <div className="flex items-start space-x-3">
+                                <AlertCircle className="w-5 h-5 shrink-0" />
+                                <div className="flex-1">
+                                    {Array.isArray(error) ? (
+                                        <ul className="list-disc list-inside space-y-1">
+                                            {error.map((err, i) => <li key={i}>{err}</li>)}
+                                        </ul>
+                                    ) : (
+                                        <span>{error}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <PatientProfileInit
+                        onSave={handleSave}
+                        saving={loading}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Main Page
 export default function BookAppointment() {
     const location = useLocation();
+    const navigate = useNavigate();
     const fromMyAppointments = location.state?.fromMyAppointments || false;
 
     // Search & filter state
@@ -77,6 +141,11 @@ export default function BookAppointment() {
     const [selectedSpecialty, setSelectedSpecialty] = useState('All Specialties');
     const [showFilters, setShowFilters] = useState(false);
     const [maxFee, setMaxFee] = useState('');
+
+    // Pre-booking checks
+    const [checkingProfile, setCheckingProfile] = useState(false);
+    const [showIncompleteModal, setShowIncompleteModal] = useState(false);
+    const [pendingBookingAction, setPendingBookingAction] = useState(null);
 
     // Drawer / modal state
     const [bookingDoctor, setBookingDoctor] = useState(null);
@@ -104,10 +173,32 @@ export default function BookAppointment() {
         });
     }, [searchName, selectedSpecialty, maxFee]);
 
+    // Check profile before booking
+    const performBookingCheck = async (actionCallback) => {
+        setCheckingProfile(true);
+        try {
+            const res = await patientService.getMyProfile();
+            const profile = res.profile || res;
+            if (profile.bookingProfileComplete) {
+                actionCallback();
+            } else {
+                setPendingBookingAction(() => actionCallback);
+                setShowIncompleteModal(true);
+            }
+        } catch (err) {
+            console.error('Failed to check profile:', err);
+            // Optionally handle error here, but proceed to block or show alert
+        } finally {
+            setCheckingProfile(false);
+        }
+    };
+
     // Handlers
     const handleBookNow = (doctor) => {
-        setPreSelectedSlot(null);
-        setBookingDoctor(doctor);
+        performBookingCheck(() => {
+            setPreSelectedSlot(null);
+            setBookingDoctor(doctor);
+        });
     };
 
     const handleViewDetails = (doctor) => {
@@ -116,8 +207,10 @@ export default function BookAppointment() {
 
     const handleBookFromDetail = (doctor, slot = null) => {
         setDetailDoctor(null);
-        setPreSelectedSlot(slot);
-        setBookingDoctor(doctor);
+        performBookingCheck(() => {
+            setPreSelectedSlot(slot);
+            setBookingDoctor(doctor);
+        });
     };
 
     const handleClearFilters = () => {
@@ -132,7 +225,32 @@ export default function BookAppointment() {
         maxFee !== '';
 
     return (
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto relative">
+
+            {/* Global Loader for Profile Check */}
+            {checkingProfile && (
+                <div className="fixed inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="flex flex-col items-center">
+                        <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
+                        <p className="text-slate-800 font-semibold">Verifying patient profile...</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Incomplete Profile Modal */}
+            {showIncompleteModal && (
+                <CompleteProfileModal
+                    onClose={() => {
+                        setShowIncompleteModal(false);
+                        setPendingBookingAction(null);
+                    }}
+                    onSuccess={() => {
+                        setShowIncompleteModal(false);
+                        if (pendingBookingAction) pendingBookingAction();
+                        setPendingBookingAction(null);
+                    }}
+                />
+            )}
 
             {/* Page Header */}
             <div className="mb-6">
