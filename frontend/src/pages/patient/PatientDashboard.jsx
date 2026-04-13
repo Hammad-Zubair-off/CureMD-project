@@ -29,7 +29,6 @@ export default function PatientDashboard() {
     const [stats, setStats] = useState({
         upcoming: 0,
         past: 0,
-        prescriptions: 4, // Mocked for now as requested
         nextSession: '---'
     });
     const [upcomingAppointments, setUpcomingAppointments] = useState([]);
@@ -102,7 +101,6 @@ export default function PatientDashboard() {
                 setStats({
                     upcoming: upcoming.length,
                     past: past.length,
-                    prescriptions: 4,
                     nextSession: nextSessionStr
                 });
 
@@ -164,11 +162,10 @@ export default function PatientDashboard() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                     { label: 'Upcoming Appointments', count: stats.upcoming.toString().padStart(2, '0'), icon: Calendar, color: 'blue' },
                     { label: 'Past Appointments', count: stats.past.toString(), icon: History, color: 'blue' },
-                    { label: 'Active Prescriptions', count: stats.prescriptions.toString().padStart(2, '0'), icon: ClipboardList, color: 'orange' },
                     { label: 'Next Session', count: stats.nextSession, icon: Bell, color: 'rose' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
