@@ -26,6 +26,11 @@ import {
 
 const router = Router();
 
+// Confirm snapshot — called by appointment-service after payment confirmed
+// No JWT — secured by x-internal-secret header
+router.patch('/snapshot/:snapshotId/confirm', confirmSnapshot);
+
+
 // All routes require a valid JWT
 router.use(protect);
 
@@ -64,10 +69,6 @@ router.get('/snapshots/my', authorize('patient'), getMySnapshots);
 
 // Create snapshot — called by appointment-service (Method 3)
 router.post('/snapshot', authorize('patient'), createSnapshot);
-
-// Confirm snapshot — called by appointment-service after payment confirmed
-// No JWT — secured by x-internal-secret header
-router.patch('/snapshot/:snapshotId/confirm', confirmSnapshot);
 
 // Get single snapshot — patient (own), doctor (appointment-verified), admin
 router.get('/snapshot/:snapshotId', authorize('patient', 'doctor', 'admin'), getSnapshot);
