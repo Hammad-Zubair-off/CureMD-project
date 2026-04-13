@@ -3,6 +3,8 @@ import { logger } from '../utils/logger.js';
 import { validateBookingProfile, validateProfileUpdate } from '../validators/patientValidator.js';
 import { publishEvent } from '../utils/eventBus.js';
 import jwt from 'jsonwebtoken';
+import streamifier from 'streamifier';
+import cloudinary from '../config/cloudinary.js';
 
 // Fields the client must never be able to set directly
 const BLOCKED_FIELDS = ['userId', 'onboardingComplete', 'medicalReports'];
@@ -11,6 +13,22 @@ const sanitize = (body) => {
     const clean = { ...body };
     BLOCKED_FIELDS.forEach((f) => delete clean[f]);
     return clean;
+};
+
+// Helpers
+
+/**
+ * Streams a buffer to Cloudinary and returns the upload result.
+ * Uses streamifier to avoid writing to disk.
+ */
+const streamUploadToCloudinary = (buffer, options) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+        });
+        streamifier.createReadStream(buffer).pipe(uploadStream);
+    });
 };
 
 /**
@@ -102,7 +120,7 @@ export const saveBookingProfile = async (req, res, next) => {
  * @desc    Update optional profile fields (blood type, weight, allergies, etc.)
  *          Patient must have completed onboarding first.
  *
- *          COMMUNICATION:
+ *  COMMUNICATION:
  *          → Method 2 (RabbitMQ): publishes 'patient.profile.updated'
  *            so any service caching patient contact data can refresh its snapshot.
  *            Fire and forget — profile update succeeds regardless.
@@ -156,6 +174,71 @@ export const updateProfile = async (req, res, next) => {
             success: true,
             message: 'Profile updated successfully.',
             profile: updated,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * @desc    Upload or update patient profile picture
+ * @route   POST /api/patients/me/profile-picture
+ * @access  Private — patient
+ */
+export const uploadProfilePicture = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                error: 'No image uploaded. Please select an image.',
+            });
+        }
+
+        if (!req.file.mimetype.startsWith('image/')) {
+            return res.status(400).json({
+                success: false,
+                error: 'Profile picture must be an image file (JPEG, PNG, WEBP).',
+            });
+        }
+
+        const patient = await Patient.findOne({ userId: req.user.id });
+        if (!patient) {
+            return res.status(404).json({ success: false, error: 'Patient not found.' });
+        }
+
+        // 1. Delete old picture from Cloudinary to save space
+        if (patient.profileImagePublicId) {
+            try {
+                await cloudinary.uploader.destroy(patient.profileImagePublicId);
+            } catch (err) {
+                logger.error(`[Cloudinary] Failed to delete old profile picture: ${err.message}`);
+            }
+        }
+
+        // 2. Stream new image to Cloudinary
+        const uploadResult = await streamUploadToCloudinary(req.file.buffer, {
+            folder: `healthcare/patients/${req.user.id}/profile`,
+            transformation: [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }],
+        });
+
+        // 3. Update the database
+        patient.profileImageUrl = uploadResult.secure_url;
+        patient.profileImagePublicId = uploadResult.public_id;
+        await patient.save();
+
+        logger.info(`[patient-service] Profile picture updated for patient: ${req.user.email || req.user.id}`);
+
+        // Optional: Publish event if other services need to cache the new image URL
+        publishEvent('patient.profile.updated', {
+            userId: req.user.id,
+            patientId: patient._id,
+            profileImageUrl: patient.profileImageUrl,
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile picture updated successfully.',
+            profileImageUrl: patient.profileImageUrl,
         });
     } catch (err) {
         next(err);
