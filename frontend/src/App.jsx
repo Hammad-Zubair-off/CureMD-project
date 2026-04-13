@@ -19,6 +19,12 @@ import MyProfile from './pages/patient/MyProfile'
 import MedicalHistory from './pages/patient/MedicalHistory'
 import Telemedicine from './pages/patient/Telemedicine'
 
+//doctor
+import DoctorLayout from './components/doctor/DoctorLayout'
+import DoctorDashboard from './pages/doctor/DoctorDashboard'
+import DoctorAvailability from './pages/doctor/DoctorAvailability'
+import DoctorProfile from './pages/doctor/DoctorProfile'
+
 function App() {
   return (
     <Routes>
@@ -44,6 +50,12 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route path="/doctor" element={<ProtectedRoute role="doctor"><DoctorLayout /></ProtectedRoute>}>
+        <Route path="dashboard" element={<DoctorDashboard />} />
+        <Route path="profile" element={<DoctorProfile />} />
+        <Route path="availability" element={<DoctorAvailability />} />
+      </Route>
 
       {/* Patient Routes — all wrapped in PatientLayout */}
       <Route
