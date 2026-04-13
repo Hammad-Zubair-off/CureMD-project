@@ -49,7 +49,7 @@ export const BloodTypePicker = ({ value, onChange }) => {
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 p-4 bg-white rounded-[2rem] shadow-2xl border border-slate-100 grid grid-cols-4 gap-2 z-50 min-w-[240px] animate-in zoom-in-95 fade-in duration-200">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 p-4 bg-white rounded-xl shadow-2xl border border-slate-100 grid grid-cols-4 gap-2 z-50 min-w-[240px] animate-in zoom-in-95 fade-in duration-200">
                     <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-t border-l border-slate-100 rotate-45"></div>
                     {types.map((type) => (
                         <button
@@ -60,7 +60,7 @@ export const BloodTypePicker = ({ value, onChange }) => {
                                 setIsOpen(false);
                             }}
                             className={`
-                                py-3 rounded-2xl text-sm font-black transition-all
+                                py-3 rounded-xl text-sm font-black transition-all
                                 ${value === type 
                                     ? 'bg-red-500 text-white shadow-lg shadow-red-200 scale-110' 
                                     : 'hover:bg-slate-50 text-slate-600'}
@@ -95,7 +95,7 @@ export const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder
                 {Icon && <Icon className={`w-4 h-4 text-${colorClass}-500`} />}
                 <h3 className="text-sm font-bold text-slate-800">{label}</h3>
             </div>
-            <div className="bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-4">
+            <div className="bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-4">
                 <div className="flex flex-wrap gap-2 mb-3">
                     {tags.map((tag, i) => (
                         <span 
@@ -149,5 +149,5 @@ export const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder
     );
 };
 
-export const commonInputClass = "w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 font-medium";
-export const commonSelectClass = "w-full pl-10 pr-10 py-3 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all text-slate-800 appearance-none font-medium";
+export const commonInputClass = "w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 font-medium";
+export const commonSelectClass = "w-full pl-10 pr-10 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all text-slate-800 appearance-none font-medium";
