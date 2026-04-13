@@ -28,6 +28,8 @@ export default function LoginPage() {
       // Redirect based on role
       if (role === 'admin' || role === 'superadmin') {
         navigate('/admin');
+      } else if (role === 'doctor') {
+        navigate('/doctor/dashboard');
       } else {
         navigate('/patient/dashboard');
       }
