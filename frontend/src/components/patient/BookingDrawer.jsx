@@ -341,8 +341,8 @@ const Step1 = ({
                         }
                         options={[
                             { value: 'none', label: 'Do not share' },
-                            { value: 'snapshot_only', label: 'Share Snapshot for this consultation' },
-                            { value: 'full_history_24h', label: 'Grant Full History access for 24 hours' }
+                            { value: 'MINIMAL', label: 'Share the Latest Medical Data' },
+                            { value: 'FULL', label: 'Grant Full access for 24 hours' }
                         ]}
                         className="pl-12 pt-1"
                     />
