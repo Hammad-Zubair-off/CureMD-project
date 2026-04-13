@@ -44,12 +44,12 @@ const medicalHistorySnapshotSchema = new mongoose.Schema(
         },
 
         // Always captured
-        dateOfBirth: { type: Date,   default: null },
-        gender:      { type: String, default: null },
-        bloodType:   { type: String, default: null },
+        dateOfBirth: { type: Date, default: null },
+        gender: { type: String, default: null },
+        bloodType: { type: String, default: null },
         emergencyContact: {
-            name:         { type: String, default: null },
-            phone:        { type: String, default: null },
+            name: { type: String, default: null },
+            phone: { type: String, default: null },
             relationship: { type: String, default: null },
         },
 
@@ -57,16 +57,26 @@ const medicalHistorySnapshotSchema = new mongoose.Schema(
         sharingMode: {
             type: String,
             enum: {
-                values: ['snapshot_only', 'full_history_24h'],
-                message: 'sharingMode must be snapshot_only or full_history_24h',
+                values: ['MINIMAL', 'FULL'],
+                message: 'sharingMode must be MINIMAL or FULL',
             },
             required: true,
         },
 
         // Medical data — captured for both sharing modes
-        allergies:          { type: [String], default: [] },
+        allergies: { type: [String], default: [] },
         currentMedications: { type: [String], default: [] },
-        chronicConditions:  { type: [String], default: [] },
+        chronicConditions: { type: [String], default: [] },
+
+        // Array of MedicalReport ObjectIds copied from the patient's profile
+        // at booking time. Empty array for MINIMAL.
+        // Populated when fetching the snapshot so doctor gets full objects.
+        medicalReports: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'MedicalReport',
+            },
+        ],
 
         // TTL - mirrors appointment.expiresAt
         // Set to 30 minutes from creation when appointment is first booked.
