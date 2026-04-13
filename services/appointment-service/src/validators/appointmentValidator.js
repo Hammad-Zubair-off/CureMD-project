@@ -1,6 +1,6 @@
 // ─ Shared constants ─
 const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'expired'];
-const VALID_SHARING_MODES = ['none', 'snapshot_only', 'full_history_24h'];
+const VALID_SHARING_MODES = ['none', 'MINIMAL', 'FULL'];
 // ─ Regex patterns ─
 // Time slot format: HH:MM - HH:MM (e.g. "09:00 - 09:30")
 const TIME_SLOT_REGEX = /^([01]\d|2[0-3]):[0-5]\d - ([01]\d|2[0-3]):[0-5]\d$/;

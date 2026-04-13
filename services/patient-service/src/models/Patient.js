@@ -36,6 +36,16 @@ const patientSchema = new mongoose.Schema(
             default: false,
         },
 
+        //Profile Picture Fields
+        profileImageUrl: {
+            type: String,
+            default: null,
+        },
+        profileImagePublicId: {
+            type: String,
+            default: null,
+        },
+
         // STAGE 3: Profile Settings (optional, filled later)
         address: {
             type: String,
