@@ -62,14 +62,14 @@ export default function PatientLayout() {
             </div>
 
             {/* Nav Items */}
-            <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            <nav className="flex-1 px-3 py-4 space-y-2.5 overflow-y-auto">
                 {navItems.map(({ to, label, icon: Icon }) => (
                     <NavLink
                         key={to}
                         to={to}
                         onClick={() => setSidebarOpen(false)}
                         className={({ isActive }) =>
-                            `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group
+                            `flex items-center space-x-3 px-3 py-3 rounded-xl text-sm font-medium transition-all group
                             ${isActive
                                 ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -88,7 +88,7 @@ export default function PatientLayout() {
             </nav>
 
             {/* Bottom — Settings + Logout */}
-            <div className="px-3 py-4 border-t border-slate-100 space-y-0.5">
+            <div className="px-3 py-4 border-t border-slate-100 space-y-2.5">
                 <NavLink
                     to="/patient/settings"
                     className={({ isActive }) =>

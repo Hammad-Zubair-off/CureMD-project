@@ -12,59 +12,59 @@ const PaymentPage = () => {
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
 
-    const USE_MOCK_FOR_TESTING = true; // Remove this when appointment pages created
-    const MOCK_APPOINTMENT_ID = 'ADD_APPOINTMENT_ID'; // Remove this when appointment pages created
-
     const [appointment, setAppointment] = useState(null);
     const [paymentIntent, setPaymentIntent] = useState(null);
     const [paymentStatus, setPaymentStatus] = useState('idle');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isMockMode, setIsMockMode] = useState(false); // Remove this when appointment pages created
     
-    // Countdown state for the success modal
     const [countdown, setCountdown] = useState(5);
 
     useEffect(() => {
+        let aborted = false;
+
         const initializePayment = async () => {
             try {
                 setLoading(true);
 
-                let appointmentId = searchParams.get('appointmentId'); // Remove this when appointment pages created
-
-                //const appointmentId = searchParams.get('appointmentId'); // Uncomment when appointment pages created
-
-                {/* Remove this when appointment pages created */}
-                if (!appointmentId && USE_MOCK_FOR_TESTING) {
-                    appointmentId = MOCK_APPOINTMENT_ID;
-                    setIsMockMode(true);
-                }
+                const appointmentId = searchParams.get('appointmentId');
 
                 if (!appointmentId) {
-                    setError('Appointment ID is required. Please book an appointment first.');
-                    setPaymentStatus('failed');
+                    if (!aborted) {
+                        setError('Appointment ID is required. Please book an appointment first.');
+                        setPaymentStatus('failed');
+                    }
                     return;
                 }
 
                 const appointmentResponse = await api.get(`/appointments/${appointmentId}`);
+
+                if (aborted) return;
+
                 setAppointment(appointmentResponse.data.appointment);
 
                 const intent = await paymentService.createPaymentIntent(appointmentId);
-                setPaymentIntent(intent);
 
+                if (aborted) return;
+
+                setPaymentIntent(intent);
                 setPaymentStatus('idle');
             } catch (err) {
+                if (aborted) return;
                 setError(err.response?.data?.error || 'Failed to initialize payment');
                 setPaymentStatus('failed');
             } finally {
-                setLoading(false);
+                if (!aborted) setLoading(false);
             }
         };
 
         initializePayment();
-    }, []); // Add this "searchParams" dependency inside [] after appointment pages created
 
-    // Handle 5-second countdown and redirect upon success
+        return () => {
+            aborted = true;
+        };
+    }, [searchParams]); 
+
     useEffect(() => {
         let timer;
         if (paymentStatus === 'success') {
@@ -72,7 +72,7 @@ const PaymentPage = () => {
                 setCountdown((prev) => {
                     if (prev <= 1) {
                         clearInterval(timer);
-                        navigate('/dashboard');
+                         navigate('/patient/my-appointments');
                         return 0;
                     }
                     return prev - 1;
@@ -80,7 +80,7 @@ const PaymentPage = () => {
             }, 1000);
         }
         return () => clearInterval(timer);
-    }, [paymentStatus, navigate, appointment]);
+    }, [paymentStatus, navigate]);
 
     const handlePaymentSuccess = () => {
         setPaymentStatus('success');
@@ -130,12 +130,6 @@ const PaymentPage = () => {
                         </h1>
                         <p className="text-slate-500 font-medium text-lg">Enter your payment details below.</p>
                         
-                        {/* Remove this when appointment pages created */}
-                        {isMockMode && (
-                            <div className="mt-4 inline-block bg-yellow-400 px-3 py-1 text-xs font-bold uppercase tracking-wider text-yellow-900 rounded-none">
-                                Test Mode Active
-                            </div>
-                        )}
                     </div>
 
                     {error && paymentStatus === 'failed' && (
@@ -147,7 +141,6 @@ const PaymentPage = () => {
                         </div>
                     )}
 
-                    {/* Form Container */}
                     <div>
                         <div className="flex items-center space-x-3 mb-6">
                             <CreditCard className="w-6 h-6 text-slate-400" />
@@ -170,7 +163,6 @@ const PaymentPage = () => {
                 </div>
             </div>
 
-            {/* Right 50% - Appointment Summary Component */}
             <div className="w-full lg:w-1/2 min-h-[50vh] lg:min-h-screen">
                 {appointment && <PaymentSummary appointment={appointment} />}
             </div>

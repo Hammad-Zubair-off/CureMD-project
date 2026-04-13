@@ -400,3 +400,47 @@ export const confirmPaymentFromFrontend = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getAllPayments = async (req, res, next) => {
+    try {
+        const { status, page = 1, limit = 10 } = req.query;
+        const filter = {};
+        if (status) filter.status = status;
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const [payments, total] = await Promise.all([
+            Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
+            Payment.countDocuments(filter),
+        ]);
+
+        // Aggregate stats across ALL payments (not just current page)
+        const [revenueAgg] = await Payment.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue:   { $sum: { $cond: [{ $eq: ['$status', 'succeeded'] }, '$amount', 0] } },
+                    refundedAmount: { $sum: { $cond: [{ $eq: ['$status', 'refunded'] }, '$amount', 0] } },
+                    pendingAmount:  { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] } },
+                    successfulPayments: { $sum: { $cond: [{ $eq: ['$status', 'succeeded'] }, 1, 0] } },
+                    failedCount:    { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+                    totalTransactions: { $sum: 1 },
+                },
+            },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            total,
+            page: parseInt(page),
+            pages: Math.ceil(total / parseInt(limit)),
+            payments,
+            stats: revenueAgg || {
+                totalRevenue: 0, refundedAmount: 0, pendingAmount: 0,
+                successfulPayments: 0, failedCount: 0, totalTransactions: 0,
+            },
+        });
+    } catch (err) {
+        next(err);
+    }
+};
