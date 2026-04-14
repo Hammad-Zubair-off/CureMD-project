@@ -80,21 +80,30 @@ export const createPaymentIntent = async (req, res, next) => {
 
         const amount = appointment.consultationFee;
         const currency = 'lkr'; 
-        const existing = await Payment.findOne({
-            appointmentId,
-            status: 'pending',
-        });
+        
+        const existing = await Payment.findOne({ appointmentId });
 
         if (existing) {
-            // Re-retrieve client secret from Stripe — safe, secrets are long-lived for pending intents
             const intent = await stripe.paymentIntents.retrieve(existing.stripePaymentIntentId);
-            return res.status(200).json({
-                success: true,
-                message: 'Existing payment intent returned.',
-                clientSecret: intent.client_secret, // returned to frontend, never stored
-                paymentId: existing._id,
-                paymentIntentId: intent.id, 
-            });
+            if (existing.status === 'succeeded') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Payment already completed for this appointment.',
+                });
+            }
+
+            if (existing.status === 'refunded') {
+                // Proceed to create new intent below
+            } else {
+                // For pending/failed status, reuse the existing intent
+                return res.status(200).json({
+                    success: true,
+                    message: 'Existing payment intent returned.',
+                    clientSecret: intent.client_secret,
+                    paymentId: existing._id,
+                    paymentIntentId: intent.id,
+                });
+            }
         }
 
         const paymentIntent = await stripe.paymentIntents.create(
@@ -116,27 +125,51 @@ export const createPaymentIntent = async (req, res, next) => {
             }
         );
 
-        const payment = await Payment.create({
-            appointmentId,
-            patientId: req.user.id,
-            doctorId: appointment.doctorId,
-            stripePaymentIntentId: paymentIntent.id,
-            amount,          
-            currency,
-            metadata: { appointmentId },
-        });
+        try {
+            const payment = await Payment.create({
+                appointmentId,
+                patientId: req.user.id,
+                doctorId: appointment.doctorId,
+                stripePaymentIntentId: paymentIntent.id,
+                amount,          
+                currency,
+                metadata: { appointmentId },
+            });
 
-        logger.info(`PaymentIntent created: ${paymentIntent.id} for appointment ${appointmentId}`);
+            logger.info(`PaymentIntent created: ${paymentIntent.id} for appointment ${appointmentId}`);
 
-        res.status(201).json({
-            success: true,
-            message: 'Payment intent created. Complete payment within 30 minutes.',
-            clientSecret: paymentIntent.client_secret,
-            paymentId: payment._id,
-            paymentIntentId: paymentIntent.id,
-            amount,
-            currency,
-        });
+            res.status(201).json({
+                success: true,
+                message: 'Payment intent created. Complete payment within 30 minutes.',
+                clientSecret: paymentIntent.client_secret,
+                paymentId: payment._id,
+                paymentIntentId: paymentIntent.id,
+                amount,
+                currency,
+            });
+        } catch (dupeErr) {
+            if (dupeErr.code === 11000) {
+                logger.warn(`Duplicate payment intent ID detected: ${paymentIntent.id}, attempting to find existing...`);
+                
+                const existingPayment = await Payment.findOne({ 
+                    stripePaymentIntentId: paymentIntent.id 
+                });
+                
+                if (existingPayment) {
+                    const existingIntent = await stripe.paymentIntents.retrieve(paymentIntent.id);
+                    return res.status(200).json({
+                        success: true,
+                        message: 'Existing payment intent returned (recovered from duplicate).',
+                        clientSecret: existingIntent.client_secret,
+                        paymentId: existingPayment._id,
+                        paymentIntentId: existingIntent.id,
+                        amount: existingPayment.amount,  
+                        currency: existingPayment.currency,  
+                    });
+                }
+            }
+            throw dupeErr;
+        }
     } catch (err) {
         next(err);
     }
@@ -292,7 +325,10 @@ export const refundPayment = async (req, res, next) => {
         res.status(200).json({
             success: true,
             message: 'Refund issued successfully.',
-            payment,
+            paymentId: payment._id,
+            refundId: payment.refundId,
+            refundedAt: payment.refundedAt,
+            status: payment.status,
         });
     } catch (err) {
         next(err);
@@ -317,7 +353,10 @@ export const getPaymentByAppointment = async (req, res, next) => {
 
         const response = {
             success: true,
-            payment,
+            paymentId: payment._id,
+            status: payment.status,
+            amount: payment.amount,
+            currency: payment.currency,
         };
 
         if (payment.status === 'pending') {
@@ -368,7 +407,12 @@ export const confirmPaymentFromFrontend = async (req, res, next) => {
 
         // Idempotency guard
         if (payment.status === 'succeeded') {
-            return res.status(200).json({ success: true, message: 'Already confirmed.', payment });
+            res.status(200).json({
+            success: true,
+            message: 'Already confirmed.',
+            paymentId: payment._id,
+            status: payment.status,
+        });
         }
 
         // Update payment
