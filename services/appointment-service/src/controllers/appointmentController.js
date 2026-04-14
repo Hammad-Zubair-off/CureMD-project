@@ -117,7 +117,7 @@ export const bookAppointment = async (req, res, next) => {
 
         // Step 2 — Create snapshot if patient chose to share medical data
         if (sharingMode !== 'none') {
- 
+
             // METHOD 3 — call patient-service to create the snapshot
             // Pass snapshotExpiresAt matching appointment.expiresAt so both
             // get cleaned up together if payment is never completed
@@ -126,15 +126,15 @@ export const bookAppointment = async (req, res, next) => {
                     SERVICES.patient.endpoints.createSnapshot(),
                     {
                         sharingMode,
-                        appointmentId:      appointment._id.toString(),
-                        snapshotExpiresAt:  expiresAt.toISOString(),
+                        appointmentId: appointment._id.toString(),
+                        snapshotExpiresAt: expiresAt.toISOString(),
                     },
                     { headers: { Authorization: req.headers.authorization } }
                 ),
                 'patient-service',
                 res
             );
- 
+
             if (!snapshotData) {
                 // patient-service failed — appointment was already created
                 // appointment still succeeds, doctor will see no medical data
@@ -148,7 +148,7 @@ export const bookAppointment = async (req, res, next) => {
                 logger.info(`Snapshot linked: ${snapshotData.snapshotId} → appointment: ${appointment._id}`);
             }
         }
- 
+
         // Step 4 — Publish event (Method 2 — fire and forget)
         // notification-service sends booking confirmation to patient
         publishEvent('appointment.created', {
@@ -402,14 +402,29 @@ export const rejectAppointment = async (req, res, next) => {
             appointment,
         });
     } catch (err) {
-        // VersionError — concurrent update conflict
+        console.error('Reject Appointment Error:', err); // 🔍 always log
+
+        // Handle Mongoose version conflict
         if (err.name === 'VersionError') {
             return res.status(409).json({
                 success: false,
                 error: 'Appointment was updated by another request. Please try again.',
             });
         }
-        next(err);
+
+        // Handle invalid ObjectId
+        if (err.name === 'CastError') {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid appointment ID.',
+            });
+        }
+
+        // Fallback — controlled error response
+        return res.status(500).json({
+            success: false,
+            error: 'Something went wrong while rejecting the appointment.',
+        });
     }
 };
 
