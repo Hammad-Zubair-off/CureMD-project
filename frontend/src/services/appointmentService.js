@@ -74,6 +74,20 @@ const appointmentService = {
             throw errData || { error: error.message || 'Something went wrong.' };
         }
     },
+
+    /**
+     * Get all appointments booked on the logged-in doctor
+     * Called in DoctorAppointments
+     */
+    getDoctorAppointments: async (page = 1, limit = 10) => {
+        try {
+            const response = await api.get(`/appointments/doctor?page=${page}&limit=${limit}`);
+            return response.data;
+        } catch (error) {
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
+        }
+    },
 };
 
 export default appointmentService;
