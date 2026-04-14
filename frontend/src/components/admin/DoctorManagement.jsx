@@ -7,6 +7,7 @@ import {
     ShieldOff, ShieldCheck, Clock, Star
 } from 'lucide-react';
 import Dropdown from '../common/Dropdown';
+import adminService from '../../services/adminService';
 
 const ConfirmModal = ({ isOpen, title, message, confirmLabel, confirmStyle, onConfirm, onCancel }) => {
     if (!isOpen) return null;
@@ -99,9 +100,9 @@ export default function DoctorManagement({ showToast }) {
     // Fetch doctor profiles from doctor-service to get specialization/rating
     const fetchDoctorProfiles = useCallback(async () => {
         try {
-            const res = await api.get('/doctors/admin/all');
+            const res = await adminService.getAllDoctors();
             const profileMap = {};
-            (res.data.data || []).forEach(d => {
+            (res.data || []).forEach(d => {
                 // doctor-service userId links to auth-service user id
                 profileMap[d.userId] = d;
             });
