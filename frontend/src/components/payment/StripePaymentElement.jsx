@@ -65,7 +65,7 @@ const PaymentForm = ({ paymentIntentId, onSuccess, onError }) => {
             <button
                 type="submit"
                 disabled={!stripe || loading}
-                className="mt-8 w-full bg-blue-600 text-white py-4 px-4 rounded-none font-semibold uppercase tracking-wider transition-colors duration-200 flex items-center justify-center space-x-2 disabled:bg-slate-300 disabled:text-slate-500 hover:bg-blue-800"
+                className="mt-8 w-full bg-blue-600 text-white py-4 px-4 rounded-xl font-semibold uppercase tracking-wider transition-colors duration-200 flex items-center justify-center space-x-2 disabled:bg-slate-300 disabled:text-slate-500 hover:bg-blue-800"
             >
                 {loading ? (
                     <>
@@ -99,27 +99,39 @@ export const StripePaymentWrapper = ({ clientSecret, paymentIntentId, onSuccess,
         appearance: {
             theme: 'stripe',
             variables: {
-                colorPrimary: '#2563eb', // blue-600
-                colorBackground: '#ffffff',
-                colorText: '#0f172a',
-                colorDanger: '#ef4444',
-                fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-                spacingUnit: '4px',
-                borderRadius: '0px', // Completely removed border radius
+            colorPrimary: '#2563eb',
+            colorBackground: '#ffffff',
+            colorText: '#0f172a',
+            colorDanger: '#ef4444',
+            fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+            spacingUnit: '4px',
+            borderRadius: '10px',
+
+            // Add these for text sizing
+            fontSizeBase: '15px',      // main text size
+            fontSizeSm: '13px',        // smaller helper text
+            fontSizeLg: '18px',        // larger text (if used by theme)
             },
             rules: {
-                '.Input': {
-                    borderColor: '#cbd5e1',
-                    boxShadow: 'none',
-                },
-                '.Input:focus': {
-                    boxShadow: 'none',
-                    borderColor: '#2563eb',
-                }
+            '.Input': {
+                borderColor: '#cbd5e1',
+                boxShadow: 'none',
+                fontSize: '16px',        // input text
             },
-            labels: 'floating'
+            '.Label': {
+                fontSize: '14px',        // field labels
+            },
+            '.Error': {
+                fontSize: '13px',        // error text
+            },
+            '.Input:focus': {
+                boxShadow: 'none',
+                borderColor: '#2563eb',
+            },
+            },
+            labels: 'floating',
         },
-    };
+        };
 
     return (
         <Elements stripe={stripePromise} options={options}>

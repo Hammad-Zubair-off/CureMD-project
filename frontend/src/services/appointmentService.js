@@ -34,9 +34,9 @@ const appointmentService = {
      * Get all appointments for the logged-in patient
      * Called in MyAppointments
      */
-    getMyAppointments: async (page = 1, limit = 10) => {
+    getMyAppointments: async (page = 1, limit = 10, tab = 'upcoming') => {
         try {
-            const response = await api.get(`/appointments/my?page=${page}&limit=${limit}`);
+            const response = await api.get(`/appointments/my?page=${page}&limit=${limit}&tab=${tab}`);
             return response.data;
         } catch (error) {
             const errData = error.response?.data;

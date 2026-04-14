@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../../services/api';
 import {
     CreditCard, TrendingUp, RefreshCw, Search,
     ChevronLeft, ChevronRight, AlertCircle,
@@ -7,6 +6,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import Dropdown from '../common/Dropdown';
+import adminService from '../../services/adminService';
 
 const StatusBadge = ({ status }) => {
     const config = {
@@ -82,8 +82,12 @@ export default function FinanceManagement({ showToast }) {
             if (statusFilter) params.append('status', statusFilter);
             if (search) params.append('search', search);
 
-            const res = await api.get(`/payments/admin/all?${params.toString()}`);
-            const data = res.data;
+            const data = await adminService.getAllPayments({
+                page,
+                limit: LIMIT,
+                ...(statusFilter && { status: statusFilter }),
+                ...(search && { search })
+            });
 
             setPayments(data.payments || []);
             setTotalPages(data.pages || 1);
@@ -118,7 +122,7 @@ export default function FinanceManagement({ showToast }) {
     const handleRefund = async () => {
         setRefundLoading(true);
         try {
-            await api.post(`/payments/${refundTarget._id}/refund`);
+            await adminService.refundPayment(refundTarget._id);
             showToast('Refund issued successfully');
             setRefundTarget(null);
             fetchPayments();

@@ -795,7 +795,22 @@ export const getMyAppointments = async (req, res, next) => {
         const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
         const skip = (page - 1) * limit;
 
+        const tab = req.query.tab || 'upcoming';
         const filter = { patientId: req.user.id };
+
+        if (tab === 'upcoming') {
+            filter.status = 'confirmed';
+        }
+        if (tab === 'unpaid') {
+            filter.status = 'pending';
+            filter.paymentStatus = 'unpaid';
+        }
+        if (tab === 'past') {
+            filter.status = 'completed';
+        }
+        if (tab === 'cancelled') {
+            filter.status = { $in: ['cancelled', 'expired'] };
+        }
 
         const [appointments, total] = await Promise.all([
             Appointment.find(filter).sort({ appointmentDate: -1 }).skip(skip).limit(limit),

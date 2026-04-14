@@ -54,14 +54,14 @@ export default function DoctorLayout() {
             </div>
 
             {/* Nav Items */}
-            <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
                 {NAV.map(({ to, icon: Icon, label }) => (
                     <NavLink
                         key={to}
                         to={to}
                         onClick={() => setSidebarOpen(false)}
                         className={({ isActive }) =>
-                            `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group
+                            `flex items-center space-x-3 p-3.5 rounded-xl text-sm font-medium transition-all group
                             ${isActive
                                 ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'

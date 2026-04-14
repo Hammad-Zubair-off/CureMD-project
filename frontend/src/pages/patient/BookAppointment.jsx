@@ -6,8 +6,8 @@ import BookingDrawer from '../../components/patient/BookingDrawer';
 import DoctorDetailModal from '../../components/patient/DoctorDetailModal';
 import PatientProfileInit from '../../components/patient/PatientProfileInit';
 import patientService from '../../services/patientService';
-import api from '../../services/api';
 import Dropdown from '../../components/common/Dropdown';
+import doctorService from '../../services/doctorService';
 
 const DoctorCard = ({ doctor, onBookNow, onViewDetails, bookLoading }) => {
     const initials = `${doctor.firstName[0]}${doctor.lastName[0]}`;
@@ -136,6 +136,9 @@ export default function BookAppointment() {
     const location = useLocation();
     const fromMyAppointments = location.state?.fromMyAppointments || false;
 
+    const payExistingAppointment = location.state?.payExistingAppointment || null;
+    const [payExistingPayload, setPayExistingPayload] = useState(null);
+
     const [doctors, setDoctors] = useState([]);
     const [doctorsLoading, setDoctorsLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -162,8 +165,8 @@ export default function BookAppointment() {
         const fetchDoctors = async () => {
             try {
                 setDoctorsLoading(true);
-                const res = await api.get('/doctors');
-                const mapped = (res.data.data || []).map((d) => ({
+                const res = await doctorService.searchDoctors();
+                const mapped = (res.data || []).map((d) => ({
                     id: d._id,
                     firstName: d.firstName,
                     lastName: d.lastName,
@@ -189,10 +192,32 @@ export default function BookAppointment() {
         fetchDoctors();
     }, []);
 
+    useEffect(() => {
+        if (!payExistingAppointment?.appointmentId || !payExistingAppointment?.doctor) return;
+
+        const selectedDateRaw = payExistingAppointment.formData?.selectedDate;
+        const parsedDate = selectedDateRaw ? new Date(selectedDateRaw) : null;
+
+        setBookingDoctor(payExistingAppointment.doctor);
+        setPreSelectedSlot(
+            parsedDate && payExistingAppointment.formData?.timeSlot
+                ? { date: parsedDate, timeSlot: payExistingAppointment.formData.timeSlot }
+                : null
+        );
+
+        setPayExistingPayload({
+            ...payExistingAppointment,
+            formData: {
+                selectedDate: parsedDate,
+                timeSlot: payExistingAppointment.formData?.timeSlot || '',
+            },
+        });
+    }, [payExistingAppointment]);
+
     // Step 2: Fetch full doctor profile on demand
     const fetchFullDoctor = async (doctor) => {
-        const res = await api.get(`/doctors/${doctor.id}`);
-        const d = res.data.data;
+        const res = await doctorService.getDoctorById(doctor.id);
+        const d = res.data;
 
         return {
             id: d._id,
@@ -474,9 +499,15 @@ export default function BookAppointment() {
                 <BookingDrawer
                     doctor={bookingDoctor}
                     preSelectedSlot={preSelectedSlot}
+                    initialStep={payExistingPayload ? 2 : 1}
+                    existingAppointmentId={payExistingPayload?.appointmentId || null}
+                    initialFormData={payExistingPayload?.formData || null}
+                    frontendDeadlineAt={payExistingPayload?.frontendDeadlineAt || null}
+                    paymentOnly={Boolean(payExistingPayload)}
                     onClose={() => {
                         setBookingDoctor(null);
                         setPreSelectedSlot(null);
+                        setPayExistingPayload(null);
                     }}
                 />
             )}
