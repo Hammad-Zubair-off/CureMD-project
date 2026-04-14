@@ -6,8 +6,8 @@ import BookingDrawer from '../../components/patient/BookingDrawer';
 import DoctorDetailModal from '../../components/patient/DoctorDetailModal';
 import PatientProfileInit from '../../components/patient/PatientProfileInit';
 import patientService from '../../services/patientService';
-import api from '../../services/api';
 import Dropdown from '../../components/common/Dropdown';
+import doctorService from '../../services/doctorService';
 
 const DoctorCard = ({ doctor, onBookNow, onViewDetails, bookLoading }) => {
     const initials = `${doctor.firstName[0]}${doctor.lastName[0]}`;
@@ -162,8 +162,8 @@ export default function BookAppointment() {
         const fetchDoctors = async () => {
             try {
                 setDoctorsLoading(true);
-                const res = await api.get('/doctors');
-                const mapped = (res.data.data || []).map((d) => ({
+                const res = await doctorService.searchDoctors();
+                const mapped = (res.data || []).map((d) => ({
                     id: d._id,
                     firstName: d.firstName,
                     lastName: d.lastName,
@@ -191,8 +191,8 @@ export default function BookAppointment() {
 
     // Step 2: Fetch full doctor profile on demand
     const fetchFullDoctor = async (doctor) => {
-        const res = await api.get(`/doctors/${doctor.id}`);
-        const d = res.data.data;
+        const res = await doctorService.getDoctorById(doctor.id);
+        const d = res.data;
 
         return {
             id: d._id,
