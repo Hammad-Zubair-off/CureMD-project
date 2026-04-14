@@ -196,6 +196,7 @@ export default function BookAppointment() {
 
         return {
             id: d._id,
+            userId: d.userId,
             firstName: d.firstName,
             lastName: d.lastName,
             fullName: d.fullName || `${d.title || 'Dr.'} ${d.firstName} ${d.lastName}`,
