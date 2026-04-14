@@ -136,6 +136,9 @@ export default function BookAppointment() {
     const location = useLocation();
     const fromMyAppointments = location.state?.fromMyAppointments || false;
 
+    const payExistingAppointment = location.state?.payExistingAppointment || null;
+    const [payExistingPayload, setPayExistingPayload] = useState(null);
+
     const [doctors, setDoctors] = useState([]);
     const [doctorsLoading, setDoctorsLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -188,6 +191,28 @@ export default function BookAppointment() {
 
         fetchDoctors();
     }, []);
+
+    useEffect(() => {
+        if (!payExistingAppointment?.appointmentId || !payExistingAppointment?.doctor) return;
+
+        const selectedDateRaw = payExistingAppointment.formData?.selectedDate;
+        const parsedDate = selectedDateRaw ? new Date(selectedDateRaw) : null;
+
+        setBookingDoctor(payExistingAppointment.doctor);
+        setPreSelectedSlot(
+            parsedDate && payExistingAppointment.formData?.timeSlot
+                ? { date: parsedDate, timeSlot: payExistingAppointment.formData.timeSlot }
+                : null
+        );
+
+        setPayExistingPayload({
+            ...payExistingAppointment,
+            formData: {
+                selectedDate: parsedDate,
+                timeSlot: payExistingAppointment.formData?.timeSlot || '',
+            },
+        });
+    }, [payExistingAppointment]);
 
     // Step 2: Fetch full doctor profile on demand
     const fetchFullDoctor = async (doctor) => {
@@ -473,9 +498,15 @@ export default function BookAppointment() {
                 <BookingDrawer
                     doctor={bookingDoctor}
                     preSelectedSlot={preSelectedSlot}
+                    initialStep={payExistingPayload ? 2 : 1}
+                    existingAppointmentId={payExistingPayload?.appointmentId || null}
+                    initialFormData={payExistingPayload?.formData || null}
+                    frontendDeadlineAt={payExistingPayload?.frontendDeadlineAt || null}
+                    paymentOnly={Boolean(payExistingPayload)}
                     onClose={() => {
                         setBookingDoctor(null);
                         setPreSelectedSlot(null);
+                        setPayExistingPayload(null);
                     }}
                 />
             )}
