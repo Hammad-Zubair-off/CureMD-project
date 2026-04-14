@@ -51,6 +51,24 @@ const patientService = {
     }
   },
 
+  /**
+   * Upload a profile picture to Cloudinary.
+   * Payload must be a FormData object containing the 'image' file.
+   */
+  uploadProfilePicture: async (formData) => {
+    try {
+      const response = await api.post('/patients/me/profile-picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+      throw errData || { error: error.message || 'Something went wrong.' };
+    }
+  },
+
   // ── Snapshots ─────────────────────────────────────────────────────────────
 
   /**
@@ -85,7 +103,69 @@ const patientService = {
     }
   },
 
-  // ── Medical History ───────────────────────────────────────────────────────
+  // ── Medical Reports ───────────────────────────────────────────────────────
+
+  /**
+   * Upload a medical report file to Cloudinary.
+   * Payload must be a FormData object containing 'file' (the file), 
+   * 'title' (string), and 'category' (enum string).
+   */
+  uploadReport: async (formData) => {
+    try {
+      const response = await api.post('/patients/reports/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+      throw errData || { error: error.message || 'Something went wrong.' };
+    }
+  },
+
+  /**
+   * Get all active medical reports for the logged-in patient.
+   */
+  getMyReports: async () => {
+    try {
+      const response = await api.get('/patients/reports/my');
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+      throw errData || { error: error.message || 'Something went wrong.' };
+    }
+  },
+
+  /**
+   * Get a specific medical report by its ID.
+   * Accessible by patient (own), authorized doctor, or admin.
+   */
+  getReportById: async (reportId) => {
+    try {
+      const response = await api.get(`/patients/reports/${reportId}`);
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+      throw errData || { error: error.message || 'Something went wrong.' };
+    }
+  },
+
+  /**
+   * Soft delete (archive) a medical report.
+   * Only the patient who owns the report can do this.
+   */
+  archiveReport: async (reportId) => {
+    try {
+      const response = await api.patch(`/patients/reports/${reportId}/archive`);
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+      throw errData || { error: error.message || 'Something went wrong.' };
+    }
+  },
+
+  // ── Medical History & AI ──────────────────────────────────────────────────
 
   /**
    * Generate a 1-hour history token for AI access.

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import patientService from '../../services/patientService';
 import {
     Activity,
     LayoutDashboard,
@@ -29,6 +30,20 @@ export default function PatientLayout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [profile, setProfile] = useState(null);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const data = await patientService.getMyProfile();
+                const p = data.profile || data; // Handle potential nesting
+                setProfile(p);
+            } catch (err) {
+                console.error('Failed to fetch profile in layout:', err);
+            }
+        };
+        if (user) fetchProfile();
+    }, [user]);
 
     const handleLogout = async () => {
         await logout();
@@ -49,9 +64,17 @@ export default function PatientLayout() {
             {/* User Info */}
             <div className="px-6 py-4 border-b border-slate-100">
                 <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm shrink-0">
-                        {user?.firstName?.[0]}{user?.lastName?.[0]}
-                    </div>
+                    {profile?.profileImageUrl ? (
+                        <img
+                            src={profile.profileImageUrl}
+                            alt="Profile"
+                            className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200"
+                        />
+                    ) : (
+                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm shrink-0">
+                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        </div>
+                    )}
                     <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 truncate">
                             {user?.firstName} {user?.lastName}
@@ -157,9 +180,17 @@ export default function PatientLayout() {
                         </div>
                         <span className="text-base font-bold text-slate-900 tracking-tight">HealthConnect</span>
                     </div>
-                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
-                        {user?.firstName?.[0]}{user?.lastName?.[0]}
-                    </div>
+                    {profile?.profileImageUrl ? (
+                        <img
+                            src={profile.profileImageUrl}
+                            alt="Profile"
+                            className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                        />
+                    ) : (
+                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
+                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        </div>
+                    )}
                 </header>
 
                 {/* Page Content */}
