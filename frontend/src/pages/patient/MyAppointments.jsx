@@ -7,7 +7,7 @@ import {
     Stethoscope, MoreVertical, CreditCard
 } from 'lucide-react';
 import appointmentService from '../../services/appointmentService';
-import api from '../../services/api';
+import doctorService from '../../services/doctorService';
 
 // Helpers
 const formatDate = (dateStr) => {
@@ -443,8 +443,8 @@ export default function MyAppointments() {
         setRescheduleTarget(appointment);
         setRescheduleAvailability([]);
         try {
-            const res = await api.get(`/doctors/${appointment.doctorId}/availability`);
-            setRescheduleAvailability(res.data.data?.availability || []);
+            const res = await doctorService.getDoctorAvailability(appointment.doctorId);
+            setRescheduleAvailability(res.data?.availability || []);
         } catch (err) {
             console.error('Failed to fetch doctor availability:', err);
             setRescheduleAvailability([]);
