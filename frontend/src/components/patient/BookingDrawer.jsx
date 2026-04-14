@@ -400,7 +400,7 @@ export default function BookingDrawer({ doctor, preSelectedSlot, onClose }) {
         setError("");
         try {
             const payload = {
-                doctorId: doctor.id,
+                doctorId: doctor.userId,
                 doctorFullName: doctor.fullName,
                 specialty: doctor.specialty,
                 consultationFee: doctor.consultationFee,

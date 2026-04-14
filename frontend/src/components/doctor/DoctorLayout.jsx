@@ -10,6 +10,8 @@ const NAV = [
     { to: '/doctor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/doctor/profile', icon: UserCircle, label: 'My Profile' },
     { to: '/doctor/availability', icon: CalendarDays, label: 'Availability' },
+    { to: '/doctor/appointments', icon: CalendarDays, label: 'My Appointments' },
+
 ];
 
 export default function DoctorLayout() {

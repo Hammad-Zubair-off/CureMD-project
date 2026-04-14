@@ -76,12 +76,12 @@ const appointmentService = {
     },
 
     /**
-     * Get a single appointment by ID
-     * Accessible by patient, doctor, or admin
+     * Get all appointments booked on the logged-in doctor
+     * Called in DoctorAppointments
      */
-    getAppointmentById: async (appointmentId) => {
+    getDoctorAppointments: async (page = 1, limit = 10) => {
         try {
-            const response = await api.get(`/appointments/${appointmentId}`);
+            const response = await api.get(`/appointments/doctor?page=${page}&limit=${limit}`);
             return response.data;
         } catch (error) {
             const errData = error.response?.data;

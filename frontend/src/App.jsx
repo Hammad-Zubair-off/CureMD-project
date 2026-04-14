@@ -24,6 +24,7 @@ import DoctorLayout from './components/doctor/DoctorLayout'
 import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorAvailability from './pages/doctor/DoctorAvailability'
 import DoctorProfile from './pages/doctor/DoctorProfile'
+import DoctorAppointments from './pages/doctor/DoctorAppointments'
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
         <Route path="dashboard" element={<DoctorDashboard />} />
         <Route path="profile" element={<DoctorProfile />} />
         <Route path="availability" element={<DoctorAvailability />} />
+        <Route path="appointments" element={<DoctorAppointments />} />
       </Route>
 
       {/* Patient Routes — all wrapped in PatientLayout */}
