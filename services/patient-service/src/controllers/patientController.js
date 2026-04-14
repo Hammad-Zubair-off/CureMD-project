@@ -239,6 +239,7 @@ export const uploadProfilePicture = async (req, res, next) => {
             success: true,
             message: 'Profile picture updated successfully.',
             profileImageUrl: patient.profileImageUrl,
+            profileImagePublicId: patient.profileImagePublicId,
         });
     } catch (err) {
         next(err);

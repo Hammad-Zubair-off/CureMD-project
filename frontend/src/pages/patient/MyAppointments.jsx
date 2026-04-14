@@ -313,7 +313,7 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
             </div>
 
             {/* Middle Info: Schedule */}
-            <div className="flex flex-col gap-1 min-w-[140px]">
+            <div className="flex flex-col gap-1 min-w-35">
                 <div className="flex items-center gap-2 text-slate-600">
                     <Calendar className="w-4 h-4" />
                     <span className="font-mono text-xs">{formatDate(appointment.appointmentDate)}</span>
@@ -494,7 +494,7 @@ export default function MyAppointments() {
             
             {/* Toast */}
             {toast && (
-                <div className={`fixed top-4 right-4 z-[100] flex items-center space-x-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all
+                <div className={`fixed top-4 right-4 z-100 flex items-center space-x-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all
                     ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}
                 >
                     {toast.type === 'error' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
@@ -556,7 +556,7 @@ export default function MyAppointments() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     
                     {/* Next Appointment Card */}
-                    <div className="col-span-1 md:col-span-2 bg-blue-600 text-white p-6 rounded-md shadow-sm flex flex-col sm:flex-row sm:justify-between sm:items-center relative overflow-hidden gap-4">
+                    <div className="col-span-1 md:col-span-2 bg-blue-600 text-white p-6 rounded-xl shadow-sm flex flex-col sm:flex-row sm:justify-between sm:items-center relative overflow-hidden gap-4">
                         {nextAppointment ? (
                             <>
                                 <div className="z-10">
@@ -611,7 +611,7 @@ export default function MyAppointments() {
                     </div>
 
                     {/* Outstanding Balance */}
-                    <div className="bg-white p-6 rounded-md shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <span className="p-2 bg-blue-50 text-blue-600 rounded-lg">
