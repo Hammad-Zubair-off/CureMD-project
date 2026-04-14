@@ -5,7 +5,7 @@ const VALID_SHARING_MODES = ['none', 'MINIMAL', 'FULL'];
 // Time slot format: HH:MM - HH:MM (e.g. "09:00 - 09:30")
 const TIME_SLOT_REGEX = /^([01]\d|2[0-3]):[0-5]\d - ([01]\d|2[0-3]):[0-5]\d$/;
 // Phone format: 7-15 chars, allows digits, +, -, spaces, parentheses
-const PHONE_REGEX = /^[0-9+\-() ]{7,15}$/;
+const PHONE_REGEX = /^(?:0?7\d{8}|\+947\d{8})$/;
 
 // ─ Helpers ─
 
@@ -60,7 +60,7 @@ export const validateBookAppointment = ({
 
     // patientPhone — basic format validation
     if (!PHONE_REGEX.test(patientPhone))
-        errors.push('Invalid phone number. Must be 7-15 characters (digits, +, -, spaces, parentheses).');
+        errors.push('Invalid phone number. Must be Sri Lankan mobile format: 07XXXXXXXX or +947XXXXXXXX.');
 
     // appointmentDate — must be in the future
     if (toUTC(appointmentDate) <= new Date())

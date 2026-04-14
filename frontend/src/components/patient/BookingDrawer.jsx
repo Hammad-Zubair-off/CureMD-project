@@ -62,8 +62,13 @@ const formatDateForAPI = (date) => date.toISOString();
 
 const formatDateDisplay = (date) =>
     date.toLocaleDateString("en-US", {
-        weekday: "long", month: "long", day: "numeric", year: "numeric",
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
     });
+
+const PHONE_REGEX = /^(?:0?7\d{8}|\+947\d{8})$/;
 
 // ─── Step Indicator ───────────────────────────────────────────────────────────
 
@@ -114,8 +119,12 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
         formData.selectedDate &&
         formData.timeSlot &&
         formData.reason.trim().length >= 10 &&
-        formData.patientPhone.trim().length >= 7 &&
+        PHONE_REGEX.test(formData.patientPhone.trim()) &&
         formData.sharingMode;
+
+    const phoneError = formData.patientPhone.trim().length > 0 && !PHONE_REGEX.test(formData.patientPhone.trim())
+        ? 'Enter a valid phone number (07XXXXXXXX or +947XXXXXXXX).'
+        : '';
 
     return (
         <div className="space-y-6">
@@ -261,12 +270,34 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                         type="tel"
-                        placeholder="e.g. 0771234567"
+                        inputMode="tel"
+                        pattern="/^(?:0?7\d{8}|\+947\d{8})$/"
+                        maxLength={16}
+                        placeholder="e.g. 0771234567 or +94771234567"
                         value={formData.patientPhone}
-                        onChange={(e) => setFormData((f) => ({ ...f, patientPhone: e.target.value }))}
-                        className="w-full pl-9 pr-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                        onChange={(e) => {
+                            let v = e.target.value.replace(/[^\d+]/g, '');
+                            if (v.includes('+')) {
+                                v = '+' + v.replace(/\+/g, '');
+                            }
+                            if (v.startsWith('+94')) {
+                                v = v.slice(0, 12);
+                            } else {
+                                v = v.replace(/\+/g, '').slice(0, 10);
+                            }
+
+                            setFormData((f) => ({ ...f, patientPhone: v }))
+                        }}
+                        className={`w-full pl-9 pr-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all
+                            ${phoneError
+                                ? 'border-red-400 focus:border-red-500 focus:ring-red-500/10'
+                                : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/10'
+                            }`}
                     />
                 </div>
+                {phoneError && (
+                    <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+                )}
             </div>
 
             {/* 5. Share Medical History */}

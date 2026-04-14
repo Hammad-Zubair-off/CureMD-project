@@ -261,7 +261,7 @@ export default function FinanceManagement({ showToast }) {
                                     <tr key={p._id} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-6 py-4">
                                             <p className="text-sm font-mono text-slate-700">...{p.appointmentId?.slice(-10)}</p>
-                                            <p className="text-xs text-slate-400 mt-0.5">{p.stripePaymentIntentId?.slice(0, 20)}...</p>
+                                            {/* <p className="text-xs text-slate-400 mt-0.5">{p.stripePaymentIntentId?.slice(0, 20)}...</p> */}
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="text-sm font-mono text-slate-600">...{p.patientId?.slice(-8)}</p>

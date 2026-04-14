@@ -238,10 +238,87 @@ export default function AdminDashboard() {
 
                             {/* Create Admin Form rendering omitted for brevity, kept exactly the same */}
                             {showCreateAdmin && (
-                                <div className="bg-white rounded-2xl border border-amber-200 p-6 mb-6">
-                                    {/* ... Existing Super Admin Form ... */}
-                                    <h3 className="text-sm font-semibold text-slate-700 mb-4">New Admin Account Form</h3>
-                                    <p className="text-xs text-slate-500">The form logic remains exactly as you had it.</p>
+                                <div className="bg-white rounded-2xl border border-amber-200 p-6">
+                                    <h3 className="text-sm font-semibold text-slate-700 mb-4">New Admin Account</h3>
+
+                                    {createAdminError && (
+                                        <div className="flex items-start space-x-3 bg-red-50 text-red-700 p-3 rounded-xl mb-4 border border-red-100">
+                                            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                            <p className="text-sm">{createAdminError}</p>
+                                        </div>
+                                    )}
+
+                                    <form onSubmit={handleCreateAdmin} className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                    First Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="John"
+                                                    value={createAdminForm.firstName}
+                                                    onChange={e => setCreateAdminForm(f => ({ ...f, firstName: e.target.value }))}
+                                                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                    Last Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="Doe"
+                                                    value={createAdminForm.lastName}
+                                                    onChange={e => setCreateAdminForm(f => ({ ...f, lastName: e.target.value }))}
+                                                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                Email Address
+                                            </label>
+                                            <input
+                                                type="email"
+                                                required
+                                                placeholder="admin@healthconnect.com"
+                                                value={createAdminForm.email}
+                                                onChange={e => setCreateAdminForm(f => ({ ...f, email: e.target.value }))}
+                                                className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                required
+                                                placeholder="Min 8 characters"
+                                                value={createAdminForm.password}
+                                                onChange={e => setCreateAdminForm(f => ({ ...f, password: e.target.value }))}
+                                                className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                            />
+                                        </div>
+
+                                        <div className="flex justify-end pt-2">
+                                            <button
+                                                type="submit"
+                                                disabled={createAdminLoading}
+                                                className="flex items-center space-x-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all"
+                                            >
+                                                {createAdminLoading
+                                                    ? <><RefreshCw className="w-4 h-4 animate-spin" /><span>Creating...</span></>
+                                                    : <><ShieldCheck className="w-4 h-4" /><span>Create Admin</span></>
+                                                }
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             )}
                         </div>
