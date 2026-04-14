@@ -75,6 +75,7 @@ const appointmentService = {
         }
     },
 
+
     /**
      * Get all appointments booked on the logged-in doctor
      * Called in DoctorAppointments
@@ -82,6 +83,16 @@ const appointmentService = {
     getDoctorAppointments: async (page = 1, limit = 10) => {
         try {
             const response = await api.get(`/appointments/doctor?page=${page}&limit=${limit}`);
+            return response.data;
+        } catch (error) {
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
+        }
+    },
+
+    rejectAppointment: async (appointmentId, reason) => {
+        try {
+            const response = await api.patch(`/appointments/${appointmentId}/reject`, { reason });
             return response.data;
         } catch (error) {
             const errData = error.response?.data;

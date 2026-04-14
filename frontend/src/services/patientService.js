@@ -200,6 +200,37 @@ const patientService = {
       throw errData || { error: error.message || 'Something went wrong.' };
     }
   },
+
+  /**
+   * Get a single snapshot by ID.
+   * Doctor JWT is forwarded automatically via api interceptor.
+   */
+  getSnapshotById: async (snapshotId) => {
+    try {
+      const response = await api.get(`/patients/snapshot/${snapshotId}`);
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+      throw errData || { error: error.message || 'Something went wrong.' };
+    }
+  },
+
+  /**
+   * Get full 24h history for a doctor.
+   * Called when patient chose sharingMode: 'FULL'.
+   */
+  getDoctorHistory: async (patientId, appointmentId) => {
+    try {
+      const response = await api.get(
+        `/patients/history/doctor/${patientId}?appointmentId=${appointmentId}`
+      );
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+      throw errData || { error: error.message || 'Something went wrong.' };
+    }
+  },
+
 };
 
 export default patientService;
