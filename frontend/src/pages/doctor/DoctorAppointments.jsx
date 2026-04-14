@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import appointmentService from '../../services/appointmentService';
+import PatientInfoDrawer from '../../components/doctor/PatientInfoDrawer';
 import {
     Activity, LogOut, Calendar, Clock, User, Phone,
     Mail, ChevronLeft, ChevronRight, RefreshCw,
     CheckCircle, XCircle, AlertCircle, Loader2,
-    Stethoscope, CreditCard, FileText, Filter,
+    Stethoscope, CreditCard, FileText, Filter, Info,
 } from 'lucide-react';
 
 const StatusBadge = ({ status }) => {
@@ -39,14 +40,13 @@ const PaymentBadge = ({ status }) => {
 };
 
 // ── Upcoming Appointment Card ─────────────────────────────────────────────────
-const UpcomingCard = ({ appt, isNext = false }) => (
+const UpcomingCard = ({ appt, isNext = false, onMoreInfo }) => (
     <div className={`relative bg-white rounded-2xl border p-5 flex flex-col gap-3 ${isNext ? 'border-blue-300 ring-2 ring-blue-100' : 'border-slate-200'}`}>
         {isNext && (
             <span className="absolute -top-2.5 left-4 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide">
                 Next Up
             </span>
         )}
-        {/* Patient */}
         <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm shrink-0">
                 {appt.patientFirstName?.[0]}{appt.patientLastName?.[0]}
@@ -59,7 +59,6 @@ const UpcomingCard = ({ appt, isNext = false }) => (
                 <StatusBadge status={appt.status} />
             </div>
         </div>
-        {/* Date & time */}
         <div className="flex items-center gap-4 text-xs text-slate-600">
             <span className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -70,16 +69,22 @@ const UpcomingCard = ({ appt, isNext = false }) => (
                 <span className="font-medium text-slate-800">{appt.timeSlot}</span>
             </span>
         </div>
-        {/* Reason */}
         {appt.reason && (
             <p className="text-xs text-slate-500 line-clamp-1 bg-slate-50 rounded-lg px-3 py-1.5">
                 {appt.reason}
             </p>
         )}
+        <button
+            onClick={() => onMoreInfo(appt)}
+            className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-medium text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 transition-all mt-1"
+        >
+            <Info className="w-3.5 h-3.5" /> More Info
+        </button>
     </div>
 );
 
-const AppointmentCard = ({ appt }) => (
+// ── Appointment Card (mobile) ─────────────────────────────────────────────────
+const AppointmentCard = ({ appt, onMoreInfo }) => (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -124,6 +129,12 @@ const AppointmentCard = ({ appt }) => (
                 <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{appt.reason}</p>
             </div>
         )}
+        <button
+            onClick={() => onMoreInfo(appt)}
+            className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-medium text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 transition-all"
+        >
+            <Info className="w-3.5 h-3.5" /> More Info
+        </button>
     </div>
 );
 
@@ -137,6 +148,7 @@ export default function DoctorAppointments() {
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
+    const [drawerAppt, setDrawerAppt] = useState(null);
     const LIMIT = 10;
 
     const fetchAppointments = useCallback(async () => {
@@ -167,11 +179,10 @@ export default function DoctorAppointments() {
         completed: appointments.filter(a => a.status === 'completed').length,
     };
 
-    // ── Upcoming: confirmed or pending, sorted by date ascending ─────────────
     const upcoming = appointments
         .filter(a => ['confirmed', 'pending'].includes(a.status) && new Date(a.appointmentDate) >= new Date())
         .sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate))
-        .slice(0, 3); // show max 3
+        .slice(0, 3);
 
     const handleLogout = async () => { await logout(); navigate('/'); };
 
@@ -188,19 +199,19 @@ export default function DoctorAppointments() {
                 {/* Stat cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     {[
-                        { label: 'Total',     value: total,           color: 'bg-blue-50 text-blue-600'     },
-                        { label: 'Confirmed', value: stats.confirmed, color: 'bg-indigo-50 text-indigo-600' },
-                        { label: 'Pending',   value: stats.pending,   color: 'bg-amber-50 text-amber-600'   },
-                        { label: 'Completed', value: stats.completed, color: 'bg-green-50 text-green-600'   },
+                        { label: 'Total',     value: total,           color: 'text-blue-600'   },
+                        { label: 'Confirmed', value: stats.confirmed, color: 'text-indigo-600' },
+                        { label: 'Pending',   value: stats.pending,   color: 'text-amber-600'  },
+                        { label: 'Completed', value: stats.completed, color: 'text-green-600'  },
                     ].map(({ label, value, color }) => (
                         <div key={label} className="bg-white rounded-2xl border border-slate-200 p-5">
-                            <p className={`text-2xl font-bold ${color.split(' ')[1]}`}>{value}</p>
+                            <p className={`text-2xl font-bold ${color}`}>{value}</p>
                             <p className="text-xs text-slate-500 mt-0.5">{label}</p>
                         </div>
                     ))}
                 </div>
 
-                {/* ── Upcoming Appointments Section ── */}
+                {/* Upcoming Appointments */}
                 {!loading && upcoming.length > 0 && (
                     <div className="mb-8">
                         <div className="flex items-center justify-between mb-4">
@@ -214,7 +225,12 @@ export default function DoctorAppointments() {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {upcoming.map((appt, i) => (
-                                <UpcomingCard key={appt._id} appt={appt} isNext={i === 0} />
+                                <UpcomingCard
+                                    key={appt._id}
+                                    appt={appt}
+                                    isNext={i === 0}
+                                    onMoreInfo={setDrawerAppt}
+                                />
                             ))}
                         </div>
                     </div>
@@ -244,7 +260,7 @@ export default function DoctorAppointments() {
                     </button>
                 </div>
 
-                {/* ── Desktop table ── */}
+                {/* Desktop table */}
                 <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden">
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
@@ -261,7 +277,7 @@ export default function DoctorAppointments() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-slate-50">
-                                        {['Patient', 'Date & Time', 'Reason', 'Fee', 'Payment', 'Status'].map(h => (
+                                        {['Patient', 'Date & Time', 'Reason', 'Fee', 'Payment', 'Status', ''].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">
                                                 {h}
                                             </th>
@@ -311,6 +327,14 @@ export default function DoctorAppointments() {
                                             <td className="px-6 py-4">
                                                 <StatusBadge status={appt.status} />
                                             </td>
+                                            <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => setDrawerAppt(appt)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 transition-all whitespace-nowrap"
+                                                >
+                                                    <Info className="w-3.5 h-3.5" /> More Info
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -343,7 +367,7 @@ export default function DoctorAppointments() {
                     )}
                 </div>
 
-                {/* ── Mobile cards ── */}
+                {/* Mobile cards */}
                 <div className="md:hidden space-y-3">
                     {loading ? (
                         <div className="flex justify-center py-16">
@@ -356,7 +380,13 @@ export default function DoctorAppointments() {
                         </div>
                     ) : (
                         <>
-                            {filtered.map(appt => <AppointmentCard key={appt._id} appt={appt} />)}
+                            {filtered.map(appt => (
+                                <AppointmentCard
+                                    key={appt._id}
+                                    appt={appt}
+                                    onMoreInfo={setDrawerAppt}
+                                />
+                            ))}
                             {pages > 1 && (
                                 <div className="flex items-center justify-between pt-2">
                                     <p className="text-sm text-slate-500">Page {page} of {pages}</p>
@@ -382,6 +412,21 @@ export default function DoctorAppointments() {
                     )}
                 </div>
             </main>
+
+            {/* Patient Info Drawer */}
+            {drawerAppt && (
+                <PatientInfoDrawer
+                    appt={drawerAppt}
+                    onClose={() => setDrawerAppt(null)}
+                    onAppointmentRejected={(rejectedId) => {
+                    // Remove or update the appointment from your local list
+                    setAppointments(prev =>
+                    prev.map(a => a._id === rejectedId ? { ...a, status: 'cancelled' } : a)
+                    );
+                    setSelectedAppt(null);
+                }}
+                />
+            )}
         </div>
     );
 }
