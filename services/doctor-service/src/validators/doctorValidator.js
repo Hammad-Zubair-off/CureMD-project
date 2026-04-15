@@ -1,15 +1,34 @@
 // src/validators/doctorValidator.js
-// Pure Express middleware validators — no external packages required
 
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const VALID_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const VALID_TITLES = ['Dr.', 'Prof.', 'Assoc. Prof.'];
 const VALID_CONSULT_TYPES = ['videoCall', 'audioCall', 'chat'];
 const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
+// E.164-ish: optional +, then 7–15 digits
+const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
 
-// ── helper ────────────────────────────────────────────────────────────────────
 const fail = (res, errors) =>
     res.status(400).json({ success: false, errors });
+
+// ── shared phone validator helper ─────────────────────────────────────────────
+function validatePhoneNumbers(phones, errors) {
+    if (!Array.isArray(phones)) {
+        errors.push({ field: 'phoneNumbers', message: 'phoneNumbers must be an array' });
+        return;
+    }
+    if (phones.length > 5) {
+        errors.push({ field: 'phoneNumbers', message: 'A maximum of 5 phone numbers are allowed' });
+    }
+    phones.forEach((p, i) => {
+        if (typeof p !== 'string' || !PHONE_REGEX.test(p.trim())) {
+            errors.push({
+                field: `phoneNumbers[${i}]`,
+                message: 'Each phone number must be 7–15 digits, optionally prefixed with +',
+            });
+        }
+    });
+}
 
 // ── POST /api/doctors/profile ─────────────────────────────────────────────────
 export const createProfileValidator = (req, res, next) => {
@@ -43,6 +62,11 @@ export const createProfileValidator = (req, res, next) => {
 
     if (b.bio !== undefined && String(b.bio).length > 1000)
         errors.push({ field: 'bio', message: 'Bio must be under 1000 characters' });
+
+    // phoneNumbers (optional on create, but validated if present)
+    if (b.phoneNumbers !== undefined) {
+        validatePhoneNumbers(b.phoneNumbers, errors);
+    }
 
     if (b.education !== undefined) {
         if (!Array.isArray(b.education)) {
@@ -109,6 +133,11 @@ export const updateProfileValidator = (req, res, next) => {
 
     if (b.bio !== undefined && String(b.bio).length > 1000)
         errors.push({ field: 'bio', message: 'Bio must be under 1000 characters' });
+
+    // phoneNumbers (optional on update, but validated if present)
+    if (b.phoneNumbers !== undefined) {
+        validatePhoneNumbers(b.phoneNumbers, errors);
+    }
 
     if (b.education !== undefined && !Array.isArray(b.education))
         errors.push({ field: 'education', message: 'education must be an array' });
