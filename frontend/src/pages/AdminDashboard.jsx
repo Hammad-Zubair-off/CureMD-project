@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import {
     Activity, LogOut, Users, Stethoscope, CreditCard,
     CheckCircle, XCircle, X, ShieldCheck, Crown, Plus,
-    ChevronDown, Menu, X as CloseIcon, Clock
+    ChevronDown, Menu, X as CloseIcon, Clock,
+    RefreshCw
 } from 'lucide-react';
 
 import UserManagement from '../components/admin/UserManagement';
