@@ -4,7 +4,76 @@ import { logger } from '../utils/logger.js';
 import axios from 'axios';
 import pdfParse from 'pdf-parse';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_1);
+const apiKeys = [
+    process.env.GEMINI_API_KEY_1,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4,
+].filter(Boolean);
+
+if (apiKeys.length === 0) {
+    logger.error('[ai-symptom-service] FATAL: No Gemini API keys found in environment variables.');
+}
+
+let currentKeyIndex = 0;
+
+/**
+ * Returns a GoogleGenerativeAI model configured with the given key index.
+ */
+const getModel = (keyIndex, modelName, systemInstruction) => {
+    const client = new GoogleGenerativeAI(apiKeys[keyIndex]);
+    return client.getGenerativeModel({ model: modelName, systemInstruction });
+};
+
+/**
+ * Calls Gemini with automatic key rotation on 429.
+ * Tries every available key before giving up.
+ *
+ * @param {string}   modelName         - e.g. 'gemini-2.5-flash'
+ * @param {string}   systemInstruction - system prompt
+ * @param {Array}    promptData        - array of Gemini `parts`
+ * @param {object}   generationConfig  - e.g. { responseMimeType: 'application/json' }
+ * @returns {Promise<string>}          - raw response text
+ */
+const generateWithKeyRotation = async (modelName, systemInstruction, promptData, generationConfig) => {
+    const totalKeys = apiKeys.length;
+
+    for (let attempt = 0; attempt < totalKeys; attempt++) {
+        const keyIndex = (currentKeyIndex + attempt) % totalKeys;
+
+        try {
+            const model = getModel(keyIndex, modelName, systemInstruction);
+            const completion = await model.generateContent({
+                contents: [{ role: 'user', parts: promptData }],
+                generationConfig,
+            });
+
+            // Success — persist the winning key for next call
+            if (attempt > 0) {
+                logger.info(`[ai-symptom-service] Succeeded with Gemini Key ${keyIndex + 1} after ${attempt} rotation(s).`);
+            }
+            currentKeyIndex = keyIndex;
+            return completion.response.text();
+        } catch (err) {
+            const isRateLimit = err.status === 429 || (err.message && err.message.includes('429'));
+
+            if (isRateLimit && attempt < totalKeys - 1) {
+                logger.warn(
+                    `[ai-symptom-service] Key ${keyIndex + 1} rate-limited (429). Rotating to Key ${((keyIndex + 1) % totalKeys) + 1}…`
+                );
+                continue; // try next key
+            }
+
+            // Not a rate-limit error, or we've exhausted all keys — re-throw
+            throw err;
+        }
+    }
+
+    // All keys exhausted
+    const allExhaustedErr = new Error('All Gemini API keys are currently rate-limited.');
+    allExhaustedErr.status = 429;
+    throw allExhaustedErr;
+};
 
 // Helpers
 
@@ -12,8 +81,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_1);
  * Processes selected files from Cloudinary.
  * PDFs → extracted as text (cheaper tokens).
  * Images → converted to base64 inline data for Gemini Vision.
- * Max 3 files — enforced in the route validator.
- */
+*/
 const processSelectedFiles = async (selectedReports) => {
     let extractedText = '';
     const imageParts = [];
@@ -54,9 +122,6 @@ const processSelectedFiles = async (selectedReports) => {
 
 /**
  * @desc    Get all sessions for the logged-in patient.
- *          Sorted by most recently updated — most recent chat appears first.
- *          Used to render the session list in the sidebar.
- *
  * @route   GET /api/ai/sessions
  * @access  Private — patient
  */
@@ -100,9 +165,6 @@ export const getSessionById = async (req, res, next) => {
 
 /**
  * @desc    Create a new chat session.
- *          Patient can start as many sessions as they want.
- *          Optionally accepts a title and initial vitals context.
- *
  * @route   POST /api/ai/sessions
  * @access  Private — patient
  */
@@ -139,21 +201,6 @@ export const createSession = async (req, res, next) => {
 
 /**
  * @desc    Send a message to a specific session.
- *
- *          The session must belong to the logged-in patient.
- *          Patient can continue any session at any time — there is no
- *          concept of a "completed" or "locked" session from the backend.
- *          If isEmergency is true in the response, the FRONTEND is responsible
- *          for showing the emergency alert and blocking further input.
- *          The backend stores the outcome but does not lock the session.
- *
- *          Request body:
- *          {
- *            message:         string          — required
- *            selectedReports: MedicalReport[] — optional, max 3
- *              [{ title, fileUrl, mimeType }]
- *          }
- *
  * @route   POST /api/ai/sessions/:sessionId/message
  * @access  Private — patient (own sessions only)
  */
@@ -197,10 +244,8 @@ NEW PATIENT MESSAGE:
 ${extractedText ? `\nATTACHED DOCUMENT TEXT:\n${extractedText}` : ''}
         `.trim();
 
-        // Call Gemini with strict JSON output
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            systemInstruction: `You are a highly analytical clinical AI triage assistant. Analyze the CURRENT ROLLING SUMMARY and the NEW PATIENT MESSAGE. You MUST return a raw JSON object with EXACTLY this structure:
+        // Call Gemini — automatically rotates through all API keys on 429
+        const systemInstruction = `You are a highly analytical clinical AI triage assistant. Analyze the CURRENT ROLLING SUMMARY and the NEW PATIENT MESSAGE. You MUST return a raw JSON object with EXACTLY this structure:
 {
   "isEmergency": boolean,
   "triageLevel": "Pending" | "Routine" | "Urgent" | "Emergency",
@@ -215,17 +260,18 @@ CRITICAL CLINICAL LOGIC & RULES:
 3. ROUTINE (isEmergency: false, triageLevel: "Routine" or "Pending"): -> userFacingMessage: Provide an empathetic reply and ask ONE relevant follow-up question.
 4. ROLLING SUMMARY RETENTION: Always retain patient age, gender, known conditions, and allergies in rollingSummary if present. Never delete baseline profile data.
 
-Do not wrap the JSON in markdown blocks. Return only raw JSON.`,
-        });
+Do not wrap the JSON in markdown blocks. Return only raw JSON.`;
 
         const promptData = [{ text: promptText }, ...imageParts];
 
-        const completion = await model.generateContent({
-            contents: [{ role: 'user', parts: promptData }],
-            generationConfig: { responseMimeType: 'application/json' },
-        });
+        const rawText = await generateWithKeyRotation(
+            'gemini-2.5-flash',
+            systemInstruction,
+            promptData,
+            { responseMimeType: 'application/json' }
+        );
 
-        const aiResponse = JSON.parse(completion.response.text());
+        const aiResponse = JSON.parse(rawText);
 
         // Update session with AI response
         session.rollingSummary = aiResponse.rollingSummary;
@@ -257,8 +303,6 @@ Do not wrap the JSON in markdown blocks. Return only raw JSON.`,
 
 /**
  * @desc    Delete a specific session by ID.
- *          Verifies session existence and patient ownership before deletion.
- *
  * @route   DELETE /api/ai/sessions/:sessionId
  * @access  Private — patient (own sessions only)
  */
