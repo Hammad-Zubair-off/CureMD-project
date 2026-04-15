@@ -100,6 +100,16 @@ const adminService = {
         }
     },
 
+    getDoctorRejectionRequests: async (params = {}) => {
+        try {
+            const query = new URLSearchParams(params).toString();
+            const response = await api.get('/appointments/admin/rejection-requests?' + query);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
     // PAYMENT / FINANCE MANAGEMENT 
 
     getAllPayments: async (params = {}) => {
