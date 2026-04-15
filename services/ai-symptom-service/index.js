@@ -35,7 +35,7 @@ app.use(errorHandler);
 
 const startServer = async () => {
     try {
-        //await connectDB();
+        await connectDB();
         const server = app.listen(PORT, () => {
             logger.success(`${[SERVICE_NAME]}-service Running on port ${PORT}`);
         });
