@@ -285,7 +285,7 @@ export default function FinanceManagement({ showToast }) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end">
-                                                {p.status === 'succeeded' && (
+                                                {/* {p.status === 'succeeded' && (
                                                     <button
                                                         onClick={() => setRefundTarget(p)}
                                                         className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
@@ -293,7 +293,7 @@ export default function FinanceManagement({ showToast }) {
                                                         <RotateCcw className="w-3.5 h-3.5" />
                                                         <span>Refund</span>
                                                     </button>
-                                                )}
+                                                )} */}
                                                 {p.status === 'refunded' && (
                                                     <span className="text-xs text-slate-400 italic">Refunded {p.refundedAt ? new Date(p.refundedAt).toLocaleDateString() : ''}</span>
                                                 )}
