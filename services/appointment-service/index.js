@@ -6,6 +6,7 @@ import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
 import appointmentRoutes from './src/routes/appointmentRoutes.js';
+import { initAppointmentEventConsumers } from './src/controllers/appointmentController.js';
 
 dotenv.config();
 
@@ -38,6 +39,19 @@ app.use('/api/appointments', appointmentRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+const connectRabbitMQWithRetry = async (retries = 10, delayMs = 3000) => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            await connectRabbitMQ();
+            return;
+        } catch (err) {
+            logger.warn(`[RabbitMQ] connect attempt ${attempt}/${retries} failed: ${err.message}`);
+            if (attempt === retries) throw err;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+    }
+};
+
 //  Startup 
 const startServer = async () => {
     // Fail fast — INTERNAL_SECRET is required for payment-service communication
@@ -48,7 +62,8 @@ const startServer = async () => {
 
     try {
         await connectDB();
-        await connectRabbitMQ(); // connect before server starts — publishEvent must be ready
+        await connectRabbitMQWithRetry();
+        await initAppointmentEventConsumers();
 
         const server = app.listen(PORT, () => {
             logger.success(`${SERVICE_NAME}-service running on port ${PORT}`);

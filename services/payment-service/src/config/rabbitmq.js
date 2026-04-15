@@ -15,25 +15,27 @@ export const connectRabbitMQ = async () => {
         connection = await amqp.connect(RABBITMQ_URL);
         channel = await connection.createChannel();
 
-        // Single topic exchange for the entire platform
         await channel.assertExchange('healthcare', 'topic', { durable: true });
 
         logger.success('[RabbitMQ] Connected to healthcare exchange');
 
-        // Graceful shutdown
         connection.on('close', () => {
             logger.warn('[RabbitMQ] Connection closed — reconnecting in 5s');
-            setTimeout(connectRabbitMQ, 5000);
+            setTimeout(async () => {
+                try {
+                    await connectRabbitMQ();
+                } catch (err) {
+                    logger.error('[RabbitMQ] Reconnect failed:', err.message);
+                }
+            }, 5000);
         });
 
         connection.on('error', (err) => {
             logger.error('[RabbitMQ] Connection error:', err.message);
         });
-
     } catch (error) {
         logger.error('[RabbitMQ] Connection failed:', error.message);
-        // Retry — RabbitMQ may still be starting in Docker
-        setTimeout(connectRabbitMQ, 5000);
+        throw error; // fail fast during startup
     }
 };
 
