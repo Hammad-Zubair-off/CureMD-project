@@ -66,6 +66,7 @@ const DEFAULT = {
     consultationFee: '',
     consultationTypes: { videoCall: true, audioCall: false, chat: false },
     emergencyAvailable: false,
+    phoneNumbers: [],
     education: [],
     experience: [],
     certifications: [],
@@ -84,6 +85,7 @@ export default function DoctorProfile() {
     const [certInput, setCertInput] = useState('');
     const [expertInput, setExpertInput] = useState('');
     const [langInput, setLangInput] = useState('');
+    const [phoneInput, setPhoneInput] = useState('');
 
     useEffect(() => {
         const load = async () => {
@@ -102,6 +104,7 @@ export default function DoctorProfile() {
                     consultationFee: p.consultationFee ?? '',
                     consultationTypes: p.consultationTypes || DEFAULT.consultationTypes,
                     emergencyAvailable: p.emergencyAvailable || false,
+                    phoneNumbers: p.phoneNumbers || [],
                     education: p.education || [],
                     experience: p.experience || [],
                     certifications: p.certifications || [],
@@ -122,12 +125,31 @@ export default function DoctorProfile() {
     const setConsultationType = (type, val) =>
         setForm(f => ({ ...f, consultationTypes: { ...f.consultationTypes, [type]: val } }));
 
+    // ── phone numbers ──────────────────────────────────────────────────────────
+    const addPhone = () => {
+        const trimmed = phoneInput.trim();
+        if (!trimmed) return;
+        if (form.phoneNumbers.length >= 5) return;
+        // basic client-side format check
+        if (!/^\+?[0-9]{7,15}$/.test(trimmed)) {
+            setError('Phone number must be 7–15 digits, optionally starting with +');
+            return;
+        }
+        setError('');
+        setForm(f => ({ ...f, phoneNumbers: [...f.phoneNumbers, trimmed] }));
+        setPhoneInput('');
+    };
+    const removePhone = (i) =>
+        setForm(f => ({ ...f, phoneNumbers: f.phoneNumbers.filter((_, idx) => idx !== i) }));
+
+    // ── education ──────────────────────────────────────────────────────────────
     const addEducation = () => setForm(f => ({ ...f, education: [...f.education, { degree: '', institution: '', year: '' }] }));
     const updateEducation = (i, key, val) => setForm(f => {
         const ed = [...f.education]; ed[i] = { ...ed[i], [key]: val }; return { ...f, education: ed };
     });
     const removeEducation = (i) => setForm(f => ({ ...f, education: f.education.filter((_, idx) => idx !== i) }));
 
+    // ── experience ─────────────────────────────────────────────────────────────
     const addExperience = () => setForm(f => ({
         ...f, experience: [...f.experience, { hospital: '', role: '', from: '', to: '', isCurrent: false }]
     }));
@@ -136,6 +158,7 @@ export default function DoctorProfile() {
     });
     const removeExperience = (i) => setForm(f => ({ ...f, experience: f.experience.filter((_, idx) => idx !== i) }));
 
+    // ── tag fields ─────────────────────────────────────────────────────────────
     const addTag = (field, val, setter) => {
         if (!val.trim()) return;
         setForm(f => ({ ...f, [field]: [...f[field], val.trim()] }));
@@ -214,6 +237,7 @@ export default function DoctorProfile() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
 
+                {/* ── Basic Information ───────────────────────────────────────── */}
                 <SectionCard title="Basic Information" icon={UserCircle}>
                     <div className="grid grid-cols-3 gap-3 mb-4">
                         <div>
@@ -246,7 +270,14 @@ export default function DoctorProfile() {
                     <div className="grid grid-cols-2 gap-3 mb-4">
                         <div>
                             <Label required>License Number</Label>
-                            <Input value={form.licenseNumber} onChange={e => set('licenseNumber', e.target.value)} placeholder="MED-12345" required disabled={!isNew} className={!isNew ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''} />
+                            <Input
+                                value={form.licenseNumber}
+                                onChange={e => set('licenseNumber', e.target.value)}
+                                placeholder="MED-12345"
+                                required
+                                disabled={!isNew}
+                                className={!isNew ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}
+                            />
                             {!isNew && <p className="text-[11px] text-slate-400 mt-1">License number cannot be changed.</p>}
                         </div>
                         <div>
@@ -254,6 +285,58 @@ export default function DoctorProfile() {
                             <Input value={form.currentHospital} onChange={e => set('currentHospital', e.target.value)} placeholder="City General Hospital" />
                         </div>
                     </div>
+
+                    {/* ── Phone Numbers ─────────────────────────────────────── */}
+                    <div className="mb-4">
+                        <Label>
+                            Phone Numbers{' '}
+                            <span className="text-slate-400 font-normal">(max 5)</span>
+                        </Label>
+                        <div className="flex gap-2 mb-2">
+                            <Input
+                                value={phoneInput}
+                                onChange={e => setPhoneInput(e.target.value)}
+                                placeholder="+94771234567"
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPhone(); } }}
+                                disabled={form.phoneNumbers.length >= 5}
+                                className={form.phoneNumbers.length >= 5 ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}
+                            />
+                            <button
+                                type="button"
+                                onClick={addPhone}
+                                disabled={form.phoneNumbers.length >= 5}
+                                className="px-3.5 py-2 text-white rounded-xl hover:opacity-90 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                style={{ background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)' }}
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
+                        </div>
+                        {form.phoneNumbers.length >= 5 && (
+                            <p className="text-[11px] text-amber-500 mb-1.5">Maximum of 5 phone numbers reached.</p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                            {form.phoneNumbers.map((phone, i) => (
+                                <span
+                                    key={i}
+                                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg border border-blue-100 font-mono font-medium"
+                                >
+                                    <Phone className="w-3 h-3 shrink-0" />
+                                    <span>{phone}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removePhone(i)}
+                                        className="text-blue-400 hover:text-red-500 transition-colors font-bold ml-0.5"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            ))}
+                            {form.phoneNumbers.length === 0 && (
+                                <p className="text-xs text-slate-400">No phone numbers added yet.</p>
+                            )}
+                        </div>
+                    </div>
+
                     <div>
                         <Label>Bio</Label>
                         <textarea
@@ -268,6 +351,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
+                {/* ── Consultation Settings ───────────────────────────────────── */}
                 <SectionCard title="Consultation Settings" icon={Video}>
                     <div className="grid grid-cols-2 gap-3 mb-5">
                         <div>
@@ -311,6 +395,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
+                {/* ── Education ───────────────────────────────────────────────── */}
                 <SectionCard title="Education" icon={GraduationCap} defaultOpen={false}>
                     <div className="space-y-3">
                         {form.education.map((ed, i) => (
@@ -339,6 +424,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
+                {/* ── Work Experience ─────────────────────────────────────────── */}
                 <SectionCard title="Work Experience" icon={Briefcase} defaultOpen={false}>
                     <div className="space-y-3">
                         {form.experience.map((ex, i) => (
@@ -385,6 +471,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
+                {/* ── Skills & Languages ──────────────────────────────────────── */}
                 <SectionCard title="Skills & Languages" icon={Zap} defaultOpen={false}>
                     {[
                         { label: 'Areas of Expertise', field: 'areasOfExpertise', val: expertInput, set: setExpertInput, placeholder: 'e.g. Interventional Cardiology' },
