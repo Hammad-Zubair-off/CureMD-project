@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import Payment from '../models/Payment.js';
 import { logger } from '../utils/logger.js';
-import { publishEvent } from '../utils/eventBus.js';
+import { publishEvent, subscribeToEvent } from '../utils/eventBus.js';
 import { appointmentClient } from '../config/services.js';
 import { callService } from '../utils/callService.js';
 import { validateCreatePaymentIntent } from '../validators/paymentValidator.js';
@@ -487,4 +487,48 @@ export const getAllPayments = async (req, res, next) => {
     } catch (err) {
         next(err);
     }
+};
+
+export const initPaymentEventConsumers = async () => {
+    await subscribeToEvent('appointment.rejected_by_doctor', async (event) => {
+        const payment = event.paymentId
+            ? await Payment.findById(event.paymentId)
+            : await Payment.findOne({ appointmentId: event.appointmentId });
+
+        if (!payment) {
+            logger.warn('[RefundConsumer] No payment found for appointment ' + event.appointmentId);
+            return;
+        }
+
+        if (payment.status === 'refunded') {
+            logger.info('[RefundConsumer] Already refunded payment ' + payment._id);
+            return;
+        }
+
+        if (payment.status !== 'succeeded') {
+            logger.warn('[RefundConsumer] Skip refund. Payment status is ' + payment.status + ' for ' + payment._id);
+            return;
+        }
+
+        const refund = await stripe.refunds.create({
+            payment_intent: payment.stripePaymentIntentId,
+        });
+
+        payment.status = 'refunded';
+        payment.refundId = refund.id;
+        payment.refundedAt = new Date();
+        await payment.save();
+
+        publishEvent('payment.refunded', {
+            paymentId: payment._id.toString(),
+            appointmentId: payment.appointmentId,
+            patientId: payment.patientId,
+            doctorId: payment.doctorId,
+            amount: payment.amount,
+            refundedAt: payment.refundedAt,
+            reason: 'doctor_rejected_appointment',
+        });
+
+        logger.success('[RefundConsumer] Auto refund completed for payment ' + payment._id);
+    });
 };
