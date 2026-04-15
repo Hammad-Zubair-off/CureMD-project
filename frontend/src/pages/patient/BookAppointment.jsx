@@ -300,7 +300,7 @@ export default function BookAppointment() {
         maxFee !== '';
 
     return (
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto relative">
+        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto relative">
             {/* Global Loader for Profile Check */}
             {checkingProfile && (
                 <div className="fixed inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center">

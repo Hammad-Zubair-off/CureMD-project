@@ -135,22 +135,22 @@ export default function PatientDashboard() {
     });
 
     return (
-        <div className="p-8 lg:p-12 max-w-[1400px] mx-auto space-y-10">
+        <div className="p-4 md:p-8 lg:p-12 max-w-[1400px] mx-auto space-y-8 md:space-y-10">
             {/* Header Banner */}
-            <div className="bg-blue-600 rounded-[2.5rem] p-8 lg:p-10 relative overflow-hidden text-white flex flex-col md:flex-row md:items-center justify-between shadow-2xl shadow-blue-600/20">
+            <div className="bg-blue-600 rounded-2xl p-6 md:p-8 lg:p-10 relative overflow-hidden text-white flex flex-col md:flex-row md:items-center justify-between shadow-2xl shadow-blue-600/20">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/20 -mr-24 -mt-24 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-700/20 -ml-12 -mb-12 rounded-full blur-2xl"></div>
 
-                <div className="relative z-10 space-y-2">
-                    <h1 className="text-3xl lg:text-4xl font-black tracking-tight">
+                <div className="relative z-10 space-y-1">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight">
                         Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}, {user?.firstName || user?.fullName?.split(' ')[0] || 'Patient'}
                     </h1>
-                    <p className="text-blue-100 font-medium text-base opacity-90">Your health is our priority. Here's what's happening today.</p>
+                    <p className="text-blue-100 font-medium text-sm md:text-base opacity-90">Your health is our priority. Here's what's happening today.</p>
                 </div>
 
-                <div className="mt-6 md:mt-0 relative z-10">
-                    <div className="bg-white/10 backdrop-blur-md border border-white/20 p-3 px-5 rounded-2xl flex items-center space-x-4">
-                        <div className="p-2 bg-white/20 rounded-xl">
+                <div className="mt-4 md:mt-0 relative z-10">
+                    <div className="bg-white/10 backdrop-blur-md border border-white/20 p-3 px-4 rounded-xl flex items-center space-x-3">
+                        <div className="p-1.5 bg-white/20 rounded-xl">
                             <Calendar className="w-4 h-4 text-white" />
                         </div>
                         <div>
@@ -168,8 +168,8 @@ export default function PatientDashboard() {
                     { label: 'Past Appointments', count: stats.past.toString(), icon: History, color: 'blue' },
                     { label: 'Next Session', count: stats.nextSession, icon: Bell, color: 'rose' }
                 ].map((stat, i) => (
-                    <div key={i} className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-                        <div className={`w-12 h-12 rounded-2xl bg-${stat.color}-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                    <div key={i} className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                        <div className={`w-12 h-12 rounded-xl bg-${stat.color}-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                             <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
                         </div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
@@ -193,10 +193,10 @@ export default function PatientDashboard() {
 
                     <div className="space-y-4">
                         {upcomingAppointments.length > 0 ? upcomingAppointments.map((app, i) => (
-                            <div key={i} className="bg-white p-6 lg:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 group">
-                                <div className="flex items-center space-x-6">
+                            <div key={i} className="bg-white p-5 md:p-6 lg:p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 group">
+                                <div className="flex items-center space-x-4 md:space-x-6">
                                     <div className="relative">
-                                        <div className="w-20 h-20 rounded-[2rem] overflow-hidden bg-slate-100 flex items-center justify-center">
+                                        <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
                                             {app.doctorImage ? (
                                                 <img
                                                     src={app.doctorImage}
@@ -204,7 +204,7 @@ export default function PatientDashboard() {
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xl">
+                                                <div className="w-full h-full bg-blue-50 flex items-center justify-center text-blue-600 font-black text-lg md:text-xl">
                                                     {app.doctorFullName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                                 </div>
                                             )}
@@ -249,8 +249,8 @@ export default function PatientDashboard() {
                                 </button>
                             </div>
                         )) : (
-                            <div className="bg-slate-50/50 rounded-[2.5rem] border border-dashed border-slate-200 p-16 flex flex-col items-center text-center">
-                                <div className="bg-white p-5 rounded-3xl shadow-sm mb-6">
+                            <div className="bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-16 flex flex-col items-center text-center">
+                                <div className="bg-white p-5 rounded-2xl shadow-sm mb-6">
                                     <Calendar className="w-10 h-10 text-slate-200" />
                                 </div>
                                 <h3 className="text-lg font-black text-slate-900 tracking-tight">No Upcoming Sessions</h3>
@@ -281,9 +281,9 @@ export default function PatientDashboard() {
                                 <button
                                     key={i}
                                     onClick={() => navigate(action.path)}
-                                    className="aspect-square bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 flex flex-col items-center justify-center text-center space-y-4 group"
+                                    className="aspect-square bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4 md:p-6 flex flex-col items-center justify-center text-center space-y-3 md:space-y-4 group"
                                 >
-                                    <div className={`p-4 rounded-2xl bg-${action.color}-50 group-hover:scale-110 transition-transform`}>
+                                    <div className={`p-4 rounded-xl bg-${action.color}-50 group-hover:scale-110 transition-transform`}>
                                         <action.icon className={`w-6 h-6 text-${action.color}-600`} />
                                     </div>
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 leading-tight">{action.label}</span>
@@ -293,7 +293,7 @@ export default function PatientDashboard() {
                     </div>
 
                     {/* Today's Quote Section */}
-                    <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm shadow-slate-200/50 group hover:shadow-xl transition-all duration-500 overflow-hidden relative">
+                    <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm shadow-slate-200/50 group hover:shadow-xl transition-all duration-500 overflow-hidden relative">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
                         <div className="relative z-10 flex items-center space-x-3 mb-6">

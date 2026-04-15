@@ -313,13 +313,13 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
             </div>
 
             {/* Middle Info: Schedule */}
-            <div className="flex flex-col gap-1 min-w-35">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
                 <div className="flex items-center gap-2 text-slate-600">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4 shrink-0" />
                     <span className="font-mono text-xs">{formatDate(appointment.appointmentDate)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className={`w-4 h-4 ${status === 'confirmed' || status === 'pending' ? 'text-blue-600' : ''}`} />
+                    <Clock className={`w-4 h-4 shrink-0 ${status === 'confirmed' || status === 'pending' ? 'text-blue-600' : ''}`} />
                     <span className={`font-mono text-xs ${status === 'confirmed' || status === 'pending' ? 'font-bold text-blue-600' : ''}`}>
                         {appointment.timeSlot}
                     </span>
@@ -327,7 +327,7 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
             </div>
 
             {/* Badges */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={status} />
                 {isPaid && (
                     <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold uppercase tracking-wider">
@@ -490,7 +490,7 @@ export default function MyAppointments() {
     const nextAppointment = upcomingSummaryAppointments.length > 0 ? upcomingSummaryAppointments[0] : null;
 
     return (
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
             
             {/* Toast */}
             {toast && (
