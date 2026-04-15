@@ -63,7 +63,7 @@ export default function Dropdown({
                                 className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                                     value === opt.value
                                         ? 'bg-blue-50 text-blue-700 font-semibold'
-                                        : 'text-slate-700 hover:bg-slate-50'
+                                        : 'text-slate-700 hover:bg-blue-50'
                                 }`}
                             >
                                 {opt.label}

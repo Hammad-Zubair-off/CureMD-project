@@ -43,7 +43,10 @@ export const publishEvent = (routingKey, data) => {
 export const subscribeToEvent = async (routingKey, handler) => {
     const channel = getChannel();
 
-    // Exclusive queue — auto-deleted when this service disconnects
+    if (!channel) {
+        throw new Error(`[EventBus] RabbitMQ channel is not ready for subscribe: ${routingKey}`);
+    }
+
     const { queue } = await channel.assertQueue('', { exclusive: false, durable: true });
     await channel.bindQueue(queue, 'healthcare', routingKey);
 
@@ -54,10 +57,10 @@ export const subscribeToEvent = async (routingKey, handler) => {
             const data = JSON.parse(msg.content.toString());
             logger.info(`[EventBus] Received: ${routingKey}`);
             await handler(data);
-            channel.ack(msg); // processed OK
+            channel.ack(msg);
         } catch (error) {
             logger.error(`[EventBus] Handler failed for ${routingKey}:`, error.message);
-            channel.nack(msg, false, true); // requeue for retry
+            channel.nack(msg, false, true);
         }
     });
 

@@ -14,13 +14,15 @@ import {
     Menu,
     X,
     Settings,
-    ChevronRight
+    ChevronRight,
+    Bot
 } from 'lucide-react';
 
 const navItems = [
     { to: '/patient/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/patient/book-appointment', label: 'Book Appointment', icon: CalendarPlus },
     { to: '/patient/my-appointments', label: 'My Appointments', icon: CalendarCheck },
+    { to: '/patient/symptom-checker', label: 'AI Symptom Checker', icon: Bot },
     { to: '/patient/profile', label: 'My Profile', icon: UserCircle },
     { to: '/patient/medical-history', label: 'Medical History', icon: FileText },
     { to: '/patient/telemedicine', label: 'Telemedicine', icon: Video },
@@ -53,8 +55,8 @@ export default function PatientLayout() {
     const SidebarContent = () => (
         <div className="flex flex-col h-full">
 
-            {/* Logo */}
-            <div className="flex items-center space-x-2 px-6 py-5 border-b border-slate-100">
+            {/* Logo — desktop only, hidden on mobile (mobile has its own header row above) */}
+            <div className="hidden lg:flex items-center space-x-2 px-6 py-5 border-b border-slate-100">
                 <div className="bg-blue-600 p-1.5 rounded-lg">
                     <Activity className="w-5 h-5 text-white" />
                 </div>
@@ -156,9 +158,26 @@ export default function PatientLayout() {
                         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                         onClick={() => setSidebarOpen(false)}
                     />
-                    {/* Drawer */}
-                    <aside className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl z-50">
-                        <SidebarContent />
+                    {/* Drawer - slide in from left */}
+                    <aside className="absolute left-0 top-0 h-full w-72 bg-white shadow-2xl z-50 flex flex-col animate-in slide-in-from-left duration-300">
+                        {/* Mobile close button */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+                            <div className="flex items-center space-x-2">
+                                <div className="bg-blue-600 p-1.5 rounded-lg">
+                                    <Activity className="w-4 h-4 text-white" />
+                                </div>
+                                <span className="text-base font-bold text-slate-900 tracking-tight">HealthConnect</span>
+                            </div>
+                            <button
+                                onClick={() => setSidebarOpen(false)}
+                                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <SidebarContent />
+                        </div>
                     </aside>
                 </div>
             )}

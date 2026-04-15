@@ -69,7 +69,9 @@ export default function RejectAppointmentModal({ appointment, onClose, onRejecte
               </div>
               <div>
                 <p className="text-base font-semibold text-slate-900">Appointment Rejected</p>
-                <p className="text-sm text-slate-400 mt-1">The patient has been notified. Closing…</p>
+                <p className="text-sm text-slate-400 mt-1">
+                  Rejection submitted. Patient/admin notification and refund processing started.
+                </p>
               </div>
             </div>
           ) : (

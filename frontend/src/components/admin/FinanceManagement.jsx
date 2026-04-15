@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../../services/api';
 import {
     CreditCard, TrendingUp, RefreshCw, Search,
     ChevronLeft, ChevronRight, AlertCircle,
@@ -7,6 +6,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import Dropdown from '../common/Dropdown';
+import adminService from '../../services/adminService';
 
 const StatusBadge = ({ status }) => {
     const config = {
@@ -82,8 +82,12 @@ export default function FinanceManagement({ showToast }) {
             if (statusFilter) params.append('status', statusFilter);
             if (search) params.append('search', search);
 
-            const res = await api.get(`/payments/admin/all?${params.toString()}`);
-            const data = res.data;
+            const data = await adminService.getAllPayments({
+                page,
+                limit: LIMIT,
+                ...(statusFilter && { status: statusFilter }),
+                ...(search && { search })
+            });
 
             setPayments(data.payments || []);
             setTotalPages(data.pages || 1);
@@ -118,7 +122,7 @@ export default function FinanceManagement({ showToast }) {
     const handleRefund = async () => {
         setRefundLoading(true);
         try {
-            await api.post(`/payments/${refundTarget._id}/refund`);
+            await adminService.refundPayment(refundTarget._id);
             showToast('Refund issued successfully');
             setRefundTarget(null);
             fetchPayments();
@@ -257,7 +261,7 @@ export default function FinanceManagement({ showToast }) {
                                     <tr key={p._id} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-6 py-4">
                                             <p className="text-sm font-mono text-slate-700">...{p.appointmentId?.slice(-10)}</p>
-                                            <p className="text-xs text-slate-400 mt-0.5">{p.stripePaymentIntentId?.slice(0, 20)}...</p>
+                                            {/* <p className="text-xs text-slate-400 mt-0.5">{p.stripePaymentIntentId?.slice(0, 20)}...</p> */}
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="text-sm font-mono text-slate-600">...{p.patientId?.slice(-8)}</p>
@@ -281,7 +285,7 @@ export default function FinanceManagement({ showToast }) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end">
-                                                {p.status === 'succeeded' && (
+                                                {/* {p.status === 'succeeded' && (
                                                     <button
                                                         onClick={() => setRefundTarget(p)}
                                                         className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all"
@@ -289,7 +293,7 @@ export default function FinanceManagement({ showToast }) {
                                                         <RotateCcw className="w-3.5 h-3.5" />
                                                         <span>Refund</span>
                                                     </button>
-                                                )}
+                                                )} */}
                                                 {p.status === 'refunded' && (
                                                     <span className="text-xs text-slate-400 italic">Refunded {p.refundedAt ? new Date(p.refundedAt).toLocaleDateString() : ''}</span>
                                                 )}

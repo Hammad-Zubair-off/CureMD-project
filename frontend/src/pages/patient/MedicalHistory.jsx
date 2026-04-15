@@ -211,14 +211,14 @@ export default function MedicalHistory() {
     }
 
     return (
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">
             {/* Header & Tabs */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Medical History</h1>
                     <p className="text-sm font-medium text-slate-500 mt-1">Your clinical timeline and documents</p>
                 </div>
-                <div className="flex items-center space-x-2 bg-slate-100/50 p-1.5 rounded-xl">
+                <div className="flex items-center space-x-2 bg-slate-100/50 p-1.5 rounded-xl w-full md:w-auto justify-center">
                     {['Clinical Timeline', 'Medical Records'].map((tab) => (
                         <button
                             key={tab}
@@ -293,12 +293,12 @@ export default function MedicalHistory() {
                             </h3>
 
                             {/* NEW: Date Range Filter UI */}
-                            <div className="flex flex-wrap items-center gap-3 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
+                            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
                                 <div className="flex items-center space-x-2">
                                     <CalendarDays className="w-4 h-4 text-slate-400" />
                                     <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Filter Range:</span>
                                 </div>
-                                <div className="flex items-center space-x-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <input
                                         type="date"
                                         value={snapshotStartDate}
@@ -551,48 +551,56 @@ export default function MedicalHistory() {
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
 
                     {/* Upload Section */}
-                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex flex-col md:flex-row gap-6 items-center shadow-sm">
-                        <div className="bg-white p-4 rounded-full shadow-sm">
-                            <UploadCloud className="w-8 h-8 text-blue-500" />
+                    <div className="bg-blue-50 p-5 md:p-6 rounded-2xl border border-blue-100 flex flex-col gap-5 items-start shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-white p-3 rounded-full shadow-sm">
+                                <UploadCloud className="w-7 h-7 text-blue-500" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black text-slate-800">Upload a Document</p>
+                                <p className="text-xs text-slate-500 font-medium">Supports PDF, JPG, PNG files</p>
+                            </div>
                         </div>
-                        <form onSubmit={handleUpload} className="flex-1 flex flex-col md:flex-row gap-4 w-full">
+                        <form onSubmit={handleUpload} className="w-full flex flex-col gap-3">
                             <input
                                 type="text"
                                 placeholder="Document Title (e.g., Blood Test Jan 2024)"
                                 value={uploadTitle}
                                 onChange={(e) => setUploadTitle(e.target.value)}
-                                className="flex-1 px-4 py-2.5 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                                className="w-full px-4 py-2.5 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                             />
-                            <select
-                                value={uploadCategory}
-                                onChange={(e) => setUploadCategory(e.target.value)}
-                                className="px-4 py-2.5 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium bg-white"
-                            >
-                                <option value="Lab Result">Lab Result</option>
-                                <option value="Prescription">Prescription</option>
-                                <option value="X-Ray">X-Ray</option>
-                                <option value="Other">Other</option>
-                            </select>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={(e) => setUploadFile(e.target.files[0])}
-                                className="hidden"
-                                id="file-upload"
-                            />
-                            <label
-                                htmlFor="file-upload"
-                                className="px-4 py-2.5 border border-blue-200 bg-white rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 cursor-pointer text-center transition-colors"
-                            >
-                                {uploadFile ? uploadFile.name : 'Choose File'}
-                            </label>
-                            <button
-                                type="submit"
-                                disabled={isUploading}
-                                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-70 transition-all"
-                            >
-                                {isUploading ? 'Uploading...' : 'Upload'}
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <select
+                                    value={uploadCategory}
+                                    onChange={(e) => setUploadCategory(e.target.value)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium bg-white"
+                                >
+                                    <option value="Lab Result">Lab Result</option>
+                                    <option value="Prescription">Prescription</option>
+                                    <option value="X-Ray">X-Ray</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={(e) => setUploadFile(e.target.files[0])}
+                                    className="hidden"
+                                    id="file-upload"
+                                />
+                                <label
+                                    htmlFor="file-upload"
+                                    className="flex-1 px-4 py-2.5 border border-blue-200 bg-white rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 cursor-pointer text-center transition-colors"
+                                >
+                                    {uploadFile ? uploadFile.name : 'Choose File'}
+                                </label>
+                                <button
+                                    type="submit"
+                                    disabled={isUploading}
+                                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-70 transition-all"
+                                >
+                                    {isUploading ? 'Uploading...' : 'Upload'}
+                                </button>
+                            </div>
                         </form>
                     </div>
 

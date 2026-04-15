@@ -6,6 +6,7 @@ import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
 import paymentRoutes from './src/routes/paymentRoutes.js';
+import { initPaymentEventConsumers } from './src/controllers/paymentController.js';
 
 dotenv.config();
 
@@ -38,6 +39,19 @@ app.get('/health', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
+const connectRabbitMQWithRetry = async (retries = 10, delayMs = 3000) => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            await connectRabbitMQ();
+            return;
+        } catch (err) {
+            logger.warn(`[RabbitMQ] connect attempt ${attempt}/${retries} failed: ${err.message}`);
+            if (attempt === retries) throw err;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+    }
+};
+
 //  Startup 
 const startServer = async () => {
     try {
@@ -47,7 +61,8 @@ const startServer = async () => {
             logger.success(`${[SERVICE_NAME]}-service Running on port ${PORT}`);
         });
 
-        await connectRabbitMQ(); // needed for publishEvent() after bookings
+        await connectRabbitMQWithRetry();
+        await initPaymentEventConsumers();
 
         process.on('SIGTERM', () => {
             logger.warn(`${[SERVICE_NAME]}-service SIGTERM received — shutting down gracefully`);

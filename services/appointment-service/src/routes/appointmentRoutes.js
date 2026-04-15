@@ -12,6 +12,7 @@ import {
     getDoctorAppointments,
     getAppointmentById,
     getAllAppointments,
+    getDoctorRejectionRequests,
 } from '../controllers/appointmentController.js';
 
 const router = Router();
@@ -41,6 +42,8 @@ router.get('/:id/track', protect, trackAppointment);
 // Payment-service confirms appointment after successful payment
 // No JWT middleware — secured by internal secret header only
 router.patch('/:id/confirm', confirmAppointment);
+
+router.get('/admin/rejection-requests', protect, authorize('admin', 'superadmin'), getDoctorRejectionRequests);
 
 // Doctor rejects a confirmed appointment
 router.patch('/:id/reject', protect, authorize('doctor'), requireApproved, rejectAppointment);

@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import {
     Activity, LogOut, Users, Stethoscope, CreditCard,
     CheckCircle, XCircle, X, ShieldCheck, Crown, Plus,
-    ChevronDown, Menu, X as CloseIcon, Clock
+    ChevronDown, Menu, X as CloseIcon, Clock,
+    RefreshCw
 } from 'lucide-react';
 
 import UserManagement from '../components/admin/UserManagement';
 import DoctorManagement from '../components/admin/DoctorManagement';
 import FinanceManagement from '../components/admin/FinanceManagement';
 import Toast from '../components/common/Toast';
+import adminService from '../services/adminService';
 
 // Simplified Navigation Structure
 const navItems = [
@@ -49,6 +51,27 @@ export default function AdminDashboard() {
     const [createAdminForm, setCreateAdminForm] = useState({ firstName: '', lastName: '', email: '', password: '' });
     const [createAdminError, setCreateAdminError] = useState('');
     const [createAdminLoading, setCreateAdminLoading] = useState(false);
+
+    const [rejectionRequests, setRejectionRequests] = useState([]);
+    const [rejectionLoading, setRejectionLoading] = useState(false);
+
+    const fetchRejectionRequests = async () => {
+        setRejectionLoading(true);
+        try {
+            const data = await adminService.getDoctorRejectionRequests({ page: 1, limit: 20 });
+            setRejectionRequests(data.requests || []);
+        } catch (err) {
+            showToast('Failed to load rejection requests', 'error');
+        } finally {
+            setRejectionLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'doctor-requests') {
+            fetchRejectionRequests();
+        }
+    }, [activeTab]);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -238,10 +261,87 @@ export default function AdminDashboard() {
 
                             {/* Create Admin Form rendering omitted for brevity, kept exactly the same */}
                             {showCreateAdmin && (
-                                <div className="bg-white rounded-2xl border border-amber-200 p-6 mb-6">
-                                    {/* ... Existing Super Admin Form ... */}
-                                    <h3 className="text-sm font-semibold text-slate-700 mb-4">New Admin Account Form</h3>
-                                    <p className="text-xs text-slate-500">The form logic remains exactly as you had it.</p>
+                                <div className="bg-white rounded-2xl border border-amber-200 p-6">
+                                    <h3 className="text-sm font-semibold text-slate-700 mb-4">New Admin Account</h3>
+
+                                    {createAdminError && (
+                                        <div className="flex items-start space-x-3 bg-red-50 text-red-700 p-3 rounded-xl mb-4 border border-red-100">
+                                            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                            <p className="text-sm">{createAdminError}</p>
+                                        </div>
+                                    )}
+
+                                    <form onSubmit={handleCreateAdmin} className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                    First Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="John"
+                                                    value={createAdminForm.firstName}
+                                                    onChange={e => setCreateAdminForm(f => ({ ...f, firstName: e.target.value }))}
+                                                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                    Last Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="Doe"
+                                                    value={createAdminForm.lastName}
+                                                    onChange={e => setCreateAdminForm(f => ({ ...f, lastName: e.target.value }))}
+                                                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                Email Address
+                                            </label>
+                                            <input
+                                                type="email"
+                                                required
+                                                placeholder="admin@healthconnect.com"
+                                                value={createAdminForm.email}
+                                                onChange={e => setCreateAdminForm(f => ({ ...f, email: e.target.value }))}
+                                                className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                                Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                required
+                                                placeholder="Min 8 characters"
+                                                value={createAdminForm.password}
+                                                onChange={e => setCreateAdminForm(f => ({ ...f, password: e.target.value }))}
+                                                className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                                            />
+                                        </div>
+
+                                        <div className="flex justify-end pt-2">
+                                            <button
+                                                type="submit"
+                                                disabled={createAdminLoading}
+                                                className="flex items-center space-x-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all"
+                                            >
+                                                {createAdminLoading
+                                                    ? <><RefreshCw className="w-4 h-4 animate-spin" /><span>Creating...</span></>
+                                                    : <><ShieldCheck className="w-4 h-4" /><span>Create Admin</span></>
+                                                }
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             )}
                         </div>
@@ -255,12 +355,135 @@ export default function AdminDashboard() {
                         
                         {/* Placeholder component for Requests to be built later */}
                         {activeTab === 'doctor-requests' && (
-                            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center flex flex-col items-center">
-                                <Clock className="w-12 h-12 text-slate-300 mb-4" />
-                                <h3 className="text-lg font-semibold text-slate-800">Pending Doctor Requests</h3>
-                                <p className="text-sm text-slate-500 mt-2 max-w-md">
-                                    This dedicated component will handle all incoming requests and validation for new doctors joining the platform.
-                                </p>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-slate-900">Doctor Rejection Requests</h3>
+                                        <p className="text-sm text-slate-500">
+                                            Review doctor-rejected appointments and refund status.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={fetchRejectionRequests}
+                                        className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                                    >
+                                        <RefreshCw className={`w-4 h-4 ${rejectionLoading ? 'animate-spin' : ''}`} />
+                                        <span>Refresh</span>
+                                    </button>
+                                </div>
+
+                                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                    {rejectionLoading ? (
+                                        <div className="flex items-center justify-center py-16">
+                                            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-500" />
+                                        </div>
+                                    ) : rejectionRequests.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                                            <Clock className="w-10 h-10 mb-3 opacity-40" />
+                                            <p className="font-medium">No rejection requests found</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Desktop table */}
+                                            <div className="hidden lg:block overflow-x-auto">
+                                                <table className="w-full">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-100 bg-slate-50">
+                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Doctor</th>
+                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Patient</th>
+                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Appointment</th>
+                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Reason</th>
+                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Refund</th>
+                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Rejected At</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {rejectionRequests.map((r) => (
+                                                            <tr key={r.appointmentId} className="hover:bg-slate-50 transition-colors">
+                                                                <td className="px-6 py-4">
+                                                                    <p className="text-sm font-semibold text-slate-900">{r.doctorFullName || '-'}</p>
+                                                                    <p className="text-xs text-slate-400 font-mono">...{r.doctorId?.slice(-8)}</p>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <p className="text-sm font-semibold text-slate-900">{r.patientFullName || '-'}</p>
+                                                                    <p className="text-xs text-slate-400">{r.patientEmail || '-'}</p>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <p className="text-sm text-slate-700">
+                                                                        {r.appointmentDate ? new Date(r.appointmentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                                                    </p>
+                                                                    <p className="text-xs text-slate-400">{r.timeSlot || '-'}</p>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <p className="text-sm text-slate-700 max-w-xs line-clamp-2">
+                                                                        {r.rejectionReason || 'No reason provided'}
+                                                                    </p>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <span
+                                                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                                                                            r.refundStatus === 'refunded'
+                                                                                ? 'bg-green-50 text-green-700 border-green-200'
+                                                                                : r.refundStatus === 'paid' || r.refundStatus === 'succeeded'
+                                                                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                                : 'bg-slate-50 text-slate-600 border-slate-200'
+                                                                        }`}
+                                                                    >
+                                                                        {r.refundStatus || 'unknown'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <p className="text-sm text-slate-600">
+                                                                        {r.rejectedAt ? new Date(r.rejectedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                                                                    </p>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Mobile cards */}
+                                            <div className="lg:hidden p-4 space-y-3">
+                                                {rejectionRequests.map((r) => (
+                                                    <div key={r.appointmentId} className="rounded-xl border border-slate-200 p-4 bg-white">
+                                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                                            <div>
+                                                                <p className="text-sm font-semibold text-slate-900">{r.doctorFullName || '-'}</p>
+                                                                <p className="text-xs text-slate-500">Doctor</p>
+                                                            </div>
+                                                            <span
+                                                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                                                                    r.refundStatus === 'refunded'
+                                                                        ? 'bg-green-50 text-green-700 border-green-200'
+                                                                        : r.refundStatus === 'paid' || r.refundStatus === 'succeeded'
+                                                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                        : 'bg-slate-50 text-slate-600 border-slate-200'
+                                                                }`}
+                                                            >
+                                                                {r.refundStatus || 'unknown'}
+                                                            </span>
+                                                        </div>
+
+                                                        <p className="text-sm text-slate-700">
+                                                            <span className="font-medium">Patient:</span> {r.patientFullName || '-'}
+                                                        </p>
+                                                        <p className="text-sm text-slate-700 mt-1">
+                                                            <span className="font-medium">Appointment:</span>{' '}
+                                                            {r.appointmentDate ? new Date(r.appointmentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'} {r.timeSlot ? `• ${r.timeSlot}` : ''}
+                                                        </p>
+                                                        <p className="text-sm text-slate-700 mt-1">
+                                                            <span className="font-medium">Reason:</span> {r.rejectionReason || 'No reason provided'}
+                                                        </p>
+                                                        <p className="text-xs text-slate-500 mt-2">
+                                                            Rejected at: {r.rejectedAt ? new Date(r.rejectedAt).toLocaleString() : '-'}
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         )}
 

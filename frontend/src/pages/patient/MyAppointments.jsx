@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Calendar, Clock, Plus, RefreshCw,
-    CheckCircle, XCircle, AlertCircle, Clock3,
+    CheckCircle, XCircle, AlertCircle, Clock3, AlertTriangle,
     ChevronLeft, ChevronRight, X, Loader2,
-    Stethoscope, MoreVertical, CreditCard
+    Stethoscope, MoreVertical,
 } from 'lucide-react';
 import appointmentService from '../../services/appointmentService';
-import api from '../../services/api';
+import doctorService from '../../services/doctorService';
 
 // Helpers
 const formatDate = (dateStr) => {
@@ -21,6 +21,40 @@ const formatDate = (dateStr) => {
 
 const getDayLabel = (date) => {
     return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+};
+
+const FRONTEND_PAYMENT_WINDOW_MINUTES = 25;
+const FRONTEND_GRACE_BLOCK_MINUTES = 5;
+
+const getFrontendPaymentDeadline = (appointment) => {
+    // Prefer backend expiry minus 5-min safety buffer
+    if (appointment?.expiresAt) {
+        const expiresMs = new Date(appointment.expiresAt).getTime();
+        if (!Number.isNaN(expiresMs)) {
+            return new Date(expiresMs - FRONTEND_GRACE_BLOCK_MINUTES * 60 * 1000);
+        }
+    }
+
+    // Fallback: createdAt + 25 min
+    const createdMs = new Date(appointment?.createdAt || Date.now()).getTime();
+    return new Date(createdMs + FRONTEND_PAYMENT_WINDOW_MINUTES * 60 * 1000);
+};
+
+const getRemainingMs = (deadline, nowTs) => Math.max(0, deadline.getTime() - nowTs);
+
+const formatRemaining = (ms) => {
+    const totalSec = Math.floor(ms / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+};
+
+const splitDoctorName = (fullName = '') => {
+    const cleaned = fullName.trim();
+    if (!cleaned) return { firstName: 'Dr', lastName: '' };
+    const parts = cleaned.split(/\s+/);
+    if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
 };
 
 // Status Badge
@@ -282,7 +316,7 @@ const CancelModal = ({ appointment, onConfirm, onClose, loading }) => (
 );
 
 // Horizontal Appointment Card
-const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
+const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPayNow, paymentTimeLeftLabel }) => {
     const { status } = appointment;
     const isPaid = status === 'confirmed' || status === 'completed';
     const isPending = status === 'pending';
@@ -313,13 +347,13 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
             </div>
 
             {/* Middle Info: Schedule */}
-            <div className="flex flex-col gap-1 min-w-35">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
                 <div className="flex items-center gap-2 text-slate-600">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4 shrink-0" />
                     <span className="font-mono text-xs">{formatDate(appointment.appointmentDate)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className={`w-4 h-4 ${status === 'confirmed' || status === 'pending' ? 'text-blue-600' : ''}`} />
+                    <Clock className={`w-4 h-4 shrink-0 ${status === 'confirmed' || status === 'pending' ? 'text-blue-600' : ''}`} />
                     <span className={`font-mono text-xs ${status === 'confirmed' || status === 'pending' ? 'font-bold text-blue-600' : ''}`}>
                         {appointment.timeSlot}
                     </span>
@@ -327,7 +361,7 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
             </div>
 
             {/* Badges */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={status} />
                 {isPaid && (
                     <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold uppercase tracking-wider">
@@ -344,9 +378,27 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
             {/* Actions */}
             <div className="flex items-center justify-end gap-2 w-full md:w-auto">
                 {status === 'pending' && (
-                    <button onClick={() => onCancel(appointment)} className="flex-1 md:flex-none px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs rounded-lg transition-colors border border-red-100">
-                        Cancel
-                    </button>
+                    <>
+                        {canPayNow ? (
+                            <button
+                                onClick={() => onPayNow(appointment)}
+                                className="flex-1 md:flex-none px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-bold text-xs rounded-lg transition-colors border border-blue-600"
+                            >
+                                Pay Now {paymentTimeLeftLabel ? `(${paymentTimeLeftLabel})` : ''}
+                            </button>
+                        ) : (
+                            <span className="flex-1 md:flex-none px-3 py-2 bg-slate-100 text-slate-500 font-bold text-[10px] uppercase tracking-wider rounded-lg border border-slate-200 text-center">
+                                Payment window closed
+                            </span>
+                        )}
+
+                        <button
+                            onClick={() => onCancel(appointment)}
+                            className="flex-1 md:flex-none px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs rounded-lg transition-colors border border-red-100"
+                        >
+                            Cancel
+                        </button>
+                    </>
                 )}
                 
                 {status === 'confirmed' && (
@@ -370,6 +422,67 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule }) => {
     );
 };
 
+const RejectedAppointmentCard = ({ appointment }) => {
+    const initials = appointment.doctorFullName?.split(' ')
+        .map(n => n[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase();
+
+    return (
+        <div className="bg-white border border-red-200 rounded-xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold border-2 border-white shadow-sm shrink-0">
+                        {initials || <Stethoscope className="w-6 h-6" />}
+                    </div>
+                    <div>
+                        <h5 className="font-bold text-slate-900">{appointment.doctorFullName}</h5>
+                        <p className="text-xs text-slate-500">{appointment.specialty}</p>
+                    </div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-red-50 text-red-700 border-red-200">
+                    <AlertTriangle className="w-3 h-3" />
+                    Rejected by Doctor
+                </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2 text-slate-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>{formatDate(appointment.appointmentDate)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-mono">{appointment.timeSlot}</span>
+                </div>
+                <div className="text-slate-600">
+                    <span className="font-semibold">Consultation Fee: </span>
+                    LKR {Number(appointment.consultationFee || 0).toLocaleString('en-LK')}
+                </div>
+                <div className="text-slate-600">
+                    <span className="font-semibold">Payment: </span>
+                    <span className="uppercase">{appointment.paymentStatus || 'N/A'}</span>
+                </div>
+            </div>
+
+            {appointment.reason && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Your Booking Reason</p>
+                    <p className="text-sm text-slate-700">{appointment.reason}</p>
+                </div>
+            )}
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-red-700 mb-1">Doctor Rejection Reason</p>
+                <p className="text-sm text-red-800">
+                    {appointment.rejectionReason || 'No specific reason provided.'}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 // Main Page
 export default function MyAppointments() {
     const navigate = useNavigate();
@@ -386,11 +499,19 @@ export default function MyAppointments() {
     const [rescheduleAvailabilityLoading, setRescheduleAvailabilityLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [toast, setToast] = useState(null);
+    const [unpaidSummaryAppointments, setUnpaidSummaryAppointments] = useState([]);
 
     // Pagination
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const LIMIT = 10;
+
+    const [nowTs, setNowTs] = useState(Date.now());
+
+    useEffect(() => {
+        const id = setInterval(() => setNowTs(Date.now()), 1000);
+        return () => clearInterval(id);
+    }, []);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -402,25 +523,44 @@ export default function MyAppointments() {
         setLoading(true);
         setError('');
         try {
-            const data = await appointmentService.getMyAppointments(page, LIMIT);
-            setAppointments(data.appointments || []);
-            setTotalPages(data.pages || 1);
+            const [tabData, unpaidData] = await Promise.all([
+                appointmentService.getMyAppointments(page, LIMIT, activeTab),
+                appointmentService.getMyAppointments(1, 50, 'unpaid'),
+            ]);
+
+            setAppointments(tabData.appointments || []);
+            setTotalPages(tabData.pages || 1);
+            setUnpaidSummaryAppointments(unpaidData.appointments || []);
         } catch (err) {
             setError(err.error || 'Failed to load appointments. Please try again.');
         } finally {
             setLoading(false);
         }
-    }, [page]);
+    }, [page, activeTab]);
+
+    useEffect(() => { setPage(1); }, [activeTab]);
 
     useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
     // Filter by tab
-    const filteredAppointments = appointments.filter((a) => {
-        if (activeTab === 'upcoming') return ['pending', 'confirmed'].includes(a.status);
-        if (activeTab === 'past') return a.status === 'completed';
-        if (activeTab === 'cancelled') return ['cancelled', 'expired'].includes(a.status);
-        return true;
-    });
+    const filteredAppointments = appointments;
+
+    const getRejectedAtMs = (appointment) => {
+        const doctorRejectHistory = (appointment.statusHistory || [])
+            .filter((h) => h.status === 'cancelled' && h.changedBy === 'doctor')
+            .sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt));
+
+        if (doctorRejectHistory.length > 0) {
+            return new Date(doctorRejectHistory[0].changedAt).getTime();
+        }
+
+        return new Date(appointment.updatedAt || appointment.createdAt || 0).getTime();
+    };
+
+    const displayedAppointments =
+        activeTab === 'rejected'
+            ? [...filteredAppointments].sort((a, b) => getRejectedAtMs(b) - getRejectedAtMs(a))
+            : filteredAppointments;
 
     // Cancel
     const handleCancelConfirm = async () => {
@@ -437,14 +577,48 @@ export default function MyAppointments() {
         }
     };
 
+    const handlePayNow = (appointment) => {
+        const deadline = getFrontendPaymentDeadline(appointment);
+        const remainingMs = getRemainingMs(deadline, Date.now());
+
+        if (remainingMs <= 0) {
+            showToast('Payment window is closed for this appointment.', 'error');
+            return;
+        }
+
+        const { firstName, lastName } = splitDoctorName(appointment.doctorFullName);
+
+        navigate('/patient/book-appointment', {
+            state: {
+                fromMyAppointments: true,
+                payExistingAppointment: {
+                    appointmentId: appointment._id,
+                    frontendDeadlineAt: deadline.toISOString(),
+                    doctor: {
+                        id: appointment.doctorId,
+                        firstName,
+                        lastName,
+                        fullName: appointment.doctorFullName,
+                        specialty: appointment.specialty,
+                        consultationFee: appointment.consultationFee,
+                    },
+                    formData: {
+                        selectedDate: appointment.appointmentDate,
+                        timeSlot: appointment.timeSlot,
+                    },
+                },
+            },
+        });
+    };
+
     // Open reschedule modal
     const handleReschedule = async (appointment) => {
         setRescheduleAvailabilityLoading(true);
         setRescheduleTarget(appointment);
         setRescheduleAvailability([]);
         try {
-            const res = await api.get(`/doctors/${appointment.doctorId}/availability`);
-            setRescheduleAvailability(res.data.data?.availability || []);
+            const res = await doctorService.getDoctorAvailability(appointment.doctorId);
+            setRescheduleAvailability(res.data?.availability || []);
         } catch (err) {
             console.error('Failed to fetch doctor availability:', err);
             setRescheduleAvailability([]);
@@ -477,11 +651,9 @@ export default function MyAppointments() {
         { key: 'upcoming', label: 'Upcoming' },
         { key: 'past', label: 'Past' },
         { key: 'cancelled', label: 'Cancelled' },
+        { key: 'rejected', label: 'Rejected' },
+        { key: 'unpaid', label: 'Unpaid' },
     ];
-
-    // Compute Summary Data for Bento-style grid
-    const pendingAppointments = appointments.filter(a => a.status === 'pending');
-    const totalPendingAmount = pendingAppointments.reduce((sum, a) => sum + (a.consultationFee || 0), 0);
 
     const upcomingSummaryAppointments = appointments
         .filter(a => ['pending', 'confirmed'].includes(a.status))
@@ -489,8 +661,23 @@ export default function MyAppointments() {
     
     const nextAppointment = upcomingSummaryAppointments.length > 0 ? upcomingSummaryAppointments[0] : null;
 
+    const unpaidAppointments = unpaidSummaryAppointments.filter(
+        (a) => a.status === 'pending' && a.paymentStatus === 'unpaid'
+    );
+
+    const unpaidWithDeadline = unpaidAppointments
+        .map((a) => {
+            const deadline = getFrontendPaymentDeadline(a);
+            const remainingMs = getRemainingMs(deadline, nowTs);
+            return { ...a, deadline, remainingMs };
+        })
+        .filter((a) => a.remainingMs > 0)
+        .sort((a, b) => a.remainingMs - b.remainingMs);
+
+    const nearestExpiring = unpaidWithDeadline[0] || null;
+
     return (
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
             
             {/* Toast */}
             {toast && (
@@ -614,25 +801,45 @@ export default function MyAppointments() {
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between mb-4">
-                                <span className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                    <CreditCard className="w-5 h-5" />
+                                <span className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                                    <Clock3 className="w-5 h-5" />
                                 </span>
-                                {totalPendingAmount > 0 && (
-                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded">PENDING</span>
+                                {nearestExpiring && (
+                                    <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-1 rounded">
+                                        EXPIRING SOON
+                                    </span>
                                 )}
                             </div>
-                            <p className="text-sm font-medium text-slate-500 mb-1">Total Outstanding</p>
-                            <p className="text-2xl font-mono font-bold text-slate-900">
-                                LKR {totalPendingAmount.toLocaleString()}
-                            </p>
+
+                            <p className="text-sm font-medium text-slate-500 mb-1">Nearest Expiration</p>
+
+                            {nearestExpiring ? (
+                                <>
+                                    <p className="text-base font-bold text-slate-900 truncate">
+                                        {nearestExpiring.doctorFullName}
+                                    </p>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        {formatDate(nearestExpiring.appointmentDate)} • {nearestExpiring.timeSlot}
+                                    </p>
+                                    <p className="text-2xl font-mono font-bold text-red-600 mt-2">
+                                        {formatRemaining(nearestExpiring.remainingMs)}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="text-sm text-slate-500">No unpaid appointments near expiry.</p>
+                            )}
                         </div>
-                        {totalPendingAmount > 0 ? (
-                            <button className="w-full text-center py-2 mt-4 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-100">
-                                Pay Balance Now
+
+                        {nearestExpiring ? (
+                            <button
+                                onClick={() => handlePayNow(nearestExpiring)}
+                                className="w-full text-center py-2 mt-4 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-100"
+                            >
+                                Pay This Appointment
                             </button>
                         ) : (
                             <div className="w-full text-center py-2 mt-4 text-sm font-semibold text-green-600 bg-green-50 rounded-lg border border-green-100 flex items-center justify-center gap-1.5">
-                                <CheckCircle className="w-4 h-4"/> All Clear
+                                <CheckCircle className="w-4 h-4" /> All Clear
                             </div>
                         )}
                     </div>
@@ -644,6 +851,8 @@ export default function MyAppointments() {
                 {activeTab === 'upcoming' && 'Upcoming Schedule'}
                 {activeTab === 'past' && 'Past Appointments'}
                 {activeTab === 'cancelled' && 'Cancelled Appointments'}
+                {activeTab === 'rejected' && 'Rejected Appointments'}
+                {activeTab === 'unpaid' && 'Unpaid Appointments'}
             </h4>
 
             {/* Content Lists */}
@@ -676,15 +885,32 @@ export default function MyAppointments() {
                     )}
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {filteredAppointments.map((appointment) => (
-                        <AppointmentCard
-                            key={appointment._id}
-                            appointment={appointment}
-                            onCancel={setCancelTarget}
-                            onReschedule={handleReschedule}
-                        />
-                    ))}
+                <div className={activeTab === 'rejected' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-4'}>
+                    {displayedAppointments.map((appointment) => {
+                        const deadline = getFrontendPaymentDeadline(appointment);
+                        const remainingMs = getRemainingMs(deadline, nowTs);
+                        const canPayNow =
+                            appointment.status === 'pending' &&
+                            appointment.paymentStatus === 'unpaid' &&
+                            remainingMs > 0;
+
+                        return activeTab === 'rejected' ? (
+                            <RejectedAppointmentCard
+                                key={appointment._id}
+                                appointment={appointment}
+                            />
+                        ) : (
+                            <AppointmentCard
+                                key={appointment._id}
+                                appointment={appointment}
+                                onCancel={setCancelTarget}
+                                onReschedule={handleReschedule}
+                                onPayNow={handlePayNow}
+                                canPayNow={canPayNow}
+                                paymentTimeLeftLabel={canPayNow ? formatRemaining(remainingMs) : ''}
+                            />
+                        );
+                    })}
                 </div>
             )}
 
