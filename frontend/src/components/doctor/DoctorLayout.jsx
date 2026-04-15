@@ -3,15 +3,15 @@ import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
     Activity, LogOut, LayoutDashboard, UserCircle,
-    CalendarDays, Menu, X, ChevronRight,
+    CalendarDays, Menu, X, ChevronRight,Video, CalendarCheck
 } from 'lucide-react';
 
 const NAV = [
     { to: '/doctor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/doctor/profile', icon: UserCircle, label: 'My Profile' },
     { to: '/doctor/availability', icon: CalendarDays, label: 'Availability' },
-    { to: '/doctor/appointments', icon: CalendarDays, label: 'My Appointments' },
-
+    { to: '/doctor/appointments', icon: CalendarCheck, label: 'My Appointments' },
+    { to: '/doctor/telemedicine', icon: Video, label: 'Telemedicine' },
 ];
 
 export default function DoctorLayout() {
