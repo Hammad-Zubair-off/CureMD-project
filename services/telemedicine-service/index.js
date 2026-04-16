@@ -26,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
-        service: 'appointment-service',
+        service: 'telemedicine-service',
         timestamp: new Date().toISOString(),
     });
 });
