@@ -1,29 +1,24 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/auth.js';
 import {
-    createSession,
-    markSessionActive,
-    endSession,
-    getSessionByAppointment,
+  createSession,
+  markSessionActive,
+  endSession,
+  getSessionByAppointment,
 } from '../controllers/telemedicineController.js';
 
 const router = Router();
 
-// =============================================================================
-// TELEMEDICINE SESSIONS  (role: doctor)
-// All routes require authentication
-// =============================================================================
-
-// POST /api/telemedicine/session/create          Create/retrieve session → returns Agora token + channel name
+// Doctor creates/retrieves a session
 router.post('/session/create', protect, authorize('doctor'), createSession);
 
-// PATCH /api/telemedicine/session/:sessionId/start   Mark session as active (doctor joined)
-router.patch('/session/:sessionId/start', protect, markSessionActive);
+// Doctor marks active
+router.patch('/session/:sessionId/start', protect, authorize('doctor'), markSessionActive);
 
-// PATCH /api/telemedicine/session/:sessionId/end     End session
-router.patch('/session/:sessionId/end', protect,authorize('doctor'), endSession);
+// Doctor ends session
+router.patch('/session/:sessionId/end', protect, authorize('doctor'), endSession);
 
-// GET /api/telemedicine/session/appointment/:appointmentId   Get session by appointment ID
-router.get('/session/appointment/:appointmentId', protect, getSessionByAppointment);
+// Doctor or patient can fetch own session-by-appointment join data
+router.get('/session/appointment/:appointmentId', protect, authorize('doctor', 'patient'), getSessionByAppointment);
 
 export default router;
