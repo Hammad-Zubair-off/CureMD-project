@@ -1,6 +1,5 @@
 import Stripe from 'stripe';
 import Payment from '../models/Payment.js';
-import Appointment from '../models/Appointment.js';
 import { logger } from '../utils/logger.js';
 import { publishEvent, subscribeToEvent } from '../utils/eventBus.js';
 import { appointmentClient } from '../config/services.js';
@@ -495,7 +494,7 @@ export const getAllPayments = async (req, res, next) => {
 };
 
 export const initPaymentEventConsumers = async () => {
-    await subscribeToEvent('appointment.rejected_by_doctor', async (event) => {
+    const processAutoRefund = async (event, reason) => {
         const payment = event.paymentId
             ? await Payment.findById(event.paymentId)
             : await Payment.findOne({ appointmentId: event.appointmentId });
@@ -531,11 +530,24 @@ export const initPaymentEventConsumers = async () => {
             doctorId: payment.doctorId,
             amount: payment.amount,
             refundedAt: payment.refundedAt,
-            reason: 'doctor_rejected_appointment',
+            reason,
             patientEmail: event.patientEmail || null,
             patientFullName: event.patientFullName || null,
         });
 
         logger.success('[RefundConsumer] Auto refund completed for payment ' + payment._id);
+    };
+
+    await subscribeToEvent('appointment.rejected_by_doctor', async (event) => {
+        await processAutoRefund(event, 'doctor_rejected_appointment');
+    });
+
+    await subscribeToEvent('appointment.cancelled', async (event) => {
+        if (!event.refundRequired) {
+            logger.info('[RefundConsumer] Cancellation without paid status. No refund required for appointment ' + event.appointmentId);
+            return;
+        }
+
+        await processAutoRefund(event, 'patient_cancelled_appointment');
     });
 };
