@@ -51,8 +51,10 @@ export const createSession = async (req, res, next) => {
     // Generate fresh doctor token (UID 1 = doctor by convention)
     // Regenerated every time in case the previous one expired
     const doctorToken = generateRtcToken(session.channelName, 1, 'publisher');
+    const patientToken = generateRtcToken(session.channelName, 2, 'publisher');
 
     session.doctorToken = doctorToken;
+    session.patientToken = patientToken;
     await session.save();
 
     return res.status(200).json({
@@ -81,8 +83,19 @@ export const markSessionActive = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
 
+    const requesterId = String(req.user.id);
+    const isDoctorOwner = String(session.doctorId) === requesterId;
+    const isSuperAdmin = req.user.role === 'superadmin';
+    if (!isDoctorOwner && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only the assigned doctor can start this session.',
+      });
+    }
+
     session.status = 'active';
-    session.startedAt = new Date();
+    //session.startedAt = new Date();
+    if (!session.startedAt) session.startedAt = new Date();
     await session.save();
 
     logger.info(`Session ${req.params.sessionId} is now ACTIVE`);
@@ -99,6 +112,16 @@ export const endSession = async (req, res, next) => {
     const session = await Session.findById(req.params.sessionId);
     if (!session) {
       return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+
+    const requesterId = String(req.user.id);
+    const isDoctorOwner = String(session.doctorId) === requesterId;
+    const isSuperAdmin = req.user.role === 'superadmin';
+    if (!isDoctorOwner && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only the assigned doctor can end this session.',
+      });
     }
 
     session.status = 'ended';
@@ -126,7 +149,53 @@ export const getSessionByAppointment = async (req, res, next) => {
     if (!session) {
       return res.status(404).json({ success: false, error: 'No session found' });
     }
-    return res.status(200).json({ success: true, data: session });
+
+    const requesterId = String(req.user.id);
+    const role = req.user.role;
+    const isDoctorOwner = role === 'doctor' && String(session.doctorId) === requesterId;
+    const isPatientOwner = role === 'patient' && String(session.patientId) === requesterId;
+    const isSuperAdmin = role === 'superadmin';
+
+    if (!isDoctorOwner && !isPatientOwner && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'You are not allowed to access this session.',
+      });
+    }
+
+    // Refresh role token each request for resilience against expiry.
+    let token = null;
+    let uid = null;
+
+    if (isDoctorOwner) {
+      token = generateRtcToken(session.channelName, 1, 'publisher');
+      uid = 1;
+      session.doctorToken = token;
+      await session.save();
+    } else if (isPatientOwner) {
+      token = generateRtcToken(session.channelName, 2, 'publisher');
+      uid = 2;
+      session.patientToken = token;
+      await session.save();
+    }
+
+    //return res.status(200).json({ success: true, data: session });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        sessionId: session._id,
+        appointmentId: session.appointmentId,
+        channelName: session.channelName,
+        agoraAppId: process.env.AGORA_APP_ID,
+        token,
+        uid,
+        status: session.status,
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        durationMinutes: session.durationMinutes,
+      },
+    });
   } catch (err) {
     next(err);
   }
