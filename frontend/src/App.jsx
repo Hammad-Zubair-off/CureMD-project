@@ -19,6 +19,7 @@ import MyProfile from './pages/patient/MyProfile'
 import MedicalHistory from './pages/patient/MedicalHistory'
 import Telemedicine from './pages/patient/Telemedicine'
 import SymptomChecker from './pages/patient/SymptomChecker';
+import PatientSettings from './pages/patient/PatientSettings';
 
 //doctor
 import DoctorLayout from './components/doctor/DoctorLayout'
@@ -77,6 +78,7 @@ function App() {
         <Route path="medical-history" element={<MedicalHistory />} />
         <Route path="telemedicine" element={<Telemedicine />} />
         <Route path="symptom-checker" element={<SymptomChecker />} />
+        <Route path="settings" element={<PatientSettings />} />
       </Route>
 
       {/* Old dashboard redirect — in case anything still links to /dashboard */}
