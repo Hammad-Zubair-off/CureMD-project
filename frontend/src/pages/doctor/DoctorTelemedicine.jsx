@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import telemedicineService from '../../services/telemedicineService';
 import appointmentService from '../../services/appointmentService';
 import {
-    Video, Calendar, Clock, User, Phone, Mail,
-    CheckCircle, AlertCircle, XCircle, Loader2,
+    Video, Calendar, Clock, Phone, Mail,
+    CheckCircle, XCircle, Loader2,
     RefreshCw, Monitor, Wifi, Mic, Camera,
     ChevronRight, Users, Activity,
 } from 'lucide-react';
@@ -17,7 +19,7 @@ const Avatar = ({ firstName, lastName, size = 'md' }) => {
     );
 };
 
-// ── Appointment Card (Teams-style grid card) ──────────────────────────────────
+// ── Appointment Card ──────────────────────────────────────────────────────────
 const TelemedicineCard = ({ appt, onClick }) => {
     const isToday = new Date(appt.appointmentDate).toDateString() === new Date().toDateString();
     const isUpcoming = ['confirmed', 'pending'].includes(appt.status) && new Date(appt.appointmentDate) >= new Date();
@@ -77,7 +79,7 @@ const TelemedicineCard = ({ appt, onClick }) => {
 };
 
 // ── Session Modal ─────────────────────────────────────────────────────────────
-const SessionModal = ({ appt, onClose, onStartSession }) => {
+const SessionModal = ({ appt, onClose, onStartSession, sessionLoading }) => {
     if (!appt) return null;
 
     const isConfirmed = appt.status === 'confirmed';
@@ -86,10 +88,10 @@ const SessionModal = ({ appt, onClose, onStartSession }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
+            {/* Backdrop — disabled while loading to prevent accidental close */}
             <div
                 className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={sessionLoading ? undefined : onClose}
             />
 
             {/* Modal */}
@@ -104,7 +106,8 @@ const SessionModal = ({ appt, onClose, onStartSession }) => {
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors text-white"
+                            disabled={sessionLoading}
+                            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <XCircle className="w-4 h-4" />
                         </button>
@@ -120,7 +123,7 @@ const SessionModal = ({ appt, onClose, onStartSession }) => {
                     </div>
                 </div>
 
-                {/* Content */}
+                {/* Info card */}
                 <div className="-mt-6 mx-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div className="flex items-center gap-2 text-xs text-slate-600">
@@ -170,6 +173,7 @@ const SessionModal = ({ appt, onClose, onStartSession }) => {
 
                 {/* CTA buttons */}
                 <div className="px-4 pb-5 flex flex-col gap-2.5">
+                    {/* Warning when session cannot be started */}
                     {!canStart && (
                         <p className="text-center text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl py-2">
                             {!isConfirmed
@@ -177,20 +181,34 @@ const SessionModal = ({ appt, onClose, onStartSession }) => {
                                 : 'Session can only be started on the appointment day.'}
                         </p>
                     )}
+
+                    {/* Start Session button — shows spinner while API call is in progress */}
                     <button
                         onClick={() => onStartSession(appt)}
-                        disabled={!canStart}
-                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all ${canStart
+                        disabled={!canStart || sessionLoading}
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all ${
+                            canStart && !sessionLoading
                                 ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-200 active:scale-95'
                                 : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                            }`}
+                        }`}
                     >
-                        <Video className="w-4 h-4" />
-                        Start Session
+                        {sessionLoading ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Connecting...
+                            </>
+                        ) : (
+                            <>
+                                <Video className="w-4 h-4" />
+                                Start Session
+                            </>
+                        )}
                     </button>
+
                     <button
                         onClick={onClose}
-                        className="w-full py-3 rounded-2xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-all"
+                        disabled={sessionLoading}
+                        className="w-full py-3 rounded-2xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Close
                     </button>
@@ -202,15 +220,17 @@ const SessionModal = ({ appt, onClose, onStartSession }) => {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DoctorTelemedicine() {
+    const navigate = useNavigate();
+
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedAppt, setSelectedAppt] = useState(null);
     const [filter, setFilter] = useState('all');
+    const [sessionLoading, setSessionLoading] = useState(false);
 
     const fetchAppointments = useCallback(async () => {
         setLoading(true);
         try {
-            // Fetch all pages — for telemedicine we want a broad view
             const data = await appointmentService.getDoctorAppointments(1, 50);
             const confirmedOnly = (data.appointments || []).filter(
                 a => a.status === 'confirmed'
@@ -225,26 +245,46 @@ export default function DoctorTelemedicine() {
 
     useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
-    const handleStartSession = (appt) => {
-        // TODO: wire up real telemedicine service
-        console.log('Starting session for:', appt._id);
-        alert(`Starting telemedicine session for ${appt.patientFullName}`);
+    // ── Start Session ─────────────────────────────────────────────────────────
+    // 1. Calls telemedicine-service to create/retrieve an Agora session
+    // 2. Receives { channelName, token, agoraAppId, uid, sessionId, patientJoinUrl }
+    // 3. Navigates to DoctorVideoRoom, passing the session data via router state
+    const handleStartSession = async (appt) => {
+        setSessionLoading(true);
+        try {
+            const sessionData = await telemedicineService.createSession(
+                appt._id,
+                appt.patientId
+            );
+            navigate('/doctor/video-room', {
+                state: {
+                    sessionData,
+                    patientName: appt.patientFullName,
+                },
+            });
+        } catch (err) {
+            console.error('Failed to create session:', err);
+            alert('Failed to start session. Please try again.');
+        } finally {
+            setSessionLoading(false);
+            setSelectedAppt(null);
+        }
     };
 
     const FILTERS = [
-        { key: 'all', label: 'All' },
-        { key: 'today', label: 'Today' },
+        { key: 'all',      label: 'All' },
+        { key: 'today',    label: 'Today' },
         { key: 'upcoming', label: 'Upcoming' },
-        { key: 'past', label: 'Past' },
+        { key: 'past',     label: 'Past' },
     ];
 
     const filtered = appointments.filter(a => {
         const apptDate = new Date(a.appointmentDate);
         const now = new Date();
         const isToday = apptDate.toDateString() === now.toDateString();
-        if (filter === 'today') return isToday;
+        if (filter === 'today')    return isToday;
         if (filter === 'upcoming') return apptDate > now && !isToday;
-        if (filter === 'past') return apptDate < now && !isToday;
+        if (filter === 'past')     return apptDate < now && !isToday;
         return true;
     });
 
@@ -269,7 +309,8 @@ export default function DoctorTelemedicine() {
                     </div>
                     <button
                         onClick={fetchAppointments}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-white transition-all"
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-white transition-all disabled:opacity-60"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
@@ -279,12 +320,12 @@ export default function DoctorTelemedicine() {
                 {/* Stat strip */}
                 <div className="grid grid-cols-3 gap-4 mb-8">
                     {[
-                        { label: "Today's Sessions", value: todayCount, icon: <Monitor className="w-4 h-4" />, color: 'text-blue-600' },
-                        { label: 'Total Appointments', value: appointments.length, icon: <Users className="w-4 h-4" />, color: 'text-indigo-600' },
-                        { label: 'Confirmed', value: appointments.filter(a => a.status === 'confirmed').length, icon: <Activity className="w-4 h-4" />, color: 'text-green-600' },
+                        { label: "Today's Sessions", value: todayCount,                                                icon: <Monitor className="w-4 h-4" />, color: 'text-blue-600'   },
+                        { label: 'Total Appointments', value: appointments.length,                                      icon: <Users   className="w-4 h-4" />, color: 'text-indigo-600' },
+                        { label: 'Confirmed',          value: appointments.filter(a => a.status === 'confirmed').length, icon: <Activity className="w-4 h-4" />, color: 'text-green-600'  },
                     ].map(({ label, value, icon, color }) => (
                         <div key={label} className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3">
-                            <span className={`${color}`}>{icon}</span>
+                            <span className={color}>{icon}</span>
                             <div>
                                 <p className={`text-xl font-bold ${color}`}>{value}</p>
                                 <p className="text-xs text-slate-400">{label}</p>
@@ -299,10 +340,11 @@ export default function DoctorTelemedicine() {
                         <button
                             key={f.key}
                             onClick={() => setFilter(f.key)}
-                            className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${filter === f.key
+                            className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                                filter === f.key
                                     ? 'bg-blue-600 text-white shadow-sm'
                                     : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                                }`}
+                            }`}
                         >
                             {f.label}
                         </button>
@@ -337,8 +379,9 @@ export default function DoctorTelemedicine() {
             {selectedAppt && (
                 <SessionModal
                     appt={selectedAppt}
-                    onClose={() => setSelectedAppt(null)}
+                    onClose={() => !sessionLoading && setSelectedAppt(null)}
                     onStartSession={handleStartSession}
+                    sessionLoading={sessionLoading}
                 />
             )}
         </div>
