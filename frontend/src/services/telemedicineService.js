@@ -24,6 +24,12 @@ const telemedicineService = {
     const response = await api.get(`/telemedicine/session/appointment/${appointmentId}`);
     return response.data;
   },
+
+  // Join data for current logged user (doctor or patient)
+  getSessionJoinDataByAppointment: async (appointmentId) => {
+    const response = await api.get(`/telemedicine/session/appointment/${appointmentId}`);
+    return response.data.data;
+  },
 };
 
 export default telemedicineService;
