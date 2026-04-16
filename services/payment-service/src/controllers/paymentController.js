@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import Payment from '../models/Payment.js';
+import Appointment from '../models/Appointment.js';
 import { logger } from '../utils/logger.js';
 import { publishEvent, subscribeToEvent } from '../utils/eventBus.js';
 import { appointmentClient } from '../config/services.js';
@@ -311,6 +312,8 @@ export const refundPayment = async (req, res, next) => {
         payment.refundedAt = new Date();
         await payment.save();
 
+        const appointment = await Appointment.findById(payment.appointmentId);
+
         publishEvent('payment.refunded', {
             paymentId: payment._id,
             appointmentId: payment.appointmentId,
@@ -318,6 +321,8 @@ export const refundPayment = async (req, res, next) => {
             doctorId: payment.doctorId,
             amount: payment.amount,
             refundedAt: payment.refundedAt,
+            patientEmail: appointment?.patientEmail || null,
+            patientFullName: appointment?.patientFullName || null,
         });
 
         logger.success(`Refund issued: ${refund.id} for payment ${payment._id}`);
@@ -527,6 +532,8 @@ export const initPaymentEventConsumers = async () => {
             amount: payment.amount,
             refundedAt: payment.refundedAt,
             reason: 'doctor_rejected_appointment',
+            patientEmail: event.patientEmail || null,
+            patientFullName: event.patientFullName || null,
         });
 
         logger.success('[RefundConsumer] Auto refund completed for payment ' + payment._id);
