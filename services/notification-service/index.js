@@ -8,6 +8,8 @@ import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
 import { registerAppointmentHandlers } from './src/handlers/appointmentHandlers.js';
 import { registerPaymentHandlers } from './src/handlers/paymentHandlers.js';
+import { initTwilio } from './src/config/twilio.js';
+import { registerSMSHandlers } from './src/handlers/smsHandlers.js';
 
 dotenv.config();
 
@@ -44,8 +46,7 @@ app.use(errorHandler);
 const registerAllHandlers = async () => {
     await registerAppointmentHandlers();
     await registerPaymentHandlers();
-    // SMS handlers will be registered here later
-    // await registerSMSHandlers();
+    await registerSMSHandlers();
 };
 
 //  Startup 
@@ -53,6 +54,9 @@ const startServer = async () => {
     try {
         // 1. Initialize SendGrid
         initSendGrid();
+        
+        // 1.1 Initialize Twilio
+        initTwilio();
 
         // 2. Connect to MongoDB
         await connectDB();
