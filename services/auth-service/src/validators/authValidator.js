@@ -63,27 +63,26 @@ export const validateLogin = ({ email, password } = {}) => {
     return { valid: errors.length === 0, errors };
 };
 
-// export const validatePasswordChange = ({
-//     currentPassword,
-//     newPassword,
-// } = {}) => {
-//     const errors = [];
+export const validatePasswordChange = ({
+    currentPassword,
+    newPassword,
+} = {}) => {
+    const errors = [];
 
-//     if (!currentPassword)
-//         errors.push('Current password is required.');
+    if (!currentPassword)
+        errors.push('Current password is required.');
 
-//     if (!newPassword || newPassword.length < 8)
-//         errors.push('New password must be at least 8 characters.');
+    errors.push(...getPasswordErrors(newPassword));
 
-//     if (
-//         currentPassword &&
-//         newPassword &&
-//         currentPassword === newPassword
-//     )
-//         errors.push('New password must differ from current password.');
+    if (
+        currentPassword &&
+        newPassword &&
+        currentPassword === newPassword
+    )
+        errors.push('New password must be different from your current password.');
 
-//     return { valid: errors.length === 0, errors };
-// };
+    return { valid: errors.length === 0, errors };
+};
 
 export const validateCreateAdmin = ({
     firstName,

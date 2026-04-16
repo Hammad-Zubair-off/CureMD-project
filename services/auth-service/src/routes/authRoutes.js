@@ -6,6 +6,8 @@ import {
     logout,
     getMe,
     updateMe,
+    changePassword,
+    deactivateSelf,
     verifyToken,
     getAllUsers,
     getUserById,
@@ -32,7 +34,8 @@ router.use(protect);
 router.post('/logout', logout);
 router.get('/me', getMe);
 router.put('/me', updateMe);
-//router.put('/change-password', changePassword);
+router.put('/change-password', changePassword);
+router.put('/deactivate-account', deactivateSelf);
 router.get('/verify', verifyToken);
 
 
