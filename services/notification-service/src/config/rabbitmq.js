@@ -10,31 +10,49 @@ if (!RABBITMQ_URL) {
     process.exit(1);
 }
 
+const RETRY_DELAY_MS = 5000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const connectRabbitMQ = async () => {
-    try {
-        connection = await amqp.connect(RABBITMQ_URL);
-        channel = await connection.createChannel();
+    while (!channel) {
+        try {
+            connection = await amqp.connect(RABBITMQ_URL);
+            channel = await connection.createChannel();
 
-        // Single topic exchange for the entire platform
-        await channel.assertExchange('healthcare', 'topic', { durable: true });
+            // Single topic exchange for the entire platform
+            await channel.assertExchange('healthcare', 'topic', { durable: true });
 
-        logger.success('[RabbitMQ] Connected to healthcare exchange');
+            logger.success('[RabbitMQ] Connected to healthcare exchange');
 
-        // Graceful shutdown
-        connection.on('close', () => {
-            logger.warn('[RabbitMQ] Connection closed — reconnecting in 5s');
-            setTimeout(connectRabbitMQ, 5000);
-        });
+            // Graceful reconnection on disconnect
+            connection.on('close', () => {
+                logger.warn('[RabbitMQ] Connection closed - reconnecting in 5s');
+                connection = null;
+                channel = null;
 
-        connection.on('error', (err) => {
-            logger.error('[RabbitMQ] Connection error:', err.message);
-        });
+                setTimeout(() => {
+                    connectRabbitMQ().catch((err) => {
+                        logger.error('[RabbitMQ] Reconnect failed:', err.message);
+                    });
+                }, RETRY_DELAY_MS);
+            });
 
-    } catch (error) {
-        logger.error('[RabbitMQ] Connection failed:', error.message);
-        // Retry — RabbitMQ may still be starting in Docker
-        setTimeout(connectRabbitMQ, 5000);
+            connection.on('error', (err) => {
+                logger.error('[RabbitMQ] Connection error:', err.message);
+            });
+
+            return channel; // blocks until channel is ready
+        } catch (error) {
+            connection = null;
+            channel = null;
+            logger.error('[RabbitMQ] Connection failed:', error.message);
+            logger.warn('[RabbitMQ] Retrying in 5s...');
+            await sleep(RETRY_DELAY_MS);
+        }
     }
+
+    return channel;
 };
 
 export const getChannel = () => channel;
