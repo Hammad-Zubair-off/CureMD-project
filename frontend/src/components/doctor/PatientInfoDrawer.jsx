@@ -354,7 +354,7 @@ export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected
                 </SectionCard>
               )}
 
-              {/* ── Reject button — only for confirmed appointments ── */}
+              {/* Reject button — only for confirmed appointments */}
               {canReject && (
                 <div className="pt-2">
                   <button

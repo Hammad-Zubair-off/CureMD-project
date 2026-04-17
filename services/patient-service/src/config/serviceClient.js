@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 
-// ─── Circuit State ────────────────────────────────────────────────────────────
+// Circuit State
 const circuitState = new Map();
 
 const getCircuit = (serviceName) => {

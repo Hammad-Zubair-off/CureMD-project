@@ -18,7 +18,7 @@ function StatusBanner({ isApproved }) {
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
                 <p className="text-sm font-bold text-emerald-900">Account Approved & Active</p>
-                <p className="text-xs text-emerald-700 mt-0.5">Your profile is live and visible to patients across HealthConnect.</p>
+                <p className="text-xs text-emerald-700 mt-0.5">Your profile is live and visible to patients across MediCare.</p>
             </div>
             <span className="ml-auto px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full border border-emerald-200">LIVE</span>
         </div>

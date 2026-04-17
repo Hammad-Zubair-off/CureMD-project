@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { protect, authorize, requireApproved } from '../middleware/auth.js';
 
-// ── Controllers ───────────────────────────────────────────────────────────────
+// Controllers
 import {
     createProfile,
     getMyProfile,
@@ -22,7 +22,7 @@ import {
     updateRating,
 } from '../controllers/adminController.js';
 
-// ── Validators ────────────────────────────────────────────────────────────────
+// Validators
 import {
     createProfileValidator,
     updateProfileValidator,

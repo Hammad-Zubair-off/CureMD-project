@@ -1,6 +1,6 @@
 import { Doctor } from '../models/Doctor.js';
 
-// ── POST /api/doctors/profile ─────────────────────────────────────────────────
+// POST /api/doctors/profile
 // Doctor creates their own profile (one per userId)
 export const createProfile = async (req, res, next) => {
     try {
@@ -26,7 +26,7 @@ export const createProfile = async (req, res, next) => {
     }
 };
 
-// ── GET /api/doctors/profile/me ───────────────────────────────────────────────
+// GET /api/doctors/profile/me
 // Logged-in doctor views their own full profile
 export const getMyProfile = async (req, res, next) => {
     try {
@@ -40,7 +40,7 @@ export const getMyProfile = async (req, res, next) => {
     }
 };
 
-// ── PUT /api/doctors/profile ──────────────────────────────────────────────────
+// PUT /api/doctors/profile
 // Doctor updates their own profile
 export const updateProfile = async (req, res, next) => {
     try {
@@ -63,7 +63,7 @@ export const updateProfile = async (req, res, next) => {
     }
 };
 
-// ── GET /api/doctors/:id ──────────────────────────────────────────────────────
+// GET /api/doctors/:id
 // Public: get a single doctor's full profile (used in doctor detail page)
 export const getDoctorById = async (req, res, next) => {
     try {
@@ -77,7 +77,7 @@ export const getDoctorById = async (req, res, next) => {
     }
 };
 
-// ── GET /api/doctors ──────────────────────────────────────────────────────────
+// GET /api/doctors
 // Public: search + filter doctors (used by patient search page & appointment service)
 export const searchDoctors = async (req, res, next) => {
     try {
@@ -145,7 +145,7 @@ export const searchDoctors = async (req, res, next) => {
     }
 };
 
-// ── GET /api/doctors/specializations ─────────────────────────────────────────
+// GET /api/doctors/specializations
 // Public: distinct specialization list for the search dropdown
 export const getSpecializations = async (req, res, next) => {
     try {

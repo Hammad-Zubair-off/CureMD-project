@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Activity } from 'lucide-react';
+import { LogOut, Activity, Stethoscope } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -17,8 +17,8 @@ const Dashboard = () => {
       {/* Navbar */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-2 text-blue-600">
-          <Activity className="w-6 h-6" />
-          <span className="text-lg font-bold text-slate-900 tracking-tight">HealthConnect</span>
+          <Stethoscope className="w-6 h-6" />
+          <span className="text-lg font-bold text-slate-900 tracking-tight">MediCare</span>
         </div>
 
         <div className="flex items-center space-x-4">
