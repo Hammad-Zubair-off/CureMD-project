@@ -98,7 +98,17 @@ const StepIndicator = ({ currentStep }) => (
 
 // ─── Step 1 — Appointment Details ─────────────────────────────────────────────
 
-const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading, error }) => {
+const Step1 = ({
+    doctor,
+    formData,
+    setFormData,
+    preSelectedSlot,
+    onNext,
+    loading,
+    error,
+    takenSlots = [],
+    slotsLoading = false,
+}) => {
     const next7Days = getNext7Days();
     const [datePageStart, setDatePageStart] = useState(0);
     const [editingSlot, setEditingSlot] = useState(!preSelectedSlot);
@@ -111,6 +121,7 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
     };
 
     const handleSlotSelect = (slot) => {
+        if (takenSlots.includes(slot)) return;
         setFormData((f) => ({ ...f, timeSlot: slot }));
         setEditingSlot(false);
     };
@@ -219,25 +230,37 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
                     <div>
                         {!formData.selectedDate ? (
                             <p className="text-sm text-slate-400 italic">Please select a date first</p>
-                        ) : (() => {
+                                                ) : (() => {
                             const availableSlots = getSlotsForDate(doctor, formData.selectedDate);
+
+                            if (slotsLoading) {
+                                return <p className="text-sm text-slate-400 italic">Loading slot availability...</p>;
+                            }
+
                             return availableSlots.length === 0 ? (
                                 <p className="text-sm text-slate-400 italic">No slots available for this day</p>
                             ) : (
                                 <div className="grid grid-cols-2 gap-2">
-                                    {availableSlots.map((slot) => (
-                                        <button
-                                            key={slot}
-                                            onClick={() => handleSlotSelect(slot)}
-                                            className={`py-2.5 px-3 rounded-xl text-xs font-medium border transition-all
-                                                ${formData.timeSlot === slot
-                                                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                                                    : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50"
-                                                }`}
-                                        >
-                                            {slot}
-                                        </button>
-                                    ))}
+                                    {availableSlots.map((slot) => {
+                                        const isTaken = takenSlots.includes(slot);
+
+                                        return (
+                                            <button
+                                                key={slot}
+                                                onClick={() => handleSlotSelect(slot)}
+                                                disabled={isTaken}
+                                                className={`py-2.5 px-3 rounded-xl text-xs font-medium border transition-all
+                                                    ${isTaken
+                                                        ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                                        : formData.timeSlot === slot
+                                                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                                                            : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+                                                    }`}
+                                            >
+                                                {slot}{isTaken ? " (Booked)" : ""}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             );
                         })()}
@@ -565,9 +588,54 @@ export default function BookingDrawer({
         sharingMode: 'none',
     });
 
+    const [takenSlots, setTakenSlots] = useState([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
+
     useEffect(() => {
         setStep(initialStep);
     }, [initialStep]);
+
+        useEffect(() => {
+        if (!doctor?.userId || !formData.selectedDate) {
+            setTakenSlots([]);
+            return;
+        }
+
+        let cancelled = false;
+
+        const fetchTakenSlots = async () => {
+            try {
+                setSlotsLoading(true);
+                const data = await appointmentService.getTakenSlots(
+                    doctor.userId,
+                    formatDateForAPI(formData.selectedDate)
+                );
+                if (!cancelled) {
+                    setTakenSlots(data.takenSlots || []);
+                }
+            } catch {
+                if (!cancelled) {
+                    setTakenSlots([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setSlotsLoading(false);
+                }
+            }
+        };
+
+        fetchTakenSlots();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [doctor?.userId, formData.selectedDate]);
+
+        useEffect(() => {
+        if (formData.timeSlot && takenSlots.includes(formData.timeSlot)) {
+            setFormData((f) => ({ ...f, timeSlot: '' }));
+        }
+    }, [takenSlots, formData.timeSlot]);
 
     useEffect(() => {
         setAppointmentId(existingAppointmentId);
@@ -655,6 +723,8 @@ export default function BookingDrawer({
                             onNext={handleNext}
                             loading={loading}
                             error={error}
+                            takenSlots={takenSlots}
+                            slotsLoading={slotsLoading}
                         />
                     ) : (
                         <Step2
