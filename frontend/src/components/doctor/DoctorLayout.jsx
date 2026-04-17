@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-    Activity, LogOut, LayoutDashboard, UserCircle,
+    Activity, Stethoscope, LogOut, LayoutDashboard, UserCircle,
     CalendarDays, Menu, X, ChevronRight,Video, CalendarCheck
 } from 'lucide-react';
 
@@ -30,10 +30,10 @@ export default function DoctorLayout() {
             {/* Logo */}
             <div className="flex items-center space-x-2 px-6 py-5 border-b border-slate-100">
                 <div className="bg-blue-600 p-1.5 rounded-lg">
-                    <Activity className="w-5 h-5 text-white" />
+                    <Stethoscope className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                    <span className="text-lg font-bold text-slate-900 tracking-tight">HealthConnect</span>
+                    <span className="text-lg font-bold text-slate-900 tracking-tight">MediCare</span>
                     <p className="text-[10px] text-blue-600 font-semibold uppercase tracking-widest leading-tight">Doctor Portal</p>
                 </div>
             </div>
@@ -128,9 +128,9 @@ export default function DoctorLayout() {
                     </button>
                     <div className="flex items-center space-x-2">
                         <div className="bg-blue-600 p-1 rounded-md">
-                            <Activity className="w-4 h-4 text-white" />
+                            <Stethoscope className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-base font-bold text-slate-900 tracking-tight">HealthConnect</span>
+                        <span className="text-base font-bold text-slate-900 tracking-tight">MediCare</span>
                     </div>
                     <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
                         {user?.firstName?.[0]}{user?.lastName?.[0]}

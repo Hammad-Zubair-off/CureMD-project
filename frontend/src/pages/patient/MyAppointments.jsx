@@ -885,7 +885,10 @@ export default function MyAppointments() {
                                 <div className="z-10 flex flex-col sm:items-end gap-3 mt-2 sm:mt-0">
                                     {nextAppointment.status === 'confirmed' ? (
                                         <>
-                                            <button className="bg-white text-blue-600 px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:bg-slate-50 active:scale-95 transition-all w-fit">
+                                            <button
+                                                onClick={() => navigate('/patient/telemedicine')}
+                                                className="bg-white text-blue-600 px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:bg-slate-50 active:scale-95 transition-all w-fit"
+                                            >
                                                 Join Session
                                             </button>
                                             <span className="text-[10px] uppercase tracking-widest text-blue-100 opacity-90 text-right">

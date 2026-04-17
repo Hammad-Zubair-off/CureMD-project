@@ -29,7 +29,7 @@ const PasswordInput = ({ id, label, value, onChange, placeholder }) => {
     const [show, setShow] = useState(false);
     return (
         <div>
-            <label htmlFor={id} className="block text-xs font-semibold text-slate-600 mb-1.5">
+            <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1.5">
                 {label}
             </label>
             <div className="relative">
@@ -39,7 +39,7 @@ const PasswordInput = ({ id, label, value, onChange, placeholder }) => {
                     value={value}
                     onChange={onChange}
                     placeholder={placeholder}
-                    className="w-full pl-4 pr-10 py-2.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                 />
                 <button
                     type="button"
@@ -146,43 +146,45 @@ export default function PatientSettings() {
             <Toast toast={toast} />
 
             {/* Page Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Settings</h1>
-                <p className="text-sm text-slate-500 mt-1">Manage your account security and preferences.</p>
-            </div>
+            <div className="mb-8 space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Settings</h1>
+                    <p className="text-slate-500 mt-2">Manage your account security and preferences.</p>
+                </div>
 
-            {/* Tab Bar */}
-            <div className="flex gap-6 border-b border-slate-200 mb-8">
-                {tabs.map(({ key, label, icon: Icon }) => (
-                    <button
-                        key={key}
-                        onClick={() => setActiveTab(key)}
-                        className={`flex items-center gap-2 pb-4 text-sm font-medium transition-all border-b-2 -mb-px
-                            ${activeTab === key
-                                ? 'text-blue-600 border-blue-600'
-                                : 'text-slate-500 border-transparent hover:text-slate-800'
-                            }`}
-                    >
-                        <Icon className="w-4 h-4" />
-                        {label}
-                    </button>
-                ))}
+                {/* Segmented Control Tab Bar */}
+                <div className="inline-flex p-1 bg-slate-100 rounded-xl">
+                    {tabs.map(({ key, label, icon: Icon }) => (
+                        <button
+                            key={key}
+                            onClick={() => setActiveTab(key)}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all
+                                ${activeTab === key
+                                    ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200/50'
+                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                }`}
+                        >
+                            <Icon className="w-4 h-4" />
+                            {label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* ── Security Tab ── */}
             {activeTab === 'security' && (
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 rounded-lg">
-                            <Lock className="w-4 h-4 text-blue-600" />
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-4">
+                        <div className="p-3 bg-blue-50 rounded-xl">
+                            <Lock className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                            <h2 className="font-semibold text-slate-900 text-sm">Change Password</h2>
-                            <p className="text-xs text-slate-400 mt-0.5">Use a strong password with uppercase, numbers, and symbols.</p>
+                            <h2 className="font-semibold text-slate-900 text-base">Change Password</h2>
+                            <p className="text-sm text-slate-500 mt-0.5">Use a strong password with uppercase, numbers, and symbols.</p>
                         </div>
                     </div>
 
-                    <form onSubmit={handlePasswordChange} className="p-6 space-y-5">
+                    <form onSubmit={handlePasswordChange} className="p-6 space-y-6">
                         <PasswordInput
                             id="current-password"
                             label="Current Password"
@@ -242,11 +244,11 @@ export default function PatientSettings() {
                             <button
                                 type="submit"
                                 disabled={pwLoading || !pwForm.current || !pwForm.next || !pwForm.confirm}
-                                className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-600/20"
+                                className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-600/20"
                             >
                                 {pwLoading
-                                    ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Updating...</span></>
-                                    : <><KeyRound className="w-4 h-4" /><span>Update Password</span></>
+                                    ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Updating...</span></>
+                                    : <><KeyRound className="w-5 h-5" /><span>Update Password</span></>
                                 }
                             </button>
                         </div>
@@ -256,42 +258,50 @@ export default function PatientSettings() {
 
             {/* ── Account Tab ── */}
             {activeTab === 'account' && (
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {/* Account Info Card */}
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                        <h2 className="font-semibold text-slate-900 text-sm mb-4">Account Information</h2>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                                <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Full Name</span>
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <User className="w-5 h-5 text-slate-600" />
+                            </div>
+                            <div>
+                                <h2 className="font-semibold text-slate-900 text-base">Account Information</h2>
+                                <p className="text-sm text-slate-500 mt-0.5">Your personal details and role.</p>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <div className="flex items-center justify-between py-3 border-b border-slate-100">
+                                <span className="text-sm text-slate-500 font-medium">Full Name</span>
                                 <span className="text-sm font-semibold text-slate-800">{user?.firstName} {user?.lastName}</span>
                             </div>
-                            <div className="flex items-center justify-between py-2 border-b border-slate-50">
-                                <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Email</span>
+                            <div className="flex items-center justify-between py-3 border-b border-slate-100">
+                                <span className="text-sm text-slate-500 font-medium">Email Address</span>
                                 <span className="text-sm font-semibold text-slate-800">{user?.email}</span>
                             </div>
-                            <div className="flex items-center justify-between py-2">
-                                <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Role</span>
-                                <span className="text-sm font-semibold text-slate-800 capitalize">{user?.role}</span>
+                            <div className="flex items-center justify-between py-3">
+                                <span className="text-sm text-slate-500 font-medium">Role</span>
+                                <span className="text-sm font-semibold text-slate-800 capitalize bg-slate-100 px-3 py-1 rounded-full">{user?.role}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Danger Zone */}
-                    <div className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
-                        <div className="px-6 py-5 border-b border-red-100 flex items-center gap-3 bg-red-50/60">
-                            <div className="p-2 bg-red-100 rounded-lg">
-                                <ShieldAlert className="w-4 h-4 text-red-600" />
+                    <div className="bg-white rounded-2xl border border-red-200 shadow-sm overflow-hidden">
+                        <div className="px-6 py-5 border-b border-red-100 flex items-center gap-4 bg-red-50/30">
+                            <div className="p-3 bg-red-100 rounded-xl">
+                                <ShieldAlert className="w-5 h-5 text-red-600" />
                             </div>
                             <div>
-                                <h2 className="font-semibold text-red-700 text-sm">Danger Zone</h2>
-                                <p className="text-xs text-red-400 mt-0.5">These actions are irreversible. Proceed with caution.</p>
+                                <h2 className="font-semibold text-red-700 text-base">Danger Zone</h2>
+                                <p className="text-sm text-red-500/80 mt-0.5">These actions are irreversible. Proceed with caution.</p>
                             </div>
                         </div>
 
-                        <div className="p-6 space-y-5">
-                            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-3">
+                        <div className="p-6 space-y-6">
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
                                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                <p className="text-xs text-amber-800 leading-relaxed">
+                                <p className="text-sm text-amber-800 leading-relaxed">
                                     Deactivating your account will immediately log you out. You will not be able to log back in.
                                     Contact support if you wish to reactivate.
                                 </p>
@@ -306,21 +316,21 @@ export default function PatientSettings() {
                             />
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                                    Type <span className="font-mono text-red-600">{CONFIRM_TEXT}</span> to confirm
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                    Type <span className="font-mono text-red-600 font-bold">{CONFIRM_TEXT}</span> to confirm
                                 </label>
                                 <input
                                     type="text"
                                     value={deactivateConfirm}
                                     onChange={e => setDeactivateConfirm(e.target.value)}
                                     placeholder={CONFIRM_TEXT}
-                                    className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition-all font-mono"
+                                    className="w-full pl-4 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10 transition-all font-mono"
                                 />
                             </div>
 
                             {deactivateError && (
-                                <p className="text-xs text-red-700 font-medium flex items-center gap-1.5">
-                                    <XCircle className="w-3.5 h-3.5 shrink-0" />
+                                <p className="text-sm text-red-700 font-medium flex items-center gap-1.5">
+                                    <XCircle className="w-4 h-4 shrink-0" />
                                     {deactivateError}
                                 </p>
                             )}
@@ -332,11 +342,11 @@ export default function PatientSettings() {
                                     !deactivatePassword ||
                                     deactivateConfirm !== CONFIRM_TEXT
                                 }
-                                className="w-full py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm shadow-red-600/20"
                             >
                                 {deactivateLoading
-                                    ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Deactivating...</span></>
-                                    : <><ShieldAlert className="w-4 h-4" /><span>Deactivate My Account</span></>
+                                    ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Deactivating...</span></>
+                                    : <><ShieldAlert className="w-5 h-5" /><span>Deactivate My Account</span></>
                                 }
                             </button>
                         </div>

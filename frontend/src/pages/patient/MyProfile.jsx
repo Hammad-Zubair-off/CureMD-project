@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import patientService from '../../services/patientService';
+import authService from '../../services/authService';
 import PatientProfileUpdate from '../../components/patient/PatientProfileUpdate';
 import Toast from '../../components/common/Toast';
 import {
@@ -20,6 +21,7 @@ import {
     HeartPulse,
     MapPin,
     Phone,
+    Calendar,
     X
 } from 'lucide-react';
 
@@ -48,19 +50,36 @@ export default function MyProfile() {
     const [profileData, setProfileData] = useState(null);
 
     useEffect(() => {
-        const fetchProfile = async () => {
+        const fetchAllData = async () => {
             try {
-                const data = await patientService.getMyProfile();
-                const p = data.profile || data;
-                setProfileData({ ...p, email: user?.email || p.email });
+                // Fetch both clinical profile and user account details
+                const [profileRes, userRes] = await Promise.all([
+                    patientService.getMyProfile(),
+                    authService.getMe()
+                ]);
+
+                const p = profileRes.profile || profileRes;
+                const u = userRes.user || userRes;
+
+                setProfileData({ 
+                    ...p, 
+                    email: u.email || p.email,
+                    fullName: u.fullName || u.displayName || u.name || p.fullName
+                });
+                
+                // Sync auth context if needed
+                const freshName = u.fullName || u.displayName || u.name;
+                if (freshName && freshName !== user?.name) {
+                    updateUser({ name: freshName });
+                }
             } catch (err) {
                 setMessage({ type: 'error', text: 'Failed to load profile data.' });
             } finally {
                 setLoading(false);
             }
         };
-        fetchProfile();
-    }, [user]);
+        fetchAllData();
+    }, [user?.id]);
 
     const handleSave = async (formData) => {
         setSaving(true);
@@ -184,7 +203,7 @@ export default function MyProfile() {
                     {/* Basic Details */}
                     <div className="flex-1 text-center md:text-left z-10">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-                            <h2 className="text-2xl font-bold text-slate-900">{user?.name || 'Patient Profile'}</h2>
+                            <h2 className="text-2xl font-bold text-slate-900">{profileData?.fullName || user?.name || 'Patient Profile'}</h2>
                         </div>
 
                         <p className="text-slate-500 font-medium mb-6">{profileData?.email}</p>
@@ -202,6 +221,12 @@ export default function MyProfile() {
                                 <span className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-medium text-slate-600 flex items-center gap-1.5">
                                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
                                     {profileData.address}
+                                </span>
+                            )}
+                            {profileData?.dateOfBirth && (
+                                <span className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-medium text-slate-600 flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                    Born: {new Date(profileData.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </span>
                             )}
                             {profileData?.age && (

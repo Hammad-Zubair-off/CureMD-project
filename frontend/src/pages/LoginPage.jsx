@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Activity, AlertCircle, ArrowLeft, Stethoscope } from 'lucide-react';
+import { Mail, Lock, Activity, AlertCircle, ArrowLeft, Stethoscope, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, error: authError } = useAuth();
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -117,14 +118,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex bg-white font-sans text-slate-900">
       {/* Left Panel - Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-blue-600 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-blue-600 p-12 flex-col relative overflow-hidden">
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-blue-500 rounded-full blur-3xl opacity-50"></div>
 
+        {/* Top Logo */}
         <div className="relative z-10">
-          <Link to="/" className="flex items-center space-x-2 text-white mb-16">
-            <Activity className="w-8 h-8" />
-            <span className="text-2xl font-bold tracking-tight">HealthConnect</span>
+          <Link to="/" className="flex items-center space-x-2 text-white">
+            <Stethoscope className="w-8 h-8" />
+            <span className="text-2xl font-bold tracking-tight">MediCare</span>
           </Link>
+        </div>
+
+        {/* Center Content */}
+        <div className="relative z-10 flex-1 flex flex-col justify-center">
           <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
             Welcome back to <br />smarter healthcare.
           </h1>
@@ -133,8 +139,9 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Bottom copyright */}
         <div className="relative z-10 text-blue-200 text-sm">
-          © 2026 HealthConnect AI Platform.
+          © 2026 MediCare AI Platform.
         </div>
       </div>
 
@@ -151,8 +158,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="flex lg:hidden items-center space-x-2 text-blue-600 mb-10">
-            <Activity className="w-8 h-8" />
-            <span className="text-2xl font-bold text-slate-900 tracking-tight">HealthConnect</span>
+            <Stethoscope className="w-8 h-8" />
+            <span className="text-2xl font-bold text-slate-900 tracking-tight">MediCare</span>
           </div>
 
           <h2 className="text-3xl font-bold tracking-tight mb-2">Sign in</h2>
@@ -191,14 +198,21 @@ export default function LoginPage() {
                   <Lock className="h-5 w-5 text-slate-400" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                  className="w-full pl-10 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 

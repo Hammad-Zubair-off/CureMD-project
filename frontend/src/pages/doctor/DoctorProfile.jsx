@@ -214,7 +214,7 @@ export default function DoctorProfile() {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">{isNew ? 'Create Your Profile' : 'My Profile'}</h1>
                     <p className="text-slate-500 text-sm mt-0.5">
-                        {isNew ? 'Complete your profile to get approved and go live on HealthConnect.' : 'Keep your information accurate and up to date for patients.'}
+                        {isNew ? 'Complete your profile to get approved and go live on MediCare.' : 'Keep your information accurate and up to date for patients.'}
                     </p>
                 </div>
                 {!isNew && (
