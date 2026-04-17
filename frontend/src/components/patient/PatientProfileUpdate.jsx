@@ -11,8 +11,10 @@ import {
     Ruler,
     Weight,
     Heart,
-    Activity,
-    ShieldAlert
+    HeartPulse,
+    Siren,
+    ShieldAlert,
+    Pill
 } from 'lucide-react';
 import {
     InputWrapper,
@@ -42,6 +44,8 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
         }
     });
 
+    const [errors, setErrors] = useState({});
+
     // Use a ref to track if initial data has been applied to avoid re-renders resetting state
     const dataApplied = useRef(false);
 
@@ -70,7 +74,12 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
     }, [initialData]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        let { name, value } = e.target;
+
+        if (name === 'contactNumber' || name === 'emergency.phone') {
+            value = value.replace(/[^0-9]/g, '').slice(0, 10);
+        }
+
         if (name.startsWith('emergency.')) {
             const field = name.split('.')[1];
             setFormData(prev => ({
@@ -96,9 +105,50 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
         }));
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (formData.dateOfBirth) {
+            const today = new Date();
+            const dob = new Date(formData.dateOfBirth);
+            if (dob > today) {
+                newErrors.dateOfBirth = "Date of birth cannot be in the future";
+            }
+        }
+
+        const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\./0-9]*$/;
+
+        if (formData.contactNumber) {
+            const numericPhone = formData.contactNumber.replace(/[^0-9]/g, '');
+            if (numericPhone.length < 7 || numericPhone.length > 15 || !phoneRegex.test(formData.contactNumber)) {
+                newErrors.contactNumber = "Please enter a valid phone number";
+            }
+        }
+
+        if (formData.emergencyContact?.phone) {
+            const numericPhone = formData.emergencyContact.phone.replace(/[^0-9]/g, '');
+            if (numericPhone.length < 7 || numericPhone.length > 15 || !phoneRegex.test(formData.emergencyContact.phone)) {
+                newErrors.emergencyPhone = "Please enter a valid phone number";
+            }
+        }
+
+        if (formData.height && (Number(formData.height) <= 0 || Number(formData.height) > 300)) {
+            newErrors.height = "Valid height is between 1-300 cm";
+        }
+
+        if (formData.weight && (Number(formData.weight) <= 0 || Number(formData.weight) > 500)) {
+            newErrors.weight = "Valid weight is between 1-500 kg";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSave(formData);
+        if (validateForm()) {
+            onSave(formData);
+        }
     };
 
     return (
@@ -116,12 +166,14 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
 
                 <div className="p-10 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <InputWrapper label="Date of Birth" icon={Calendar} required>
+                        <InputWrapper label="Date of Birth" icon={Calendar} required error={errors.dateOfBirth}>
                             <input
                                 type="date"
                                 name="dateOfBirth"
                                 value={formData.dateOfBirth}
                                 onChange={handleChange}
+                                min={new Date(new Date().setFullYear(new Date().getFullYear() - 90)).toISOString().split("T")[0]}
+                                max={new Date().toISOString().split("T")[0]}
                                 required
                                 className={commonInputClass}
                             />
@@ -142,14 +194,15 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                             </select>
                         </InputWrapper>
 
-                        <InputWrapper label="Contact Number" icon={Phone} required>
+                        <InputWrapper label="Contact Number" icon={Phone} required error={errors.contactNumber}>
                             <input
                                 type="tel"
                                 name="contactNumber"
                                 value={formData.contactNumber}
                                 onChange={handleChange}
+                                maxLength="10"
                                 required
-                                placeholder="+94 77 123 4567"
+                                placeholder="077 123 4567"
                                 className={commonInputClass}
                             />
                         </InputWrapper>
@@ -184,12 +237,12 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                     { label: "Weight", icon: Weight, name: "weight", unit: "kg", color: "blue", placeholder: "78.5" },
                     { label: "Blood", icon: Droplets, name: "bloodType", unit: "", color: "red", isSelect: true }
                 ].map((stat, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-slate-100 p-8 shadow-sm hover:shadow-xl transition-all duration-300 group">
+                    <div key={i} className={`bg-white rounded-xl border ${errors[stat.name] ? 'border-red-300' : 'border-slate-100'} p-8 shadow-sm hover:shadow-xl transition-all duration-300 group`}>
                         <div className="flex flex-col items-center text-center space-y-4">
                             <div className={`p-4 rounded-xl bg-${stat.color}-50 text-${stat.color}-600 group-hover:scale-110 transition-transform`}>
                                 <stat.icon className="w-6 h-6" />
                             </div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</label>
+                            <label className={`text-[10px] font-black uppercase tracking-widest ${errors[stat.name] ? 'text-red-500' : 'text-slate-400'}`}>{stat.label}</label>
 
                             {stat.isSelect ? (
                                 <BloodTypePicker
@@ -204,11 +257,12 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                                         value={formData[stat.name]}
                                         onChange={handleChange}
                                         placeholder={stat.placeholder}
-                                        className="text-3xl font-black text-slate-800 bg-transparent border-none focus:ring-0 p-0 text-center w-16 placeholder:text-slate-200"
+                                        className={`text-3xl font-black text-slate-800 bg-transparent border-none focus:ring-0 p-0 text-center w-16 placeholder:text-slate-200 ${errors[stat.name] ? 'text-red-500' : ''}`}
                                     />
                                     <span className="text-xs font-black text-blue-600 mb-2 uppercase">{stat.unit}</span>
                                 </div>
                             )}
+                            {errors[stat.name] && <p className="text-xs text-red-500 font-medium mt-1">{errors[stat.name]}</p>}
                         </div>
                     </div>
                 ))}
@@ -220,7 +274,7 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-10">
                         <TagInput
                             label="Chronic Conditions"
-                            icon={Activity}
+                            icon={HeartPulse}
                             tags={formData.chronicConditions}
                             onAdd={(tag) => handleTagAdd('chronicConditions', tag)}
                             onRemove={(tag) => handleTagRemove('chronicConditions', tag)}
@@ -230,7 +284,7 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-10">
                         <TagInput
                             label="Active Medications"
-                            icon={Heart}
+                            icon={Pill}
                             tags={formData.currentMedications}
                             onAdd={(tag) => handleTagAdd('currentMedications', tag)}
                             onRemove={(tag) => handleTagRemove('currentMedications', tag)}
@@ -257,7 +311,7 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                 <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <div className="bg-orange-500 p-2.5 rounded-xl shadow-lg shadow-orange-500/20">
-                            <User className="w-5 h-5 text-white" />
+                            <Siren className="w-5 h-5 text-white" />
                         </div>
                         <h2 className="text-lg font-black text-slate-900 tracking-tight">Emergency Contact</h2>
                     </div>
@@ -283,11 +337,13 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                             className={commonInputClass}
                         />
                     </InputWrapper>
-                    <InputWrapper label="Emergency Phone" icon={Phone} required>
+                    <InputWrapper label="Emergency Phone" icon={Phone} required error={errors.emergencyPhone}>
                         <input
+                            type="tel"
                             name="emergency.phone"
                             value={formData.emergencyContact.phone}
                             onChange={handleChange}
+                            maxLength="10"
                             required
                             placeholder="Contact Number"
                             className={commonInputClass}

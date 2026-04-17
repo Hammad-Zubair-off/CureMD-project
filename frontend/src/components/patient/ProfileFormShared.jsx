@@ -6,19 +6,21 @@ import {
 } from 'lucide-react';
 import Toast from '../common/Toast';
 
-export const InputWrapper = ({ label, icon: Icon, children, required }) => (
+export const InputWrapper = ({ label, icon: Icon, children, required, error }) => (
     <div className="space-y-1.5">
         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
             {label} {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative group">
             {Icon && (
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${error ? 'text-red-400' : 'text-slate-400 group-focus-within:text-blue-500'}`}>
                     <Icon className="w-4 h-4" />
                 </div>
             )}
+            {/* Clone children to pass error styling if needed dynamically, but just using error below for now */}
             {children}
         </div>
+        {error && <p className="text-xs text-red-500 font-medium ml-1 mt-1">{error}</p>}
     </div>
 );
 
