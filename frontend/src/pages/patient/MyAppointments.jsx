@@ -378,12 +378,130 @@ const CancelModal = ({ appointment, onConfirm, onClose, loading }) => (
     </div>
 );
 
+// Prescription Panel
+const PrescriptionPanel = ({ prescription }) => (
+    <div className="mt-5 pt-4 border-t border-slate-200">
+        <div className="flex items-center gap-2 mb-3">
+            <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                <svg className="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Doctor's Prescription</p>
+            <span className={`ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border
+                ${prescription.status === 'issued'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                {prescription.status}
+            </span>
+        </div>
+
+        {/* Diagnosis + Instructions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            {prescription.diagnosis && (
+                <div className="bg-white border border-slate-200 rounded-lg p-3">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Diagnosis</p>
+                    <p className="text-sm text-slate-700">{prescription.diagnosis}</p>
+                </div>
+            )}
+            {prescription.instructions && (
+                <div className="bg-white border border-slate-200 rounded-lg p-3">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Instructions</p>
+                    <p className="text-sm text-slate-700">{prescription.instructions}</p>
+                </div>
+            )}
+        </div>
+
+        {/* Medications */}
+        {prescription.medications?.length > 0 && (
+            <div className="rounded-lg border border-slate-200 overflow-hidden">
+                <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        Medications ({prescription.medications.length})
+                    </p>
+                </div>
+                <div className="divide-y divide-slate-100">
+                    {prescription.medications.map((med, idx) => (
+                        <div key={idx} className="px-3 py-3 flex flex-wrap items-start gap-x-6 gap-y-1 bg-white">
+                            <div className="min-w-[120px]">
+                                <p className="text-xs font-bold text-slate-900">{med.name}</p>
+                                <p className="text-xs text-slate-500">{med.dosage}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-0.5">
+                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">
+                                    {med.frequency}
+                                </span>
+                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded text-[10px] font-semibold">
+                                    {med.duration}
+                                </span>
+                                {med.notes && (
+                                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[10px]">
+                                        {med.notes}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {prescription.issuedAt && (
+            <p className="text-[10px] text-slate-400 mt-3 text-right">
+                Issued {new Date(prescription.issuedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+        )}
+    </div>
+);
+
 // Horizontal Appointment Card
 const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPayNow, paymentTimeLeftLabel }) => {
     const { status } = appointment;
     const isPaid = status === 'confirmed' || status === 'completed';
     const isPending = status === 'pending';
     const [expanded, setExpanded] = useState(false);
+    const [prescription, setPrescription] = useState(null);
+    const [prescriptionLoading, setPrescriptionLoading] = useState(false);
+    const [prescriptionFetched, setPrescriptionFetched] = useState(false);
+
+    // Fetch prescription lazily on first expand
+    useEffect(() => {
+        if (!expanded || prescriptionFetched) return;
+        if (!appointment.patientId || !appointment._id) {
+            setPrescriptionFetched(true);
+            return;
+        }
+
+        let cancelled = false;
+        setPrescriptionLoading(true);
+
+        doctorService.getPrescriptionsByAppointment(appointment.patientId, appointment._id)
+            .then((data) => {
+                if (cancelled) return;
+                // Normalise: API may return { success, data: [...] }, { prescriptions: [...] } or { prescription: {...} }
+                const list = data?.data ?? data?.prescriptions ?? (data?.prescription ? [data.prescription] : []);
+
+                const currentId = appointment._id?.$oid ?? appointment._id?.toString?.() ?? appointment._id;
+                const match = list.find(
+                    (px) => {
+                        const targetId = px.appointmentId?.$oid ?? px.appointmentId?.toString?.() ?? px.appointmentId;
+                        return targetId === currentId;
+                    }
+                ) || null;
+
+                setPrescription(match);
+            })
+            .catch(() => { if (!cancelled) setPrescription(null); })
+            .finally(() => {
+                if (!cancelled) {
+                    setPrescriptionLoading(false);
+                    setPrescriptionFetched(true);
+                }
+            });
+
+        return () => { cancelled = true; };
+    }, [expanded, prescriptionFetched, appointment._id, appointment.patientId]);
 
     const initials = appointment.doctorFullName?.split(' ')
         .map(n => n[0])
@@ -576,6 +694,23 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPay
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Prescription Section */}
+                    {prescriptionLoading && (
+                        <div className="mt-5 pt-4 border-t border-slate-200 flex items-center gap-2 text-slate-400 text-xs">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Checking for prescription...</span>
+                        </div>
+                    )}
+                    {!prescriptionLoading && prescriptionFetched && prescription && (
+                        <PrescriptionPanel prescription={prescription} />
+                    )}
+                    {!prescriptionLoading && prescriptionFetched && !prescription && (
+                        <div className="mt-5 pt-4 border-t border-slate-200">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Doctor's Prescription</p>
+                            <p className="text-xs text-slate-400 italic">No prescription issued for this appointment.</p>
                         </div>
                     )}
                 </div>

@@ -85,7 +85,14 @@ export const getPrescriptionByAppointment = async (req, res) => {
 export const getPrescriptionsByPatient = async (req, res) => {
     try {
         const { patientId } = req.params;
-        const prescriptions = await Prescription.find({ patientId, status: 'issued' }).sort({ issuedAt: -1 });
+        const { appointmentId } = req.query;
+
+        const query = { patientId, status: 'issued' };
+        if (appointmentId) {
+            query.appointmentId = appointmentId;
+        }
+
+        const prescriptions = await Prescription.find(query).sort({ issuedAt: -1 });
         return res.status(200).json({ success: true, data: prescriptions });
     } catch (err) {
         logger.error('getPrescriptionsByPatient error:', err);
