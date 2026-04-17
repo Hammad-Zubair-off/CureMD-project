@@ -1048,6 +1048,51 @@ export const getDoctorRejectionRequests = async (req, res, next) => {
     }
 };
 
+/**
+ * @desc    Get taken slots for a doctor on a specific date
+ * @route   GET /api/appointments/availability?doctorId=...&date=...
+ * @access  Private — patient only
+ */
+export const getTakenSlotsForDoctorDate = async (req, res, next) => {
+    try {
+        const { doctorId, date } = req.query;
+
+        if (!doctorId || !date) {
+            return res.status(400).json({
+                success: false,
+                error: 'doctorId and date query params are required.',
+            });
+        }
+
+        const targetDate = toUTC(date);
+        if (Number.isNaN(targetDate.getTime())) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid date value.',
+            });
+        }
+
+        const appointments = await Appointment.find({
+            doctorId,
+            appointmentDate: targetDate,
+            status: { $in: ['pending', 'confirmed'] },
+        })
+            .select('timeSlot -_id')
+            .lean();
+
+        const takenSlots = [...new Set(appointments.map((a) => a.timeSlot).filter(Boolean))];
+
+        return res.status(200).json({
+            success: true,
+            doctorId,
+            date: targetDate.toISOString(),
+            takenSlots,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const initAppointmentEventConsumers = async () => {
     await subscribeToEvent('payment.refunded', async (event) => {
         if (!event.appointmentId) return;
