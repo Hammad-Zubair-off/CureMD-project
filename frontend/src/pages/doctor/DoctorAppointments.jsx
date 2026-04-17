@@ -9,6 +9,7 @@ import {
     CheckCircle, XCircle, AlertCircle, Loader2,
     Stethoscope, CreditCard, FileText, Filter, Info,
 } from 'lucide-react';
+import Dropdown from '../../components/common/Dropdown';
 
 const StatusBadge = ({ status }) => {
     const config = {
@@ -239,18 +240,18 @@ export default function DoctorAppointments() {
                 {/* Filter bar */}
                 <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-4 flex flex-wrap gap-3 items-center">
                     <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-                    <select
+                    <Dropdown
                         value={statusFilter}
-                        onChange={e => setStatusFilter(e.target.value)}
-                        className="py-2 px-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white text-slate-700"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="expired">Expired</option>
-                    </select>
+                        onChange={setStatusFilter}
+                        options={[
+                            { value: '', label: 'All Statuses' },
+                            { value: 'pending', label: 'Pending' },
+                            { value: 'confirmed', label: 'Confirmed' },
+                            { value: 'completed', label: 'Failed' },
+                            { value: 'cancelled', label: 'Cancelled' },
+                            { value: 'expired', label: 'Expired' }
+                        ]}
+                    />
                     <button
                         onClick={fetchAppointments}
                         className="ml-auto flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
@@ -419,12 +420,11 @@ export default function DoctorAppointments() {
                     appt={drawerAppt}
                     onClose={() => setDrawerAppt(null)}
                     onAppointmentRejected={(rejectedId) => {
-                    // Remove or update the appointment from your local list
-                    setAppointments(prev =>
-                    prev.map(a => a._id === rejectedId ? { ...a, status: 'cancelled' } : a)
-                    );
-                    setSelectedAppt(null);
-                }}
+                        setAppointments(prev =>
+                            prev.map(a => a._id === rejectedId ? { ...a, status: 'cancelled' } : a)
+                        );
+                        setDrawerAppt(null);
+                    }}
                 />
             )}
         </div>

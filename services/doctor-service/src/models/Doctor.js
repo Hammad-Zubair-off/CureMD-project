@@ -22,8 +22,8 @@ const experienceSchema = new mongoose.Schema(
 
 const slotSchema = new mongoose.Schema(
     {
-        startTime: { type: String, required: true },   // "09:00"
-        endTime: { type: String, required: true },     // "09:30"
+        startTime: { type: String, required: true },
+        endTime: { type: String, required: true },
     },
     { _id: false }
 );
@@ -42,10 +42,8 @@ const availabilityDaySchema = new mongoose.Schema(
 
 const doctorSchema = new mongoose.Schema(
     {
-        // Linked to auth-service user ID
         userId: { type: String, required: true, unique: true, index: true },
 
-        // Basic Identity
         title: { type: String, enum: ['Dr.', 'Prof.', 'Assoc. Prof.'], default: 'Dr.' },
         firstName: { type: String, required: true, trim: true },
         lastName: { type: String, required: true, trim: true },
@@ -54,18 +52,25 @@ const doctorSchema = new mongoose.Schema(
         yearsOfExperience: { type: Number, required: true, min: 0 },
         licenseNumber: { type: String, required: true, unique: true, trim: true },
 
-        // Education & Qualifications
+        // ── Telephone numbers (max 5) ──────────────────────────────────────────
+        phoneNumbers: {
+            type: [{ type: String, trim: true }],
+            default: [],
+            validate: {
+                validator: function (arr) { return arr.length <= 5; },
+                message: 'A doctor can have at most 5 phone numbers.',
+            },
+        },
+
         education: [educationSchema],
         certifications: [{ type: String, trim: true }],
 
-        // Professional Details
         currentHospital: { type: String, trim: true },
         experience: [experienceSchema],
         areasOfExpertise: [{ type: String, trim: true }],
         languagesSpoken: [{ type: String, trim: true }],
         bio: { type: String, maxlength: 1000 },
 
-        // Consultation Info
         consultationFee: { type: Number, required: true, min: 0 },
         consultationTypes: {
             videoCall: { type: Boolean, default: true },
@@ -74,10 +79,8 @@ const doctorSchema = new mongoose.Schema(
         },
         emergencyAvailable: { type: Boolean, default: false },
 
-        // Weekly Availability Schedule
         availability: [availabilityDaySchema],
 
-        // System Fields
         isActive: { type: Boolean, default: true },
         rating: { type: Number, default: 0, min: 0, max: 5 },
         totalReviews: { type: Number, default: 0 },
@@ -93,7 +96,6 @@ doctorSchema.virtual('fullName').get(function () {
     return `${this.title} ${this.firstName} ${this.lastName}`;
 });
 
-// Full-text search index
 doctorSchema.index(
     { firstName: 'text', lastName: 'text', specialization: 'text', areasOfExpertise: 'text' },
     { name: 'doctor_search_text' }

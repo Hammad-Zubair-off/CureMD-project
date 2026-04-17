@@ -3,8 +3,9 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
+import { connectDB } from './src/config/db.js';
 import { logger } from './src/utils/logger.js';
-//import appointmentRoutes from './src/routes/appointmentRoutes.js';
+import telemedicineRoutes from './src/routes/telemedicineRoutes.js';
 
 dotenv.config();
 
@@ -25,13 +26,13 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
-        service: 'appointment-service',
+        service: 'telemedicine-service',
         timestamp: new Date().toISOString(),
     });
 });
 
 //  Routes 
-//app.use('/api/appointments', appointmentRoutes);
+app.use('/api/telemedicine', telemedicineRoutes);
 
 //  Error handling 
 app.use(notFound);
@@ -40,6 +41,8 @@ app.use(errorHandler);
 //  Startup 
 const startServer = async () => {
     try {
+        await connectDB();
+        
         const server = app.listen(PORT, () => {
             logger.success(`${[SERVICE_NAME]}-service Running on port ${PORT}`);
         });

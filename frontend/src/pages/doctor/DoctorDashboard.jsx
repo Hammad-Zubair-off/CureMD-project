@@ -121,13 +121,15 @@ export default function DoctorDashboard() {
                     { label: 'Active Days', value: `${scheduledDays.length}/7`, icon: CalendarDays, color: 'indigo' },
                     { label: 'Total Slots', value: totalSlots, icon: Clock, color: 'emerald' },
                 ].map(({ label, value, icon: Icon, color }) => (
-                    <div key={label} className="bg-white rounded-xl border border-slate-200 shadow-xs px-5 py-4 flex items-center space-x-4 transition-all hover:border-blue-200 hover:shadow-md">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                            color === 'amber' ? 'bg-amber-50 text-amber-500' :
-                            color === 'indigo' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'
-                        }`}>
-                            <Icon className="w-5 h-5" />
+                    <div key={label} className="bg-white rounded-xl border border-blue-100 shadow-sm px-4 py-3.5 flex items-center space-x-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color === 'blue' ? 'bg-blue-50' :
+                                color === 'amber' ? 'bg-amber-50' :
+                                    color === 'indigo' ? 'bg-indigo-50' : 'bg-emerald-50'
+                            }`}>
+                            <Icon className={`w-4 h-4 ${color === 'blue' ? 'text-blue-600' :
+                                    color === 'amber' ? 'text-amber-500' :
+                                        color === 'indigo' ? 'text-indigo-600' : 'text-emerald-600'
+                                }`} />
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-slate-900 leading-tight">{value}</p>
@@ -169,6 +171,15 @@ export default function DoctorDashboard() {
                                     <div className="flex items-center space-x-1.5 mt-2">
                                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
                                         <p className="text-sm text-slate-600">{profile.currentHospital}</p>
+                                    </div>
+                                )}
+                                {/* inside the profile summary card, after the currentHospital line */}
+                                {profile.phoneNumbers?.length > 0 && (
+                                    <div className="flex items-center space-x-1 mt-1 flex-wrap gap-y-0.5">
+                                        <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                        <p className="text-xs text-slate-500 font-mono">
+                                            {profile.phoneNumbers.join('  ·  ')}
+                                        </p>
                                     </div>
                                 )}
                             </div>

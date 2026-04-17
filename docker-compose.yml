@@ -195,6 +195,9 @@ services:
       - notification_modules:/app/node_modules
     networks:
       - healthcare-net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
     profiles:
       - full

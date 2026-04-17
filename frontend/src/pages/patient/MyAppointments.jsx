@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Calendar, Clock, Plus, RefreshCw,
-    CheckCircle, XCircle, AlertCircle, Clock3,
+    CheckCircle, XCircle, AlertCircle, Clock3, AlertTriangle,
     ChevronLeft, ChevronRight, X, Loader2,
     Stethoscope, MoreVertical,
     ChevronDown, ChevronUp,
@@ -527,6 +527,67 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPay
     );
 };
 
+const RejectedAppointmentCard = ({ appointment }) => {
+    const initials = appointment.doctorFullName?.split(' ')
+        .map(n => n[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase();
+
+    return (
+        <div className="bg-white border border-red-200 rounded-xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold border-2 border-white shadow-sm shrink-0">
+                        {initials || <Stethoscope className="w-6 h-6" />}
+                    </div>
+                    <div>
+                        <h5 className="font-bold text-slate-900">{appointment.doctorFullName}</h5>
+                        <p className="text-xs text-slate-500">{appointment.specialty}</p>
+                    </div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-red-50 text-red-700 border-red-200">
+                    <AlertTriangle className="w-3 h-3" />
+                    Rejected by Doctor
+                </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2 text-slate-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>{formatDate(appointment.appointmentDate)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-mono">{appointment.timeSlot}</span>
+                </div>
+                <div className="text-slate-600">
+                    <span className="font-semibold">Consultation Fee: </span>
+                    LKR {Number(appointment.consultationFee || 0).toLocaleString('en-LK')}
+                </div>
+                <div className="text-slate-600">
+                    <span className="font-semibold">Payment: </span>
+                    <span className="uppercase">{appointment.paymentStatus || 'N/A'}</span>
+                </div>
+            </div>
+
+            {appointment.reason && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Your Booking Reason</p>
+                    <p className="text-sm text-slate-700">{appointment.reason}</p>
+                </div>
+            )}
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-red-700 mb-1">Doctor Rejection Reason</p>
+                <p className="text-sm text-red-800">
+                    {appointment.rejectionReason || 'No specific reason provided.'}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 // Main Page
 export default function MyAppointments() {
     const navigate = useNavigate();
@@ -602,6 +663,23 @@ export default function MyAppointments() {
         const dateB = new Date(b.appointmentDate || b.createdAt).getTime();
         return dateA - dateB;
     });
+
+    const getRejectedAtMs = (appointment) => {
+        const doctorRejectHistory = (appointment.statusHistory || [])
+            .filter((h) => h.status === 'cancelled' && h.changedBy === 'doctor')
+            .sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt));
+
+        if (doctorRejectHistory.length > 0) {
+            return new Date(doctorRejectHistory[0].changedAt).getTime();
+        }
+
+        return new Date(appointment.updatedAt || appointment.createdAt || 0).getTime();
+    };
+
+    const displayedAppointments =
+        activeTab === 'rejected'
+            ? [...filteredAppointments].sort((a, b) => getRejectedAtMs(b) - getRejectedAtMs(a))
+            : filteredAppointments;
 
     // Cancel
     const handleCancelConfirm = async () => {
@@ -692,6 +770,7 @@ export default function MyAppointments() {
         { key: 'upcoming', label: 'Upcoming' },
         { key: 'past', label: 'Past' },
         { key: 'cancelled', label: 'Cancelled' },
+        { key: 'rejected', label: 'Rejected' },
         { key: 'unpaid', label: 'Unpaid' },
     ];
 
@@ -894,6 +973,7 @@ export default function MyAppointments() {
                 {activeTab === 'upcoming' && 'Upcoming Schedule'}
                 {activeTab === 'past' && 'Past Appointments'}
                 {activeTab === 'cancelled' && 'Cancelled Appointments'}
+                {activeTab === 'rejected' && 'Rejected Appointments'}
                 {activeTab === 'unpaid' && 'Unpaid Appointments'}
             </h4>
 
@@ -927,8 +1007,8 @@ export default function MyAppointments() {
                     )}
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {filteredAppointments.map((appointment) => {
+                <div className={activeTab === 'rejected' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-4'}>
+                    {displayedAppointments.map((appointment) => {
                         const deadline = getFrontendPaymentDeadline(appointment);
                         const remainingMs = getRemainingMs(deadline, nowTs);
                         const canPayNow =
@@ -936,7 +1016,12 @@ export default function MyAppointments() {
                             appointment.paymentStatus === 'unpaid' &&
                             remainingMs > 0;
 
-                        return (
+                        return activeTab === 'rejected' ? (
+                            <RejectedAppointmentCard
+                                key={appointment._id}
+                                appointment={appointment}
+                            />
+                        ) : (
                             <AppointmentCard
                                 key={appointment._id}
                                 appointment={appointment}

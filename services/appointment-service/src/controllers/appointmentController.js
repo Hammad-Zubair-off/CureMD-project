@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import Appointment from '../models/Appointment.js';
 import { logger } from '../utils/logger.js';
-import { publishEvent } from '../utils/eventBus.js';
+import { publishEvent, subscribeToEvent } from '../utils/eventBus.js';
 import {
     validateBookAppointment,
     validateRescheduleAppointment,
@@ -384,16 +384,19 @@ export const rejectAppointment = async (req, res, next) => {
         // notification-service notifies patient
         // payment-service triggers refund
         publishEvent('appointment.rejected_by_doctor', {
-            appointmentId: appointment._id,
+            appointmentId: appointment._id.toString(),
+            patientId: appointment.patientId,
             patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
             patientPhone: appointment.patientPhone,
+            doctorId: appointment.doctorId,
             doctorFullName: appointment.doctorFullName,
             appointmentDate: appointment.appointmentDate,
             timeSlot: appointment.timeSlot,
             consultationFee: appointment.consultationFee,
             paymentId: appointment.paymentId,
             reason: reason || null,
+            rejectedAt: new Date().toISOString(),
         });
 
         res.status(200).json({
@@ -828,6 +831,16 @@ export const getMyAppointments = async (req, res, next) => {
         if (tab === 'cancelled') {
             filter.status = { $in: ['cancelled', 'expired'] };
         }
+        if (tab === 'rejected') {
+            filter.status = 'cancelled';
+            filter.rejectionReason = { $nin: [null, ''] };
+            filter.statusHistory = {
+                $elemMatch: {
+                    status: 'cancelled',
+                    changedBy: 'doctor',
+                },
+            };
+        }
 
         // upcoming: ascending (nearest first); everything else: descending (most recent first)
         const sortOrder = tab === 'upcoming' ? 1 : -1;
@@ -960,4 +973,103 @@ export const getAllAppointments = async (req, res, next) => {
     } catch (err) {
         next(err);
     }
+};
+
+export const getDoctorRejectionRequests = async (req, res, next) => {
+    try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
+
+        const filter = {
+            status: 'cancelled',
+            statusHistory: {
+                $elemMatch: {
+                    status: 'cancelled',
+                    changedBy: 'doctor',
+                },
+            },
+        };
+
+        if (req.query.refundStatus) {
+            filter.paymentStatus = req.query.refundStatus;
+        }
+
+        if (req.query.doctorId) {
+            filter.doctorId = req.query.doctorId;
+        }
+
+        if (req.query.search) {
+            const rx = new RegExp(req.query.search, 'i');
+            filter.$or = [
+                { doctorFullName: rx },
+                { patientFullName: rx },
+                { patientEmail: rx },
+            ];
+        }
+
+        const [appointments, total] = await Promise.all([
+            Appointment.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit),
+            Appointment.countDocuments(filter),
+        ]);
+
+        const rows = appointments.map((a) => {
+            const rejectedEntry = (a.statusHistory || [])
+                .slice()
+                .reverse()
+                .find((h) => h.status === 'cancelled' && h.changedBy === 'doctor');
+
+            return {
+                appointmentId: a._id,
+                doctorId: a.doctorId,
+                doctorFullName: a.doctorFullName,
+                patientId: a.patientId,
+                patientFullName: a.patientFullName,
+                patientEmail: a.patientEmail,
+                appointmentDate: a.appointmentDate,
+                timeSlot: a.timeSlot,
+                consultationFee: a.consultationFee,
+                rejectionReason: a.rejectionReason,
+                rejectedAt: rejectedEntry ? rejectedEntry.changedAt : a.updatedAt,
+                refundStatus: a.paymentStatus,
+                paymentId: a.paymentId,
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            total,
+            page,
+            pages: Math.ceil(total / limit),
+            requests: rows,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const initAppointmentEventConsumers = async () => {
+    await subscribeToEvent('payment.refunded', async (event) => {
+        if (!event.appointmentId) return;
+
+        const appointment = await Appointment.findById(event.appointmentId);
+        if (!appointment) return;
+
+        const deletedSnapshot = {
+            appointmentId: appointment._id.toString(),
+            patientId: appointment.patientId,
+            doctorId: appointment.doctorId,
+            patientFullName: appointment.patientFullName,
+            doctorFullName: appointment.doctorFullName,
+            appointmentDate: appointment.appointmentDate,
+            timeSlot: appointment.timeSlot,
+            rejectionReason: appointment.rejectionReason || null,
+            refundedAt: event.refundedAt || new Date().toISOString(),
+        };
+
+        await Appointment.findByIdAndDelete(appointment._id);
+
+        publishEvent('appointment.deleted_after_refund', deletedSnapshot);
+        logger.info('[AppointmentConsumer] Deleted appointment after refund: ' + deletedSnapshot.appointmentId);
+    });
 };
