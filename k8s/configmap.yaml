@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-config
+  namespace: healthcare
+data:
+  JWT_EXPIRES_IN: "7d"
+  PATIENT_SERVICE_URL: "http://patient-service:3002"
+  DOCTOR_SERVICE_URL: "http://doctor-service:3003"
+  APPOINTMENT_SERVICE_URL: "http://appointment-service:3004"
+  SENDGRID_FROM_EMAIL: "kumarapelid.b.2k00@gmail.com"
+  SENDGRID_FROM_NAME: "Medi'Care Help Desk"
+  FRONTEND_URL: "http://localhost:30080"
+  ALLOWED_ORIGINS: "http://localhost,http://localhost:30080,http://localhost:5173"

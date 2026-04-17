@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Doctor } from '../models/Doctor.js';
 
-// POST /api/doctors/profile
+// POST /api/doctors/profile 
 // Doctor creates their own profile (one per userId)
 export const createProfile = async (req, res, next) => {
     try {
@@ -27,7 +27,7 @@ export const createProfile = async (req, res, next) => {
     }
 };
 
-// GET /api/doctors/profile/me
+// GET /api/doctors/profile/me 
 // Logged-in doctor views their own full profile
 export const getMyProfile = async (req, res, next) => {
     try {
@@ -64,8 +64,7 @@ export const updateProfile = async (req, res, next) => {
     }
 };
 
-// ── GET /api/doctors/:id ──────────────────────────────────────────────────────
-// Public: get a single doctor's full profile (supports doctor _id or userId)
+// GET /api/doctors/:id // Public: get a single doctor's full profile (used in doctor detail page)
 export const getDoctorById = async (req, res, next) => {
     try {
         const id = req.params.id;
