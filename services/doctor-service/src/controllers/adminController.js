@@ -1,6 +1,6 @@
 import { Doctor } from '../models/Doctor.js';
 
-// ── GET /api/doctors/admin/pending ────────────────────────────────────────────
+// GET /api/doctors/admin/pending
 // Admin: list all doctors pending approval
 export const getPendingDoctors = async (req, res, next) => {
     try {
@@ -29,7 +29,7 @@ export const getPendingDoctors = async (req, res, next) => {
     }
 };
 
-// ── GET /api/doctors/admin/all ────────────────────────────────────────────────
+// GET /api/doctors/admin/all
 // Admin: list ALL doctors with filter
 export const getAllDoctors = async (req, res, next) => {
     try {
@@ -62,7 +62,7 @@ export const getAllDoctors = async (req, res, next) => {
 };
 
 
-// ── PATCH /api/doctors/admin/:id/toggle-active ────────────────────────────────
+// PATCH /api/doctors/admin/:id/toggle-active
 // Admin: enable / disable a doctor account
 export const toggleActive = async (req, res, next) => {
     try {
@@ -84,7 +84,7 @@ export const toggleActive = async (req, res, next) => {
     }
 };
 
-// ── PATCH /api/doctors/admin/:id/rating ──────────────────────────────────────
+// PATCH /api/doctors/admin/:id/rating
 // Called internally by appointment-service after a review is submitted
 export const updateRating = async (req, res, next) => {
     try {
