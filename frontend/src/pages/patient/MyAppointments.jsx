@@ -120,6 +120,8 @@ const RescheduleModal = ({ appointment, doctorAvailability = [], onConfirm, onCl
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedSlot, setSelectedSlot] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
+    const [takenSlots, setTakenSlots] = useState([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
     const [datePageStart, setDatePageStart] = useState(0);
     const visibleDays = next7Days.slice(datePageStart, datePageStart + 4);
 
@@ -142,6 +144,48 @@ const RescheduleModal = ({ appointment, doctorAvailability = [], onConfirm, onCl
         setSelectedSlot('');
         setAvailableSlots(getSlotsForDate(date));
     };
+
+    useEffect(() => {
+        if (!selectedDate || !appointment?.doctorId) {
+            setTakenSlots([]);
+            return;
+        }
+
+        let cancelled = false;
+
+        const fetchTakenSlots = async () => {
+            try {
+                setSlotsLoading(true);
+                const data = await appointmentService.getTakenSlots(
+                    appointment.doctorId,
+                    selectedDate.toISOString()
+                );
+                if (!cancelled) {
+                    setTakenSlots(data.takenSlots || []);
+                }
+            } catch {
+                if (!cancelled) {
+                    setTakenSlots([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setSlotsLoading(false);
+                }
+            }
+        };
+
+        fetchTakenSlots();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [appointment?.doctorId, selectedDate]);
+
+    useEffect(() => {
+        if (selectedSlot && takenSlots.includes(selectedSlot)) {
+            setSelectedSlot('');
+        }
+    }, [takenSlots, selectedSlot]);
 
     const isValid = selectedDate && selectedSlot;
 
@@ -234,23 +278,36 @@ const RescheduleModal = ({ appointment, doctorAvailability = [], onConfirm, onCl
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
                                 New Time Slot
                             </p>
-                            {availableSlots.length === 0 ? (
+
+                            {slotsLoading ? (
+                                <p className="text-sm text-slate-400 italic">Loading slot availability...</p>
+                            ) : availableSlots.length === 0 ? (
                                 <p className="text-sm text-slate-400 italic">No slots available for this day</p>
                             ) : (
                                 <div className="grid grid-cols-2 gap-2">
-                                    {availableSlots.map((slot) => (
-                                        <button
-                                            key={slot}
-                                            onClick={() => setSelectedSlot(slot)}
-                                            className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all
-                                                ${selectedSlot === slot
-                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
-                                                }`}
-                                        >
-                                            {slot}
-                                        </button>
-                                    ))}
+                                    {availableSlots.map((slot) => {
+                                        const isTaken = takenSlots.includes(slot);
+
+                                        return (
+                                            <button
+                                                key={slot}
+                                                onClick={() => {
+                                                    if (isTaken) return;
+                                                    setSelectedSlot(slot);
+                                                }}
+                                                disabled={isTaken}
+                                                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all
+                                                    ${isTaken
+                                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                                        : selectedSlot === slot
+                                                            ? 'bg-blue-600 text-white border-blue-600'
+                                                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                                                    }`}
+                                            >
+                                                {slot}{isTaken ? ' (Booked)' : ''}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Doctor } from '../models/Doctor.js';
 
 // POST /api/doctors/profile
@@ -63,14 +64,25 @@ export const updateProfile = async (req, res, next) => {
     }
 };
 
-// GET /api/doctors/:id
-// Public: get a single doctor's full profile (used in doctor detail page)
+// ── GET /api/doctors/:id ──────────────────────────────────────────────────────
+// Public: get a single doctor's full profile (supports doctor _id or userId)
 export const getDoctorById = async (req, res, next) => {
     try {
-        const doctor = await Doctor.findById(req.params.id).lean({ virtuals: true });
-        if (!doctor || !doctor.isActive) {
+        const id = req.params.id;
+
+        const orFilter = mongoose.Types.ObjectId.isValid(id)
+            ? [{ _id: id }, { userId: id }]
+            : [{ userId: id }];
+
+        const doctor = await Doctor.findOne({
+            isActive: true,
+            $or: orFilter,
+        }).lean({ virtuals: true });
+
+        if (!doctor) {
             return res.status(404).json({ success: false, error: 'Doctor not found.' });
         }
+
         return res.status(200).json({ success: true, data: doctor });
     } catch (err) {
         next(err);

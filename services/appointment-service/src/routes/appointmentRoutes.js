@@ -13,6 +13,7 @@ import {
     getAppointmentById,
     getAllAppointments,
     getDoctorRejectionRequests,
+    getTakenSlotsForDoctorDate,
 } from '../controllers/appointmentController.js';
 
 const router = Router();
@@ -35,6 +36,10 @@ router.get('/all', protect, authorize('admin'), getAllAppointments);
 router.post('/', protect, authorize('patient'), bookAppointment);
 
 // Dynamic routes (/:id)
+
+// Patient — get already taken slots for a doctor on a specific date
+// GET /api/appointments/availability?doctorId=...&date=...
+router.get('/availability', protect, authorize('patient'), getTakenSlotsForDoctorDate);
 
 // Real-time status tracking via SSE
 router.get('/:id/track', protect, trackAppointment);

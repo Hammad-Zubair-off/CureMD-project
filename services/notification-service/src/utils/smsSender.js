@@ -32,6 +32,17 @@ export const sendSMS = async (to, body) => {
         logger.success(`[SmsSender] SMS sent to ${normalizedTo} (sid: ${message.sid})`);
         return { sent: true, sid: message.sid };
     } catch (error) {
+        const msg = String(error?.message || '').toLowerCase();
+
+        // Permanent failures should not be retried forever by RabbitMQ consumers.
+        const isPermanent =
+            msg.includes('exceeded the 50 daily messages limit') ||
+            msg.includes('is not a valid phone number') ||
+            msg.includes('not a mobile number') ||
+            msg.includes('permission to send an sms has not been enabled');
+
+        error.isPermanent = isPermanent;
+
         logger.error('[SmsSender] Twilio send failed:', error.message);
         throw error;
     }
