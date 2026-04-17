@@ -4,7 +4,8 @@ import appointmentService from '../../services/appointmentService';
 import Toast from '../../components/common/Toast';
 import {
     Loader2,
-    Activity,
+    HeartPulse,
+    FileScan,
     FileText,
     ChevronDown,
     ChevronUp,
@@ -49,6 +50,7 @@ export default function MedicalHistory() {
     const [uploadTitle, setUploadTitle] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const [archiveConfirmId, setArchiveConfirmId] = useState(null);
 
     // Data Fetching
     useEffect(() => {
@@ -143,9 +145,13 @@ export default function MedicalHistory() {
         }
     };
 
-    const handleArchive = async (reportId) => {
-        if (!window.confirm("Are you sure you want to archive this document?")) return;
+    const handleArchiveClick = (reportId) => {
+        setArchiveConfirmId(reportId);
+    };
 
+    const handleConfirmArchive = async () => {
+        const reportId = archiveConfirmId;
+        setArchiveConfirmId(null);
         try {
             await patientService.archiveReport(reportId);
             setReports((prev) =>
@@ -232,6 +238,13 @@ export default function MedicalHistory() {
             </div>
 
             <Toast isOpen={!!message.text} type={message.type} message={message.text} onClose={clearMessage} />
+            <Toast
+                isOpen={!!archiveConfirmId}
+                type="confirm"
+                message="Are you sure you want to archive this document?"
+                onCancel={() => setArchiveConfirmId(null)}
+                onConfirm={handleConfirmArchive}
+            />
 
             {/* TAB 1: CLINICAL TIMELINE & SNAPSHOTS */}
             {activeTab === 'Clinical Timeline' && (
@@ -240,10 +253,10 @@ export default function MedicalHistory() {
                     {/* Compact Medical Data Overview */}
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-                            <Activity className="w-32 h-32 text-blue-500" />
+                            <HeartPulse className="w-32 h-32 text-blue-500" />
                         </div>
                         <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                            <Activity className="w-5 h-5 text-blue-500 mr-2" />
+                            <HeartPulse className="w-5 h-5 text-blue-500 mr-2" />
                             Current Vitals & Conditions
                         </h3>
 
@@ -350,7 +363,7 @@ export default function MedicalHistory() {
                                             >
                                                 <div className="flex items-center space-x-4">
                                                     <div className="bg-slate-100 p-2.5 rounded-lg">
-                                                        <Activity className="w-5 h-5 text-slate-600" />
+                                                        <FileScan className="w-5 h-5 text-slate-600" />
                                                     </div>
                                                     <div className="text-left">
                                                         <p className="font-bold text-slate-800">Snapshot captured</p>
@@ -673,7 +686,7 @@ export default function MedicalHistory() {
                                                 <ExternalLink className="w-5 h-5" />
                                             </a>
                                             <button
-                                                onClick={() => handleArchive(report._id)}
+                                                onClick={() => handleArchiveClick(report._id)}
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Archive Document"
                                             >
