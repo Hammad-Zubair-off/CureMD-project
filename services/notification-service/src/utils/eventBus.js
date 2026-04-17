@@ -65,7 +65,13 @@ export const subscribeToEvent = async (routingKey, handler) => {
             channel.ack(msg);
         } catch (error) {
             logger.error('[EventBus] Handler failed for ' + routingKey + ':', error.message);
-            channel.nack(msg, false, true);
+
+            if (error?.isPermanent) {
+                logger.warn('[EventBus] Permanent handler error for ' + routingKey + ' — acking message (no requeue).');
+                channel.ack(msg);
+            } else {
+                channel.nack(msg, false, true);
+            }
         }
     });
 
