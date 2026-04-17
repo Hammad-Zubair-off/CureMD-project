@@ -581,8 +581,8 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-col gap-2 text-end">
             <div className="flex gap-6 text-sm font-medium text-slate-500">
-              <Link to="#" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
-              <Link to="#" className="hover:text-blue-600 transition-colors">Terms of Service</Link>
+              <Link to="/privacy-policy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
+              <Link to="/terms-conditions" className="hover:text-blue-600 transition-colors">Terms of Service</Link>
             </div>
             <div className="text-xs text-slate-400">© 2026 MediCare, Inc.</div>
           </div>
