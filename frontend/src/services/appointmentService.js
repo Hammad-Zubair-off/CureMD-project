@@ -99,6 +99,37 @@ const appointmentService = {
             throw errData || { error: error.message || 'Something went wrong.' };
         }
     },
+
+    /**
+     * Get a single appointment by ID
+     * Called in MedicalHistory (snapshot linked appointment context)
+     */
+    getAppointmentById: async (appointmentId) => {
+        try {
+            const response = await api.get(`/appointments/${appointmentId}`);
+            return response.data;
+        } catch (error) {
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
+        }
+    },
+
+        /**
+     * Get taken slots for a doctor on a specific date
+     * Used by booking flow to disable already booked slots
+     */
+    getTakenSlots: async (doctorId, dateIso) => {
+        try {
+            const response = await api.get(
+                `/appointments/availability?doctorId=${doctorId}&date=${encodeURIComponent(dateIso)}`
+            );
+            return response.data;
+        } catch (error) {
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
+        }
+    },
+
 };
 
 export default appointmentService;

@@ -824,7 +824,9 @@ export const getMyAppointments = async (req, res, next) => {
             filter.paymentStatus = 'unpaid';
         }
         if (tab === 'past') {
-            filter.status = 'completed';
+            // 'past'      = auto-transitioned by scheduler when appointment time elapses
+            // 'completed' = manually marked done by the doctor after consultation
+            filter.status = { $in: ['completed', 'past'] };
         }
         if (tab === 'cancelled') {
             filter.status = { $in: ['cancelled', 'expired'] };
@@ -840,8 +842,11 @@ export const getMyAppointments = async (req, res, next) => {
             };
         }
 
+        // upcoming: ascending (nearest first); everything else: descending (most recent first)
+        const sortOrder = tab === 'upcoming' ? 1 : -1;
+
         const [appointments, total] = await Promise.all([
-            Appointment.find(filter).sort({ appointmentDate: -1 }).skip(skip).limit(limit),
+            Appointment.find(filter).sort({ appointmentDate: sortOrder }).skip(skip).limit(limit),
             Appointment.countDocuments(filter),
         ]);
 
@@ -1037,6 +1042,51 @@ export const getDoctorRejectionRequests = async (req, res, next) => {
             page,
             pages: Math.ceil(total / limit),
             requests: rows,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * @desc    Get taken slots for a doctor on a specific date
+ * @route   GET /api/appointments/availability?doctorId=...&date=...
+ * @access  Private — patient only
+ */
+export const getTakenSlotsForDoctorDate = async (req, res, next) => {
+    try {
+        const { doctorId, date } = req.query;
+
+        if (!doctorId || !date) {
+            return res.status(400).json({
+                success: false,
+                error: 'doctorId and date query params are required.',
+            });
+        }
+
+        const targetDate = toUTC(date);
+        if (Number.isNaN(targetDate.getTime())) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid date value.',
+            });
+        }
+
+        const appointments = await Appointment.find({
+            doctorId,
+            appointmentDate: targetDate,
+            status: { $in: ['pending', 'confirmed'] },
+        })
+            .select('timeSlot -_id')
+            .lean();
+
+        const takenSlots = [...new Set(appointments.map((a) => a.timeSlot).filter(Boolean))];
+
+        return res.status(200).json({
+            success: true,
+            doctorId,
+            date: targetDate.toISOString(),
+            takenSlots,
         });
     } catch (err) {
         next(err);

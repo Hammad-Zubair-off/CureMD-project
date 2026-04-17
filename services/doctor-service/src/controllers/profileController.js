@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Doctor } from '../models/Doctor.js';
 
 // POST /api/doctors/profile 
@@ -40,7 +41,8 @@ export const getMyProfile = async (req, res, next) => {
     }
 };
 
-// PUT /api/doctors/profile // Doctor updates their own profile
+// PUT /api/doctors/profile
+// Doctor updates their own profile
 export const updateProfile = async (req, res, next) => {
     try {
         // Fields that doctors cannot change themselves
@@ -65,17 +67,29 @@ export const updateProfile = async (req, res, next) => {
 // GET /api/doctors/:id // Public: get a single doctor's full profile (used in doctor detail page)
 export const getDoctorById = async (req, res, next) => {
     try {
-        const doctor = await Doctor.findById(req.params.id).lean({ virtuals: true });
-        if (!doctor || !doctor.isActive) {
+        const id = req.params.id;
+
+        const orFilter = mongoose.Types.ObjectId.isValid(id)
+            ? [{ _id: id }, { userId: id }]
+            : [{ userId: id }];
+
+        const doctor = await Doctor.findOne({
+            isActive: true,
+            $or: orFilter,
+        }).lean({ virtuals: true });
+
+        if (!doctor) {
             return res.status(404).json({ success: false, error: 'Doctor not found.' });
         }
+
         return res.status(200).json({ success: true, data: doctor });
     } catch (err) {
         next(err);
     }
 };
 
-// GET /api/doctors // Public: search + filter doctors (used by patient search page & appointment service)
+// GET /api/doctors
+// Public: search + filter doctors (used by patient search page & appointment service)
 export const searchDoctors = async (req, res, next) => {
     try {
         const {
@@ -142,7 +156,7 @@ export const searchDoctors = async (req, res, next) => {
     }
 };
 
-// GET /api/doctors/specializations 
+// GET /api/doctors/specializations
 // Public: distinct specialization list for the search dropdown
 export const getSpecializations = async (req, res, next) => {
     try {

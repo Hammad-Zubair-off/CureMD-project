@@ -3,6 +3,8 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsAndConditions from './pages/TermsAndConditions'
 
 // Admin
 import AdminDashboard from './pages/AdminDashboard'
@@ -19,6 +21,7 @@ import MyProfile from './pages/patient/MyProfile'
 import MedicalHistory from './pages/patient/MedicalHistory'
 import Telemedicine from './pages/patient/Telemedicine'
 import SymptomChecker from './pages/patient/SymptomChecker';
+import PatientSettings from './pages/patient/PatientSettings';
 import PatientVideoRoom from './pages/patient/PatientVideoRoom';
 
 //doctor
@@ -37,6 +40,8 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-conditions" element={<TermsAndConditions />} />
 
       {/* Admin Routes */}
       <Route
@@ -82,6 +87,7 @@ function App() {
         <Route path="medical-history" element={<MedicalHistory />} />
         <Route path="telemedicine" element={<Telemedicine />} />
         <Route path="symptom-checker" element={<SymptomChecker />} />
+        <Route path="settings" element={<PatientSettings />} />
         <Route path="video-room" element={<PatientVideoRoom />} />
       </Route>
 

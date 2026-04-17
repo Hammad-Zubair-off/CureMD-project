@@ -234,7 +234,7 @@ export default function DoctorAvailability() {
                         <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mt-1.5">Active Days</div>
                     </div>
                 </div>
-                <div className="flex items-center space-x-4 px-5 py-4 bg-white border border-slate-200 rounded-xl shadow-xs min-w-[160px]">
+                <div className="flex items-center space-x-4 px-5 py-4 bg-white border border-slate-200 rounded-xl shadow-xs min-w-40">
                     <div className="p-2.5 bg-blue-50 rounded-xl">
                         <Clock className="w-5 h-5 text-blue-600" />
                     </div>

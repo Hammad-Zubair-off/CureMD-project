@@ -9,7 +9,8 @@ import {
     Ruler,
     Weight,
     Heart,
-    Activity
+    HeartPulse,
+    Info
 } from 'lucide-react';
 import {
     InputWrapper,
@@ -143,7 +144,7 @@ export default function PatientProfileInit({ onSave, saving = false }) {
             {/* Quick Setup Message */}
             <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex items-start space-x-3 mb-2">
                 <div className="bg-blue-600 p-1.5 rounded-lg text-white mt-0.5">
-                    <Activity className="w-4 h-4" />
+                    <Info className="w-4 h-4" />
                 </div>
                 <p className="text-xs text-blue-700 font-medium leading-relaxed">
                     Setting up these core details will unlock the booking vault. You can add more clinical information like <strong>allergies</strong> and <strong>medications</strong> later in your Profile Page.

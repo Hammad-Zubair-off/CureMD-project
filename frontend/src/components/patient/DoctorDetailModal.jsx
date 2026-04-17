@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Star, MapPin, Briefcase, GraduationCap, Calendar, Clock, ChevronLeft, ChevronRight, Banknote, CalendarCheck, ArrowRight } from 'lucide-react';
+import appointmentService from '../../services/appointmentService';
 
 const getDayLabel = (date) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -18,13 +19,13 @@ const getNext7Days = () => {
 };
 
 const isDoctorAvailable = (doctor, date) => {
-    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
     return doctor.availability?.some(a => a.day === dayName && a.slots?.length > 0);
 };
 
 const getSlotsForDate = (doctor, date) => {
     if (!date) return [];
-    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
     const dayEntry = doctor.availability?.find(a => a.day === dayName);
     if (!dayEntry) return [];
     return dayEntry.slots.map(s => `${s.startTime} - ${s.endTime}`);
@@ -34,6 +35,8 @@ const getSlotsForDate = (doctor, date) => {
 export default function DoctorDetailModal({ doctor, onClose, onBook }) {
     const next7Days = getNext7Days();
     const [selectedDate, setSelectedDate] = useState(null);
+    const [takenSlots, setTakenSlots] = useState([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [datePageStart, setDatePageStart] = useState(0);
 
@@ -46,8 +49,39 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
     };
 
     const handleSlotSelect = (slot) => {
+        if (takenSlots.includes(slot)) return;
         setSelectedSlot(slot);
     };
+
+    useEffect(() => {
+        if (!doctor?.userId || !selectedDate) {
+            setTakenSlots([]);
+            return;
+        }
+
+        let cancelled = false;
+
+        const fetchTakenSlots = async () => {
+            try {
+                setSlotsLoading(true);
+                const data = await appointmentService.getTakenSlots(
+                    doctor.userId,
+                    selectedDate.toISOString()
+                );
+                if (!cancelled) setTakenSlots(data.takenSlots || []);
+            } catch {
+                if (!cancelled) setTakenSlots([]);
+            } finally {
+                if (!cancelled) setSlotsLoading(false);
+            }
+        };
+
+        fetchTakenSlots();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [doctor?.userId, selectedDate]);
 
     const handleBookNow = () => {
         if (selectedDate && selectedSlot) {
@@ -70,7 +104,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
 
             {/* Modal */}
             <div className="relative bg-white rounded-md shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden pb-4 pl-3">
-                
+
                 {/* Header */}
                 <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
                     <h2 className="text-lg font-bold text-slate-900">Doctor Details & Booking</h2>
@@ -85,10 +119,10 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                 {/* Content area */}
                 <div className="flex-1 overflow-y-auto p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        
+
                         {/* ================= LEFT SIDE (Details) ================= */}
                         <div className="lg:col-span-6 space-y-8">
-                            
+
                             {/* Header Info */}
                             <div className="flex items-center space-x-4">
                                 <div className="w-20 h-20 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-2xl shrink-0">
@@ -108,14 +142,6 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                         <span className="text-sm">Location</span>
                                     </div>
                                     <p className="text-slate-900 font-medium truncate" title={doctor.location}>{doctor.location}</p>
-                                </div>
-
-                                <div>
-                                    <div className="flex items-center space-x-2 text-slate-500 mb-1">
-                                        <Star className="w-4 h-4" />
-                                        <span className="text-sm">Rating</span>
-                                    </div>
-                                    <p className="text-slate-900 font-medium">{doctor.rating} <span className="text-sm text-slate-400 font-normal">({doctor.reviewCount} reviews)</span></p>
                                 </div>
 
                                 <div>
@@ -159,7 +185,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
 
                         {/* ================= RIGHT SIDE (Scheduling Panel) ================= */}
                         <div className="lg:col-span-6 flex flex-col  bg-white border-l-2 border-slate-200 p-6">
-                            
+
                             <div className="space-y-6 flex-1">
                                 {/* Available Days */}
                                 <div>
@@ -168,9 +194,9 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                         <span>Available Weekly Schedule</span>
                                     </h4>
                                     <div className="flex flex-wrap gap-2">
-                                        {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day) => {
+                                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
                                             const isAvailable = doctor.availability?.some(a => a.day === day && a.slots?.length > 0);
-                                            if (!isAvailable) return null; 
+                                            if (!isAvailable) return null;
                                             return (
                                                 <span
                                                     key={day}
@@ -244,25 +270,41 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                         </h4>
                                         {(() => {
                                             const availableSlots = getSlotsForDate(doctor, selectedDate);
+
+                                            if (slotsLoading) {
+                                                return (
+                                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                                                        <p className="text-sm text-slate-500 font-medium">Loading slot availability...</p>
+                                                    </div>
+                                                );
+                                            }
+
                                             return availableSlots.length === 0 ? (
                                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
                                                     <p className="text-sm text-slate-500 font-medium">No slots available for this day.</p>
                                                 </div>
                                             ) : (
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    {availableSlots.map((slot) => (
-                                                        <button
-                                                            key={slot}
-                                                            onClick={() => handleSlotSelect(slot)}
-                                                            className={`py-3 px-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all
-                                                                ${selectedSlot === slot
-                                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                                                                    : 'bg-white text-slate-700 border-slate-200 hover:blue-slate-400 hover:bg-blue-50 hover:border-blue-400'
-                                                                }`}
-                                                        >
-                                                            {slot}
-                                                        </button>
-                                                    ))}
+                                                    {availableSlots.map((slot) => {
+                                                        const isTaken = takenSlots.includes(slot);
+
+                                                        return (
+                                                            <button
+                                                                key={slot}
+                                                                onClick={() => handleSlotSelect(slot)}
+                                                                disabled={isTaken}
+                                                                className={`py-3 px-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all
+                                                                    ${isTaken
+                                                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                                                        : selectedSlot === slot
+                                                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                                                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-50 hover:border-blue-400'
+                                                                    }`}
+                                                            >
+                                                                {slot}{isTaken ? ' (Booked)' : ''}
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
                                             );
                                         })()}

@@ -60,6 +60,30 @@ const authService = {
         }
     },
 
+    // Change password
+    changePassword: async (currentPassword, newPassword) => {
+        try {
+            const response = await api.put('/auth/change-password', { currentPassword, newPassword });
+            // If the server returns a new token, update it in storage
+            if (response.data.token) {
+                localStorage.setItem('authToken', response.data.token);
+            }
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // Self-deactivate account
+    deactivateMyAccount: async (currentPassword) => {
+        try {
+            const response = await api.put('/auth/deactivate-account', { currentPassword });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
     // Admin endpoints
     getAllUsers: async (params = {}) => {
         try {

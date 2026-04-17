@@ -5,6 +5,7 @@ import {
     CheckCircle, XCircle, AlertCircle, Clock3, AlertTriangle,
     ChevronLeft, ChevronRight, X, Loader2,
     Stethoscope, MoreVertical,
+    ChevronDown, ChevronUp,
 } from 'lucide-react';
 import appointmentService from '../../services/appointmentService';
 import doctorService from '../../services/doctorService';
@@ -80,6 +81,11 @@ const StatusBadge = ({ status }) => {
             classes: 'bg-blue-50 text-blue-700 border-blue-200',
             icon: <CheckCircle className="w-3 h-3" />,
         },
+        past: {
+            label: 'Past',
+            classes: 'bg-purple-50 text-purple-600 border-purple-200',
+            icon: <Clock3 className="w-3 h-3" />,
+        },
         expired: {
             label: 'Expired',
             classes: 'bg-slate-50 text-slate-500 border-slate-200',
@@ -114,6 +120,8 @@ const RescheduleModal = ({ appointment, doctorAvailability = [], onConfirm, onCl
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedSlot, setSelectedSlot] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
+    const [takenSlots, setTakenSlots] = useState([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
     const [datePageStart, setDatePageStart] = useState(0);
     const visibleDays = next7Days.slice(datePageStart, datePageStart + 4);
 
@@ -136,6 +144,48 @@ const RescheduleModal = ({ appointment, doctorAvailability = [], onConfirm, onCl
         setSelectedSlot('');
         setAvailableSlots(getSlotsForDate(date));
     };
+
+    useEffect(() => {
+        if (!selectedDate || !appointment?.doctorId) {
+            setTakenSlots([]);
+            return;
+        }
+
+        let cancelled = false;
+
+        const fetchTakenSlots = async () => {
+            try {
+                setSlotsLoading(true);
+                const data = await appointmentService.getTakenSlots(
+                    appointment.doctorId,
+                    selectedDate.toISOString()
+                );
+                if (!cancelled) {
+                    setTakenSlots(data.takenSlots || []);
+                }
+            } catch {
+                if (!cancelled) {
+                    setTakenSlots([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setSlotsLoading(false);
+                }
+            }
+        };
+
+        fetchTakenSlots();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [appointment?.doctorId, selectedDate]);
+
+    useEffect(() => {
+        if (selectedSlot && takenSlots.includes(selectedSlot)) {
+            setSelectedSlot('');
+        }
+    }, [takenSlots, selectedSlot]);
 
     const isValid = selectedDate && selectedSlot;
 
@@ -228,23 +278,36 @@ const RescheduleModal = ({ appointment, doctorAvailability = [], onConfirm, onCl
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
                                 New Time Slot
                             </p>
-                            {availableSlots.length === 0 ? (
+
+                            {slotsLoading ? (
+                                <p className="text-sm text-slate-400 italic">Loading slot availability...</p>
+                            ) : availableSlots.length === 0 ? (
                                 <p className="text-sm text-slate-400 italic">No slots available for this day</p>
                             ) : (
                                 <div className="grid grid-cols-2 gap-2">
-                                    {availableSlots.map((slot) => (
-                                        <button
-                                            key={slot}
-                                            onClick={() => setSelectedSlot(slot)}
-                                            className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all
-                                                ${selectedSlot === slot
-                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
-                                                }`}
-                                        >
-                                            {slot}
-                                        </button>
-                                    ))}
+                                    {availableSlots.map((slot) => {
+                                        const isTaken = takenSlots.includes(slot);
+
+                                        return (
+                                            <button
+                                                key={slot}
+                                                onClick={() => {
+                                                    if (isTaken) return;
+                                                    setSelectedSlot(slot);
+                                                }}
+                                                disabled={isTaken}
+                                                className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all
+                                                    ${isTaken
+                                                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                                        : selectedSlot === slot
+                                                            ? 'bg-blue-600 text-white border-blue-600'
+                                                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                                                    }`}
+                                            >
+                                                {slot}{isTaken ? ' (Booked)' : ''}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -320,6 +383,7 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPay
     const { status } = appointment;
     const isPaid = status === 'confirmed' || status === 'completed';
     const isPending = status === 'pending';
+    const [expanded, setExpanded] = useState(false);
 
     const initials = appointment.doctorFullName?.split(' ')
         .map(n => n[0])
@@ -328,96 +392,194 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPay
         .toUpperCase();
 
     return (
-        <div className="group bg-white border border-slate-200 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:shadow-md transition-all">
-            
-            {/* Left Info: Avatar & Doctor Name */}
-            <div className="flex items-center gap-4 flex-1">
-                <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border-2 border-white shadow-sm shrink-0">
-                        {initials || <Stethoscope className="w-6 h-6" />}
+        <div className="group bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-all">
+
+            {/* Main Row */}
+            <div
+                className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 cursor-pointer"
+                onClick={(e) => {
+                    if (e.target.closest('button')) return;
+                    setExpanded(prev => !prev);
+                }}
+            >
+
+                {/* Left Info: Avatar & Doctor Name */}
+                <div className="flex items-center gap-4 flex-1">
+                    <div className="relative">
+                        <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border-2 border-white shadow-sm shrink-0">
+                            {initials || <Stethoscope className="w-6 h-6" />}
+                        </div>
+                        {status === 'confirmed' && (
+                            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                        )}
                     </div>
-                    {status === 'confirmed' && (
-                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                    <div>
+                        <h5 className="font-bold text-slate-900">{appointment.doctorFullName}</h5>
+                        <p className="text-xs text-slate-500">{appointment.specialty}</p>
+                    </div>
+                </div>
+
+                {/* Middle Info: Schedule */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
+                    <div className="flex items-center gap-2 text-slate-600">
+                        <Calendar className="w-4 h-4 shrink-0" />
+                        <span className="font-mono text-xs">{formatDate(appointment.appointmentDate)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600">
+                        <Clock className={`w-4 h-4 shrink-0 ${status === 'confirmed' || status === 'pending' ? 'text-blue-600' : ''}`} />
+                        <span className={`font-mono text-xs ${status === 'confirmed' || status === 'pending' ? 'font-bold text-blue-600' : ''}`}>
+                            {appointment.timeSlot}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Badges */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={status} />
+                    {isPaid && (
+                        <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold uppercase tracking-wider">
+                            Paid
+                        </span>
+                    )}
+                    {isPending && (
+                        <span className="px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold uppercase tracking-wider">
+                            Unpaid
+                        </span>
                     )}
                 </div>
-                <div>
-                    <h5 className="font-bold text-slate-900">{appointment.doctorFullName}</h5>
-                    <p className="text-xs text-slate-500">{appointment.specialty}</p>
-                </div>
-            </div>
 
-            {/* Middle Info: Schedule */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
-                <div className="flex items-center gap-2 text-slate-600">
-                    <Calendar className="w-4 h-4 shrink-0" />
-                    <span className="font-mono text-xs">{formatDate(appointment.appointmentDate)}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className={`w-4 h-4 shrink-0 ${status === 'confirmed' || status === 'pending' ? 'text-blue-600' : ''}`} />
-                    <span className={`font-mono text-xs ${status === 'confirmed' || status === 'pending' ? 'font-bold text-blue-600' : ''}`}>
-                        {appointment.timeSlot}
-                    </span>
-                </div>
-            </div>
-
-            {/* Badges */}
-            <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={status} />
-                {isPaid && (
-                    <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold uppercase tracking-wider">
-                        Paid
-                    </span>
-                )}
-                {isPending && (
-                    <span className="px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold uppercase tracking-wider">
-                        Unpaid
-                    </span>
-                )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 w-full md:w-auto">
-                {status === 'pending' && (
-                    <>
-                        {canPayNow ? (
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-2 w-full md:w-auto">
+                    {status === 'pending' && (
+                        <>
+                            {canPayNow ? (
+                                <button
+                                    onClick={() => onPayNow(appointment)}
+                                    className="flex-1 md:flex-none px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-bold text-xs rounded-lg transition-colors border border-blue-600"
+                                >
+                                    Pay Now {paymentTimeLeftLabel ? `(${paymentTimeLeftLabel})` : ''}
+                                </button>
+                            ) : (
+                                <span className="flex-1 md:flex-none px-3 py-2 bg-slate-100 text-slate-500 font-bold text-[10px] uppercase tracking-wider rounded-lg border border-slate-200 text-center">
+                                    Payment window closed
+                                </span>
+                            )}
                             <button
-                                onClick={() => onPayNow(appointment)}
-                                className="flex-1 md:flex-none px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-bold text-xs rounded-lg transition-colors border border-blue-600"
+                                onClick={() => onCancel(appointment)}
+                                className="flex-1 md:flex-none px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs rounded-lg transition-colors border border-red-100"
                             >
-                                Pay Now {paymentTimeLeftLabel ? `(${paymentTimeLeftLabel})` : ''}
+                                Cancel
                             </button>
-                        ) : (
-                            <span className="flex-1 md:flex-none px-3 py-2 bg-slate-100 text-slate-500 font-bold text-[10px] uppercase tracking-wider rounded-lg border border-slate-200 text-center">
-                                Payment window closed
-                            </span>
+                        </>
+                    )}
+
+                    {status === 'confirmed' && (
+                        <>
+                            <button onClick={() => onReschedule(appointment)} className="flex-1 md:flex-none px-4 py-2 font-bold text-xs bg-white text-blue-600 border border-slate-200 hover:bg-slate-50 transition-colors rounded-lg">
+                                Reschedule
+                            </button>
+                            <button onClick={() => onCancel(appointment)} className="px-4 py-2 text-red-600 font-bold text-xs hover:bg-red-50 rounded-lg transition-colors border border-transparent">
+                                Cancel
+                            </button>
+                        </>
+                    )}
+
+                    {(status === 'completed' || status === 'cancelled' || status === 'expired') && (
+                        <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
+                            <MoreVertical className="w-5 h-5" />
+                        </button>
+                    )}
+
+                    {/* Expand Toggle */}
+                    <button
+                        onClick={() => setExpanded(e => !e)}
+                        className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors ml-1"
+                        title={expanded ? 'Collapse details' : 'Expand details'}
+                    >
+                        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Expanded Detail Panel */}
+            {expanded && (
+                <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-4">
+
+                        {/* Reason */}
+                        {appointment.reason && (
+                            <div className="sm:col-span-2 lg:col-span-3">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Reason for Appointment</p>
+                                <p className="text-sm text-slate-700">{appointment.reason}</p>
+                            </div>
                         )}
 
-                        <button
-                            onClick={() => onCancel(appointment)}
-                            className="flex-1 md:flex-none px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs rounded-lg transition-colors border border-red-100"
-                        >
-                            Cancel
-                        </button>
-                    </>
-                )}
-                
-                {status === 'confirmed' && (
-                    <>
-                        <button onClick={() => onReschedule(appointment)} className="flex-1 md:flex-none px-4 py-2 font-bold text-xs bg-white text-blue-600 border border-slate-200 hover:bg-slate-50 transition-colors rounded-lg">
-                            Reschedule
-                        </button>
-                        <button onClick={() => onCancel(appointment)} className="px-4 py-2 text-red-600 font-bold text-xs hover:bg-red-50 rounded-lg transition-colors border border-transparent">
-                            Cancel
-                        </button>
-                    </>
-                )}
+                        {/* Consultation Fee */}
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Consultation Fee</p>
+                            <p className="text-sm text-slate-700">LKR {appointment.consultationFee?.toLocaleString()}</p>
+                        </div>
 
-                {(status === 'completed' || status === 'cancelled' || status === 'expired') && (
-                    <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
-                        <MoreVertical className="w-5 h-5" />
-                    </button>
-                )}
-            </div>
+                        {/* Sharing Mode */}
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Medical Data Sharing</p>
+                            <p className="text-sm text-slate-700 capitalize">{appointment.sharingMode?.toLowerCase().replace('_', ' ') || 'None'}</p>
+                        </div>
+
+                        {/* Payment ID */}
+                        {appointment.paymentId && (
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Payment Reference</p>
+                                <p className="text-xs font-mono text-slate-600 truncate" title={appointment.paymentId}>{appointment.paymentId}</p>
+                            </div>
+                        )}
+
+                        {/* Booked On */}
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Booked On</p>
+                            <p className="text-sm text-slate-700">{formatDate(appointment.createdAt)}</p>
+                        </div>
+
+                        {/* Notes */}
+                        {appointment.notes && (
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Doctor Notes</p>
+                                <p className="text-sm text-slate-700">{appointment.notes}</p>
+                            </div>
+                        )}
+
+                        {/* Rejection Reason */}
+                        {appointment.rejectionReason && (
+                            <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Rejection Reason</p>
+                                <p className="text-sm text-red-600 font-medium">{appointment.rejectionReason}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Status History Timeline */}
+                    {appointment.statusHistory?.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-slate-200">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Status History</p>
+                            <div className="flex flex-wrap gap-3">
+                                {appointment.statusHistory.map((entry, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs"
+                                    >
+                                        <StatusBadge status={entry.status} />
+                                        <span className="text-slate-400">→</span>
+                                        <span className="font-mono text-slate-500">
+                                            {new Date(entry.changedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded capitalize">{entry.changedBy}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -500,6 +662,7 @@ export default function MyAppointments() {
     const [actionLoading, setActionLoading] = useState(false);
     const [toast, setToast] = useState(null);
     const [unpaidSummaryAppointments, setUnpaidSummaryAppointments] = useState([]);
+    const [tabCounts, setTabCounts] = useState({ upcoming: null, past: null, cancelled: null, unpaid: null });
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -523,14 +686,23 @@ export default function MyAppointments() {
         setLoading(true);
         setError('');
         try {
-            const [tabData, unpaidData] = await Promise.all([
+            const [tabData, unpaidData, upcomingCount, pastCount, cancelledCount] = await Promise.all([
                 appointmentService.getMyAppointments(page, LIMIT, activeTab),
                 appointmentService.getMyAppointments(1, 50, 'unpaid'),
+                appointmentService.getMyAppointments(1, 1, 'upcoming'),
+                appointmentService.getMyAppointments(1, 1, 'past'),
+                appointmentService.getMyAppointments(1, 1, 'cancelled'),
             ]);
 
             setAppointments(tabData.appointments || []);
             setTotalPages(tabData.pages || 1);
             setUnpaidSummaryAppointments(unpaidData.appointments || []);
+            setTabCounts({
+                upcoming: upcomingCount.total ?? null,
+                past: pastCount.total ?? null,
+                cancelled: cancelledCount.total ?? null,
+                unpaid: unpaidData.total ?? null,
+            });
         } catch (err) {
             setError(err.error || 'Failed to load appointments. Please try again.');
         } finally {
@@ -542,8 +714,12 @@ export default function MyAppointments() {
 
     useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
-    // Filter by tab
-    const filteredAppointments = appointments;
+    // Sort by appointmentDate ascending so the closest upcoming date shows first
+    const filteredAppointments = [...appointments].sort((a, b) => {
+        const dateA = new Date(a.appointmentDate || a.createdAt).getTime();
+        const dateB = new Date(b.appointmentDate || b.createdAt).getTime();
+        return dateA - dateB;
+    });
 
     const getRejectedAtMs = (appointment) => {
         const doctorRejectHistory = (appointment.statusHistory || [])
@@ -658,7 +834,7 @@ export default function MyAppointments() {
     const upcomingSummaryAppointments = appointments
         .filter(a => ['pending', 'confirmed'].includes(a.status))
         .sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate));
-    
+
     const nextAppointment = upcomingSummaryAppointments.length > 0 ? upcomingSummaryAppointments[0] : null;
 
     const unpaidAppointments = unpaidSummaryAppointments.filter(
@@ -678,7 +854,7 @@ export default function MyAppointments() {
 
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-            
+
             {/* Toast */}
             {toast && (
                 <div className={`fixed top-4 right-4 z-100 flex items-center space-x-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all
@@ -716,20 +892,23 @@ export default function MyAppointments() {
                 <div className="flex gap-8 border-b border-slate-200 w-full overflow-x-auto no-scrollbar">
                     {tabs.map(({ key, label }) => {
                         const isActive = activeTab === key;
+                        const count = tabCounts[key];
                         return (
                             <button
                                 key={key}
                                 onClick={() => setActiveTab(key)}
-                                className={`pb-4 text-sm font-medium transition-all whitespace-nowrap overflow-visible ${
-                                    isActive
-                                        ? 'text-blue-600 border-b-2 border-blue-600 font-semibold flex gap-2 items-center'
-                                        : 'text-slate-500 hover:text-slate-900 border-b-2 border-transparent'
-                                }`}
+                                className={`pb-4 text-sm font-medium transition-all whitespace-nowrap overflow-visible flex items-center gap-2 ${isActive
+                                    ? 'text-blue-600 border-b-2 border-blue-600 font-semibold'
+                                    : 'text-slate-500 hover:text-slate-900 border-b-2 border-transparent'
+                                    }`}
                             >
                                 {label}
-                                {isActive && key === 'upcoming' && upcomingSummaryAppointments.length > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[10px] text-blue-700 font-bold">
-                                        {upcomingSummaryAppointments.length}
+                                {count !== null && count > 0 && (
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-slate-100 text-slate-500'
+                                        }`}>
+                                        {count}
                                     </span>
                                 )}
                             </button>
@@ -741,7 +920,7 @@ export default function MyAppointments() {
             {/* Bento-style Grid Summary (Only displayed on Upcoming tab) */}
             {activeTab === 'upcoming' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    
+
                     {/* Next Appointment Card */}
                     <div className="col-span-1 md:col-span-2 bg-blue-600 text-white p-6 rounded-xl shadow-sm flex flex-col sm:flex-row sm:justify-between sm:items-center relative overflow-hidden gap-4">
                         {nextAppointment ? (
@@ -763,7 +942,10 @@ export default function MyAppointments() {
                                 <div className="z-10 flex flex-col sm:items-end gap-3 mt-2 sm:mt-0">
                                     {nextAppointment.status === 'confirmed' ? (
                                         <>
-                                            <button className="bg-white text-blue-600 px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:bg-slate-50 active:scale-95 transition-all w-fit">
+                                            <button
+                                                onClick={() => navigate('/patient/telemedicine')}
+                                                className="bg-white text-blue-600 px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:bg-slate-50 active:scale-95 transition-all w-fit"
+                                            >
                                                 Join Session
                                             </button>
                                             <span className="text-[10px] uppercase tracking-widest text-blue-100 opacity-90 text-right">
@@ -786,7 +968,7 @@ export default function MyAppointments() {
                             <div className="z-10 w-full flex flex-col items-start justify-center">
                                 <h3 className="text-xl font-bold mb-2">No upcoming appointments</h3>
                                 <p className="text-blue-100 text-sm mb-4">Your schedule is clear! Book a new consultation if you need one.</p>
-                                <button 
+                                <button
                                     onClick={() => navigate('/patient/book-appointment')}
                                     className="bg-white text-blue-600 px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:bg-slate-50 active:scale-95 transition-all"
                                 >
@@ -876,7 +1058,7 @@ export default function MyAppointments() {
                     <h4 className="text-xl font-bold text-slate-900 mb-2">No appointments here</h4>
                     <p className="text-slate-500 max-w-sm mb-6">It looks like you don't have any appointments in this category.</p>
                     {activeTab === 'upcoming' && (
-                        <button 
+                        <button
                             onClick={() => navigate('/patient/book-appointment')}
                             className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-all"
                         >

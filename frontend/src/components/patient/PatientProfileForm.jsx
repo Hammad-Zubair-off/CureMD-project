@@ -13,7 +13,8 @@ import {
     Heart,
     Plus,
     X,
-    Activity,
+    HeartPulse,
+    Siren,
     AlertCircle,
     CheckCircle,
     ShieldAlert,
@@ -367,7 +368,7 @@ export default function PatientProfileForm({
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
                         <TagInput
                             label="Clinical Conditions"
-                            icon={Activity}
+                            icon={HeartPulse}
                             tags={formData.chronicConditions}
                             onAdd={(tag) => handleTagAdd('chronicConditions', tag)}
                             onRemove={(tag) => handleTagRemove('chronicConditions', tag)}
@@ -406,7 +407,7 @@ export default function PatientProfileForm({
                 <div className="px-8 py-5 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <div className="bg-orange-500 p-2 rounded-xl shadow-lg shadow-orange-500/20">
-                            <Activity className="w-4 h-4 text-white" />
+                            <Siren className="w-4 h-4 text-white" />
                         </div>
                         <h2 className="text-base font-bold text-slate-900">Emergency Contact</h2>
                     </div>

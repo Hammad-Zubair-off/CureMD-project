@@ -40,7 +40,7 @@ const PaymentBadge = ({ status }) => {
     );
 };
 
-// ── Upcoming Appointment Card ─────────────────────────────────────────────────
+// Upcoming Appointment Card component
 const UpcomingCard = ({ appt, isNext = false, onMoreInfo }) => (
     <div className={`relative bg-white rounded-2xl border p-5 flex flex-col gap-3 ${isNext ? 'border-blue-300 ring-2 ring-blue-100' : 'border-slate-200'}`}>
         {isNext && (
@@ -84,7 +84,7 @@ const UpcomingCard = ({ appt, isNext = false, onMoreInfo }) => (
     </div>
 );
 
-// ── Appointment Card (mobile) ─────────────────────────────────────────────────
+// Mobile Appointment Card component
 const AppointmentCard = ({ appt, onMoreInfo }) => (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">

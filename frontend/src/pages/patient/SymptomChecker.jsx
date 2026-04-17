@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import aiService from '../../services/aiService';
 import patientService from '../../services/patientService';
+import Toast from '../../components/common/Toast';
 import {
   Send, Paperclip, AlertTriangle, Loader2, Bot, User,
   X, CheckCircle2, ChevronRight, ChevronLeft, FileText, Image as ImageIcon, MessageSquarePlus, Clock, Trash2,
@@ -28,6 +29,7 @@ export default function SymptomChecker() {
   const [isFetchingReports, setIsFetchingReports] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [deleteConfirmSessionId, setDeleteConfirmSessionId] = useState(null);
 
   // Initial Load
   useEffect(() => {
@@ -170,13 +172,14 @@ export default function SymptomChecker() {
     }
   };
 
-  const handleDeleteSession = async (e, sessionId) => {
+  const handleDeleteSessionClick = (e, sessionId) => {
     e.stopPropagation(); // Prevent selecting the session when clicking delete
+    setDeleteConfirmSessionId(sessionId);
+  };
 
-    if (!window.confirm("Are you sure you want to delete this consultation history?")) {
-      return;
-    }
-
+  const handleConfirmDeleteSession = async () => {
+    const sessionId = deleteConfirmSessionId;
+    setDeleteConfirmSessionId(null);
     try {
       await aiService.deleteSession(sessionId);
 
@@ -207,6 +210,13 @@ export default function SymptomChecker() {
 
   return (
     <div className="h-[100dvh] bg-slate-50 p-3 md:p-6 lg:p-8 flex flex-col overflow-hidden">
+      <Toast 
+        isOpen={!!deleteConfirmSessionId}
+        type="confirm"
+        message="Are you sure you want to delete this consultation history?"
+        onCancel={() => setDeleteConfirmSessionId(null)}
+        onConfirm={handleConfirmDeleteSession}
+      />
       {/* Page Header - Bento Style */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3 md:mb-6">
         <div className="flex items-center justify-between w-full md:w-auto">
@@ -304,7 +314,7 @@ export default function SymptomChecker() {
                     </div>
                   </button>
                   <button
-                    onClick={(e) => handleDeleteSession(e, session._id)}
+                    onClick={(e) => handleDeleteSessionClick(e, session._id)}
                     className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-xl hover:bg-red-50 ${viewingSession?._id === session._id ? 'bg-blue-100/50' : 'bg-slate-50'
                       }`}
                     title="Delete Session"

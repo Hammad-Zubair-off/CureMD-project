@@ -6,6 +6,7 @@ import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
 import appointmentRoutes from './src/routes/appointmentRoutes.js';
+import { startAppointmentExpirer } from './src/utils/appointmentExpirer.js';
 import { initAppointmentEventConsumers } from './src/controllers/appointmentController.js';
 
 dotenv.config();
@@ -62,6 +63,7 @@ const startServer = async () => {
 
     try {
         await connectDB();
+        startAppointmentExpirer(); // auto-transition confirmed → past when time elapses
         await connectRabbitMQWithRetry();
         await initAppointmentEventConsumers();
 

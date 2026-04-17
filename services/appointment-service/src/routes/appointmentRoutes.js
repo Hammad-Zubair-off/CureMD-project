@@ -13,11 +13,12 @@ import {
     getAppointmentById,
     getAllAppointments,
     getDoctorRejectionRequests,
+    getTakenSlotsForDoctorDate,
 } from '../controllers/appointmentController.js';
 
 const router = Router();
 
-// ─── Static routes first (must come before /:id) ──────────────────────────────
+// Static routes first (must come before /:id)
 
 // Patient — view own appointments
 router.get('/my', protect, authorize('patient'), getMyAppointments);
@@ -29,12 +30,16 @@ router.get('/doctor', protect, authorize('doctor'), requireApproved, getDoctorAp
 // GET /api/appointments/all?status=pending&doctorId=xxx&date=2026-03-25
 router.get('/all', protect, authorize('admin'), getAllAppointments);
 
-// ─── Booking ──────────────────────────────────────────────────────────────────
+// Booking
 
 // Patient books a new appointment (Method 1 — doctor data from frontend)
 router.post('/', protect, authorize('patient'), bookAppointment);
 
-// ─── Dynamic routes (/:id) ────────────────────────────────────────────────────
+// Dynamic routes (/:id)
+
+// Patient — get already taken slots for a doctor on a specific date
+// GET /api/appointments/availability?doctorId=...&date=...
+router.get('/availability', protect, authorize('patient'), getTakenSlotsForDoctorDate);
 
 // Real-time status tracking via SSE
 router.get('/:id/track', protect, trackAppointment);

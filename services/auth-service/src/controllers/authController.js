@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { logger } from '../utils/logger.js';
-import { validateCreateAdmin, validateLogin, validateRegister } from '../validators/authValidator.js';
+import { validateCreateAdmin, validateLogin, validatePasswordChange, validateRegister } from '../validators/authValidator.js';
 
 
 const generateToken = (user) => 
@@ -228,38 +228,81 @@ export const updateMe = async (req, res, next) => {
  * @route   PUT /api/auth/change-password
  * @access  Private
  */
-// export const changePassword = async (req, res, next) => {
-//     try {
-//         const { valid, errors } = validatePasswordChange(req.body);
-//         if (!valid) {
-//             return res.status(400).json({ success: false, errors });
-//         }
+export const changePassword = async (req, res, next) => {
+    try {
+        const { valid, errors } = validatePasswordChange(req.body);
+        if (!valid) {
+            return res.status(400).json({ success: false, errors });
+        }
 
-//         const user = await User.findById(req.user._id).select('+password');
+        const user = await User.findById(req.user._id).select('+password');
 
-//         if (!(await user.matchPassword(req.body.currentPassword))) {
-//             return res.status(401).json({
-//                 success: false,
-//                 error: 'Current password is incorrect.',
-//             });
-//         }
+        if (!(await user.matchPassword(req.body.currentPassword))) {
+            return res.status(401).json({
+                success: false,
+                error: 'Current password is incorrect.',
+            });
+        }
 
-//         user.password = req.body.newPassword;
-//         await user.save();
+        user.password = req.body.newPassword;
+        await user.save();
 
-//         const token = generateToken(user);
+        const token = generateToken(user);
 
-//         logger.info(`Password changed [${user.role}]: ${user.fullName}`);
+        logger.info(`Password changed [${user.role}]: ${user.fullName}`);
 
-//         res.status(200).json({
-//             success: true,
-//             message: 'Password updated successfully.',
-//             token,
-//         });
-//     } catch (err) {
-//         next(err);
-//     }
-// };
+        res.status(200).json({
+            success: true,
+            message: 'Password updated successfully.',
+            token,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+/**
+ * @desc    Self-deactivate account (patient-initiated)
+ * @route   PUT /api/auth/deactivate-account
+ * @access  Private
+ */
+export const deactivateSelf = async (req, res, next) => {
+    try {
+        const { currentPassword } = req.body;
+
+        if (!currentPassword) {
+            return res.status(400).json({
+                success: false,
+                error: 'Current password is required to deactivate your account.',
+            });
+        }
+
+        const user = await User.findById(req.user._id).select('+password');
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+
+        if (!(await user.matchPassword(currentPassword))) {
+            return res.status(401).json({
+                success: false,
+                error: 'Incorrect password. Account not deactivated.',
+            });
+        }
+
+        user.isActive = false;
+        await user.save({ validateBeforeSave: false });
+
+        logger.warn(`Account self-deactivated [${user.role}]: ${user.fullName}`);
+
+        res.status(200).json({
+            success: true,
+            message: 'Your account has been deactivated. You have been logged out.',
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
 
 /**

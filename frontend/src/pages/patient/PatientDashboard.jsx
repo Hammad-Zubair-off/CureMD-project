@@ -13,12 +13,13 @@ import {
     MessageSquare,
     ShieldCheck,
     Lock,
-    Activity,
+    HeartPulse,
     History,
     ClipboardList,
     Bell,
     Quote,
-    Sparkles
+    Sparkles,
+    Brain
 } from 'lucide-react';
 
 export default function PatientDashboard() {
@@ -43,35 +44,74 @@ export default function PatientDashboard() {
     const fetchQuote = async () => {
         const CACHE_KEY = 'wellness_quote';
         const CACHE_TIME_KEY = 'wellness_quote_time';
-        const TWO_HOURS = 2 * 60 * 60 * 1000;
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
         try {
-            const cachedQuote = localStorage.getItem(CACHE_KEY);
+            const cachedQuoteStr = localStorage.getItem(CACHE_KEY);
             const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
             const now = new Date().getTime();
 
-            if (cachedQuote && cachedTime && (now - cachedTime < TWO_HOURS)) {
-                setDailyQuote(JSON.parse(cachedQuote));
-                return;
+            if (cachedQuoteStr && cachedTime && (now - cachedTime < TWELVE_HOURS)) {
+                const quote = JSON.parse(cachedQuoteStr);
+                // If it's a real quote (not fallback), use it. 
+                // If it's a Care Team fallback, try to fetch a real one anyway.
+                if (quote.author !== "Care Team") {
+                    setDailyQuote(quote);
+                    return;
+                }
             }
 
-            // Fetch new quote (using a stable public API fallback chain)
-            try {
-                const response = await fetch('https://api.quotable.io/random?tags=inspirational,success,wisdom');
-                if (!response.ok) throw new Error('API down');
+            // Attempt direct fetch first (matches user's documentation example)
+            const tryFetch = async (url) => {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
-                const newQuote = { text: data.content, author: data.author };
+                if (data && data.length > 0) return data[0];
+                throw new Error('Empty or invalid response');
+            };
 
-                localStorage.setItem(CACHE_KEY, JSON.stringify(newQuote));
-                localStorage.setItem(CACHE_TIME_KEY, now.toString());
-                setDailyQuote(newQuote);
+            try {
+                // Try direct primary endpoint from user docs
+                let quoteData;
+                try {
+                    quoteData = await tryFetch('https://zenquotes.io/api/quotes/&keyword=happiness');
+                } catch (e) {
+                    // Try alternative endpoint
+                    quoteData = await tryFetch('https://zenquotes.io/api/today');
+                }
+
+                if (quoteData) {
+                    const newQuote = { text: quoteData.q, author: quoteData.a };
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(newQuote));
+                    localStorage.setItem(CACHE_TIME_KEY, now.toString());
+                    setDailyQuote(newQuote);
+                }
             } catch (err) {
-                // Fallback to local high-quality list if API fails
+                console.warn('Direct fetch failed (likely CORS), trying CORS proxy...');
+
+                // Final attempt using a public CORS proxy
+                try {
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://zenquotes.io/api/today')}`;
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+
+                    if (data && data.length > 0) {
+                        const newQuote = { text: data[0].q, author: data[0].a };
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(newQuote));
+                        localStorage.setItem(CACHE_TIME_KEY, now.toString());
+                        setDailyQuote(newQuote);
+                        return;
+                    }
+                } catch (proxyErr) {
+                    console.error('All fetch attempts failed:', proxyErr);
+                }
+
+                // If all fails, use random fallback but don't cache it for an hour (so we retry sooner)
                 const randomFallback = fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
                 setDailyQuote(randomFallback);
             }
         } catch (err) {
-            console.error('Quote fetch error:', err);
+            console.error('Quote logic error:', err);
             setDailyQuote(fallbackQuotes[0]);
         }
     };
@@ -79,29 +119,28 @@ export default function PatientDashboard() {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const appointmentsData = await appointmentService.getMyAppointments(1, 10);
-                const allAppointments = appointmentsData.appointments || [];
+                // Fetch upcoming (backend already excludes 'past' — the scheduler handles transitions)
+                const [upcomingData, pastData] = await Promise.all([
+                    appointmentService.getMyAppointments(1, 3, 'upcoming'),
+                    appointmentService.getMyAppointments(1, 1, 'past'),
+                ]);
 
-                const upcoming = allAppointments.filter(app =>
-                    app.status === 'confirmed' || app.status === 'pending'
-                );
-                const past = allAppointments.filter(app => app.status === 'completed');
+                const upcomingApps = upcomingData.appointments || [];
+                setUpcomingAppointments(upcomingApps);
 
-                setUpcomingAppointments(upcoming.slice(0, 2));
-
+                // "Next Session" — days until the first upcoming appointment
                 let nextSessionStr = '---';
-                if (upcoming.length > 0) {
-                    const next = upcoming[0];
-                    const date = new Date(next.appointmentDate);
-                    const diffTime = Math.abs(date - new Date());
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    nextSessionStr = diffDays === 0 ? 'Today' : `In ${diffDays} Day${diffDays > 1 ? 's' : ''}`;
+                if (upcomingApps.length > 0) {
+                    const next = upcomingApps[0];
+                    const appointmentMs = new Date(next.appointmentDate).getTime();
+                    const diffDays = Math.ceil((appointmentMs - Date.now()) / (1000 * 60 * 60 * 24));
+                    nextSessionStr = diffDays <= 0 ? 'Today' : `In ${diffDays} Day${diffDays > 1 ? 's' : ''}`;
                 }
 
                 setStats({
-                    upcoming: upcoming.length,
-                    past: past.length,
-                    nextSession: nextSessionStr
+                    upcoming: upcomingData.total ?? 0,
+                    past: pastData.total ?? 0,
+                    nextSession: nextSessionStr,
                 });
 
                 await fetchQuote();
@@ -121,7 +160,7 @@ export default function PatientDashboard() {
             <div className="flex flex-col items-center justify-center min-h-[600px] text-slate-400">
                 <div className="relative">
                     <div className="w-16 h-16 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div>
-                    <Activity className="absolute inset-0 m-auto w-6 h-6 text-blue-600 animate-pulse" />
+                    <HeartPulse className="absolute inset-0 m-auto w-6 h-6 text-blue-600 animate-pulse" />
                 </div>
                 <p className="mt-6 font-bold text-slate-900 tracking-wide uppercase text-xs">Synchronizing Health Data...</p>
             </div>
@@ -187,7 +226,7 @@ export default function PatientDashboard() {
                             onClick={() => navigate('/patient/my-appointments')}
                             className="text-xs font-black text-blue-600 uppercase tracking-widest hover:translate-x-1 transition-transform"
                         >
-                            View All Schedule
+                            View All Appointments
                         </button>
                     </div>
 
@@ -241,8 +280,8 @@ export default function PatientDashboard() {
                                 <button
                                     onClick={() => app.status === 'confirmed' ? navigate('/patient/telemedicine') : navigate('/patient/my-appointments')}
                                     className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${app.status === 'confirmed'
-                                            ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20'
-                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 shadow-slate-200'
+                                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 shadow-slate-200'
                                         }`}
                                 >
                                     {app.status === 'confirmed' ? 'Join Session' : 'View Details'}
@@ -276,7 +315,7 @@ export default function PatientDashboard() {
                                 { label: 'Book Appt.', icon: Plus, path: '/patient/book-appointment', color: 'blue' },
                                 { label: 'View Reports', icon: FileText, path: '/patient/medical-history', color: 'slate' },
                                 { label: 'Update Profile', icon: User, path: '/patient/profile', color: 'orange' },
-                                { label: 'Consult AI', icon: Activity, path: '/patient/telemedicine', color: 'rose' }
+                                { label: 'Consult AI', icon: Brain, path: '/patient/symptom-checke', color: 'rose' }
                             ].map((action, i) => (
                                 <button
                                     key={i}
@@ -297,13 +336,12 @@ export default function PatientDashboard() {
                         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
                         <div className="relative z-10 flex items-center space-x-3 mb-6">
-                            <Sparkles className="w-5 h-5 text-blue-600" />
+                            <Quote className="w-5 h-5 text-blue-600" />
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Today's Quote</h3>
                         </div>
 
                         <div className="relative z-10 space-y-6">
                             <div className="relative">
-                                <Quote className="absolute -top-4 -left-2 w-8 h-8 text-blue-50/50 z-0" />
                                 <blockquote className="relative z-10">
                                     <p className="text-sm font-bold text-slate-800 leading-relaxed italic">
                                         "{dailyQuote.text}"
@@ -312,13 +350,6 @@ export default function PatientDashboard() {
                                         — {dailyQuote.author}
                                     </cite>
                                 </blockquote>
-                            </div>
-
-                            <div className="pt-6 border-t border-slate-50">
-                                <div className="flex items-center space-x-2 opacity-40">
-                                    <Clock className="w-3 h-3" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest">Next update in 2 hours</span>
-                                </div>
                             </div>
                         </div>
 

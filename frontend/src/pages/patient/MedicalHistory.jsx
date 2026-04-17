@@ -2,9 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import patientService from '../../services/patientService';
 import appointmentService from '../../services/appointmentService';
 import Toast from '../../components/common/Toast';
+import Dropdown from '../../components/common/Dropdown';
+import DateRangePicker from '../../components/common/DateRangePicker';
 import {
     Loader2,
-    Activity,
+    HeartPulse,
+    FileScan,
     FileText,
     ChevronDown,
     ChevronUp,
@@ -40,8 +43,8 @@ export default function MedicalHistory() {
     const [filterType, setFilterType] = useState('All'); // All, Image, Document
 
     // NEW: Filters for Snapshots (Date Range)
-    const [snapshotStartDate, setSnapshotStartDate] = useState('');
-    const [snapshotEndDate, setSnapshotEndDate] = useState('');
+    const [snapshotStartDate, setSnapshotStartDate] = useState(null);
+    const [snapshotEndDate, setSnapshotEndDate] = useState(null);
 
     // Upload State
     const [uploadFile, setUploadFile] = useState(null);
@@ -49,6 +52,7 @@ export default function MedicalHistory() {
     const [uploadTitle, setUploadTitle] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const [archiveConfirmId, setArchiveConfirmId] = useState(null);
 
     // Data Fetching
     useEffect(() => {
@@ -143,9 +147,13 @@ export default function MedicalHistory() {
         }
     };
 
-    const handleArchive = async (reportId) => {
-        if (!window.confirm("Are you sure you want to archive this document?")) return;
+    const handleArchiveClick = (reportId) => {
+        setArchiveConfirmId(reportId);
+    };
 
+    const handleConfirmArchive = async () => {
+        const reportId = archiveConfirmId;
+        setArchiveConfirmId(null);
         try {
             await patientService.archiveReport(reportId);
             setReports((prev) =>
@@ -232,6 +240,13 @@ export default function MedicalHistory() {
             </div>
 
             <Toast isOpen={!!message.text} type={message.type} message={message.text} onClose={clearMessage} />
+            <Toast
+                isOpen={!!archiveConfirmId}
+                type="confirm"
+                message="Are you sure you want to archive this document?"
+                onCancel={() => setArchiveConfirmId(null)}
+                onConfirm={handleConfirmArchive}
+            />
 
             {/* TAB 1: CLINICAL TIMELINE & SNAPSHOTS */}
             {activeTab === 'Clinical Timeline' && (
@@ -240,10 +255,10 @@ export default function MedicalHistory() {
                     {/* Compact Medical Data Overview */}
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-                            <Activity className="w-32 h-32 text-blue-500" />
+                            <HeartPulse className="w-32 h-32 text-blue-500" />
                         </div>
                         <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                            <Activity className="w-5 h-5 text-blue-500 mr-2" />
+                            <HeartPulse className="w-5 h-5 text-blue-500 mr-2" />
                             Current Vitals & Conditions
                         </h3>
 
@@ -298,26 +313,17 @@ export default function MedicalHistory() {
                                     <CalendarDays className="w-4 h-4 text-slate-400" />
                                     <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Filter Range:</span>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <input
-                                        type="date"
-                                        value={snapshotStartDate}
-                                        onChange={(e) => setSnapshotStartDate(e.target.value)}
-                                        className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium focus:outline-none focus:border-blue-500 text-slate-600"
-                                        title="Start Date"
-                                    />
-                                    <span className="text-slate-400 text-xs">-</span>
-                                    <input
-                                        type="date"
-                                        value={snapshotEndDate}
-                                        onChange={(e) => setSnapshotEndDate(e.target.value)}
-                                        className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium focus:outline-none focus:border-blue-500 text-slate-600"
-                                        title="End Date"
-                                    />
-                                </div>
+                                <DateRangePicker
+                                    startDate={snapshotStartDate}
+                                    endDate={snapshotEndDate}
+                                    onRangeChange={(start, end) => {
+                                        setSnapshotStartDate(start);
+                                        setSnapshotEndDate(end);
+                                    }}
+                                />
                                 {(snapshotStartDate || snapshotEndDate) && (
                                     <button
-                                        onClick={() => { setSnapshotStartDate(''); setSnapshotEndDate(''); }}
+                                        onClick={() => { setSnapshotStartDate(null); setSnapshotEndDate(null); }}
                                         className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider bg-red-50 px-2 py-1 rounded"
                                     >
                                         Clear
@@ -350,7 +356,7 @@ export default function MedicalHistory() {
                                             >
                                                 <div className="flex items-center space-x-4">
                                                     <div className="bg-slate-100 p-2.5 rounded-lg">
-                                                        <Activity className="w-5 h-5 text-slate-600" />
+                                                        <FileScan className="w-5 h-5 text-slate-600" />
                                                     </div>
                                                     <div className="text-left">
                                                         <p className="font-bold text-slate-800">Snapshot captured</p>
@@ -570,16 +576,17 @@ export default function MedicalHistory() {
                                 className="w-full px-4 py-2.5 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                             />
                             <div className="flex flex-col sm:flex-row gap-3">
-                                <select
+                                <Dropdown
                                     value={uploadCategory}
-                                    onChange={(e) => setUploadCategory(e.target.value)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium bg-white"
-                                >
-                                    <option value="Lab Result">Lab Result</option>
-                                    <option value="Prescription">Prescription</option>
-                                    <option value="X-Ray">X-Ray</option>
-                                    <option value="Other">Other</option>
-                                </select>
+                                    onChange={setUploadCategory}
+                                    options={[
+                                        { value: 'Lab Result', label: 'Lab Result' },
+                                        { value: 'Prescription', label: 'Prescription' },
+                                        { value: 'X-Ray', label: 'X-Ray' },
+                                        { value: 'Other', label: 'Other' }
+                                    ]}
+                                    className="flex-1"
+                                />
                                 <input
                                     type="file"
                                     ref={fileInputRef}
@@ -611,26 +618,28 @@ export default function MedicalHistory() {
                             <span className="text-xs font-bold uppercase tracking-widest">Filter Vault</span>
                         </div>
                         <div className="flex flex-wrap gap-3">
-                            <select
+                            <Dropdown
                                 value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
-                                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-blue-500"
-                            >
-                                <option value="All">All Categories</option>
-                                <option value="Lab Result">Lab Results</option>
-                                <option value="Prescription">Prescriptions</option>
-                                <option value="X-Ray">X-Ray</option>
-                                <option value="Other">Other</option>
-                            </select>
-                            <select
+                                onChange={setFilterCategory}
+                                options={[
+                                    { value: 'All', label: 'All Categories' },
+                                    { value: 'Lab Result', label: 'Lab Results' },
+                                    { value: 'Prescription', label: 'Prescriptions' },
+                                    { value: 'X-Ray', label: 'X-Ray' },
+                                    { value: 'Other', label: 'Other' }
+                                ]}
+                                className="w-full sm:w-48"
+                            />
+                            <Dropdown
                                 value={filterType}
-                                onChange={(e) => setFilterType(e.target.value)}
-                                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-blue-500"
-                            >
-                                <option value="All">All File Types</option>
-                                <option value="Document">Documents (PDF)</option>
-                                <option value="Image">Images (JPG/PNG)</option>
-                            </select>
+                                onChange={setFilterType}
+                                options={[
+                                    { value: 'All', label: 'All File Types' },
+                                    { value: 'Document', label: 'Documents (PDF)' },
+                                    { value: 'Image', label: 'Images (JPG/PNG)' }
+                                ]}
+                                className="w-full sm:w-48"
+                            />
                         </div>
                     </div>
 
@@ -673,7 +682,7 @@ export default function MedicalHistory() {
                                                 <ExternalLink className="w-5 h-5" />
                                             </a>
                                             <button
-                                                onClick={() => handleArchive(report._id)}
+                                                onClick={() => handleArchiveClick(report._id)}
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Archive Document"
                                             >

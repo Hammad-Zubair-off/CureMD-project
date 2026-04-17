@@ -125,7 +125,7 @@ export default function DoctorProfile() {
     const setConsultationType = (type, val) =>
         setForm(f => ({ ...f, consultationTypes: { ...f.consultationTypes, [type]: val } }));
 
-    // ── phone numbers ──────────────────────────────────────────────────────────
+    // phone numbers
     const addPhone = () => {
         const trimmed = phoneInput.trim();
         if (!trimmed) return;
@@ -142,14 +142,14 @@ export default function DoctorProfile() {
     const removePhone = (i) =>
         setForm(f => ({ ...f, phoneNumbers: f.phoneNumbers.filter((_, idx) => idx !== i) }));
 
-    // ── education ──────────────────────────────────────────────────────────────
+    // education
     const addEducation = () => setForm(f => ({ ...f, education: [...f.education, { degree: '', institution: '', year: '' }] }));
     const updateEducation = (i, key, val) => setForm(f => {
         const ed = [...f.education]; ed[i] = { ...ed[i], [key]: val }; return { ...f, education: ed };
     });
     const removeEducation = (i) => setForm(f => ({ ...f, education: f.education.filter((_, idx) => idx !== i) }));
 
-    // ── experience ─────────────────────────────────────────────────────────────
+    // experience
     const addExperience = () => setForm(f => ({
         ...f, experience: [...f.experience, { hospital: '', role: '', from: '', to: '', isCurrent: false }]
     }));
@@ -158,7 +158,7 @@ export default function DoctorProfile() {
     });
     const removeExperience = (i) => setForm(f => ({ ...f, experience: f.experience.filter((_, idx) => idx !== i) }));
 
-    // ── tag fields ─────────────────────────────────────────────────────────────
+    // tag fields
     const addTag = (field, val, setter) => {
         if (!val.trim()) return;
         setForm(f => ({ ...f, [field]: [...f[field], val.trim()] }));
@@ -214,7 +214,7 @@ export default function DoctorProfile() {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">{isNew ? 'Create Your Profile' : 'My Profile'}</h1>
                     <p className="text-slate-500 text-sm mt-0.5">
-                        {isNew ? 'Complete your profile to get approved and go live on HealthConnect.' : 'Keep your information accurate and up to date for patients.'}
+                        {isNew ? 'Complete your profile to get approved and go live on MediCare.' : 'Keep your information accurate and up to date for patients.'}
                     </p>
                 </div>
                 {!isNew && (
@@ -237,7 +237,7 @@ export default function DoctorProfile() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* ── Basic Information ───────────────────────────────────────── */}
+                {/* Basic info */}
                 <SectionCard title="Basic Information" icon={UserCircle}>
                     <div className="grid grid-cols-3 gap-3 mb-4">
                         <div>
@@ -286,7 +286,7 @@ export default function DoctorProfile() {
                         </div>
                     </div>
 
-                    {/* ── Phone Numbers ─────────────────────────────────────── */}
+                    {/* Phone numbers */}
                     <div className="mb-4">
                         <Label>
                             Phone Numbers{' '}
@@ -351,7 +351,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
-                {/* ── Consultation Settings ───────────────────────────────────── */}
+                {/* Consultation billing */}
                 <SectionCard title="Consultation Settings" icon={Video}>
                     <div className="grid grid-cols-2 gap-3 mb-5">
                         <div>
@@ -395,7 +395,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
-                {/* ── Education ───────────────────────────────────────────────── */}
+                {/* Education */}
                 <SectionCard title="Education" icon={GraduationCap} defaultOpen={false}>
                     <div className="space-y-3">
                         {form.education.map((ed, i) => (
@@ -424,7 +424,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
-                {/* ── Work Experience ─────────────────────────────────────────── */}
+                {/* Experience */}
                 <SectionCard title="Work Experience" icon={Briefcase} defaultOpen={false}>
                     <div className="space-y-3">
                         {form.experience.map((ex, i) => (
@@ -471,7 +471,7 @@ export default function DoctorProfile() {
                     </div>
                 </SectionCard>
 
-                {/* ── Skills & Languages ──────────────────────────────────────── */}
+                {/* Expertise */}
                 <SectionCard title="Skills & Languages" icon={Zap} defaultOpen={false}>
                     {[
                         { label: 'Areas of Expertise', field: 'areasOfExpertise', val: expertInput, set: setExpertInput, placeholder: 'e.g. Interventional Cardiology' },

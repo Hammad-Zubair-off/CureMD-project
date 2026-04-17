@@ -129,8 +129,8 @@ export default function AdminDashboard() {
                 <div className="px-4 py-6 flex items-center justify-between border-b border-slate-200">
                     {sidebarOpen && (
                         <div className="flex items-center space-x-2 text-blue-600 overflow-hidden">
-                            <Activity className="w-6 h-6 shrink-0" />
-                            <span className="text-lg font-bold text-slate-900 whitespace-nowrap">HealthConnect</span>
+                            <Stethoscope className="w-6 h-6 shrink-0" />
+                            <span className="text-lg font-bold text-slate-900 whitespace-nowrap">MediCare</span>
                         </div>
                     )}
                     <button
@@ -232,7 +232,7 @@ export default function AdminDashboard() {
                     >
                         <Menu className="w-5 h-5" />
                     </button>
-                    <span className="ml-3 font-semibold text-slate-800">HealthConnect Admin</span>
+                    <span className="ml-3 font-semibold text-slate-800">MediCare Admin</span>
                 </div>
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -308,7 +308,7 @@ export default function AdminDashboard() {
                                             <input
                                                 type="email"
                                                 required
-                                                placeholder="admin@healthconnect.com"
+                                                placeholder="admin@medicare.com"
                                                 value={createAdminForm.email}
                                                 onChange={e => setCreateAdminForm(f => ({ ...f, email: e.target.value }))}
                                                 className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
