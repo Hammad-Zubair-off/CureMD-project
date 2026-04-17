@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-service
+  namespace: healthcare
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appointment-service
+  template:
+    metadata:
+      labels:
+        app: appointment-service
+    spec:
+      containers:
+      - name: appointment-service
+        image: appointment-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3004
+        env:
+        - name: PORT
+          value: "3004"
+        - name: SERVICE_NAME
+          value: "appointment"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: mongo-appointment-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: INTERNAL_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: internal-secret
+        - name: RABBITMQ_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: rabbitmq-url
+        - name: PATIENT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: service-config
+              key: PATIENT_SERVICE_URL
+        - name: DOCTOR_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: service-config
+              key: DOCTOR_SERVICE_URL
+        - name: ALLOWED_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: service-config
+              key: ALLOWED_ORIGINS
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3004
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3004
+          initialDelaySeconds: 40
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appointment-service
+  namespace: healthcare
+spec:
+  selector:
+    app: appointment-service
+  ports:
+  - port: 3004
+    targetPort: 3004

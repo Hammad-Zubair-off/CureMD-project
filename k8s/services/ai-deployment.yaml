@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-symptom-service
+  namespace: healthcare
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-symptom-service
+  template:
+    metadata:
+      labels:
+        app: ai-symptom-service
+    spec:
+      containers:
+      - name: ai-symptom-service
+        image: ai-symptom-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3008
+        env:
+        - name: PORT
+          value: "3008"
+        - name: SERVICE_NAME
+          value: "ai-symptom"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: mongo-ai-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: GEMINI_API_KEY_1
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: gemini-api-key-1
+        - name: GEMINI_API_KEY_2
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: gemini-api-key-2
+        - name: GEMINI_API_KEY_3
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: gemini-api-key-3
+        - name: GEMINI_API_KEY_4
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: gemini-api-key-4
+        - name: ALLOWED_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: service-config
+              key: ALLOWED_ORIGINS
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3008
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3008
+          initialDelaySeconds: 30
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-symptom-service
+  namespace: healthcare
+spec:
+  selector:
+    app: ai-symptom-service
+  ports:
+  - port: 3008
+    targetPort: 3008
