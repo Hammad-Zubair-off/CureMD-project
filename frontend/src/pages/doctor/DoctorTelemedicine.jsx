@@ -273,6 +273,8 @@ export default function DoctorTelemedicine() {
                 state: {
                     sessionData,
                     patientName: appt.patientFullName,
+                    appointmentId: appt._id,       // ← added
+                    patientId: appt.patientId,     // ← added
                 },
             });
         } catch (err) {
