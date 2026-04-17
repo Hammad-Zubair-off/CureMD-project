@@ -2,7 +2,7 @@ import { Session } from '../models/Session.js';
 import { generateRtcToken } from '../utils/agoraTokenGenerator.js';
 import { logger } from '../utils/logger.js';
 
-// ── POST /api/telemedicine/session/create ─────────────────────────────────────
+// POST /api/telemedicine/session/create
 // Called when doctor clicks "Start Session"
 // Creates (or retrieves existing) session, generates Agora token for doctor
 export const createSession = async (req, res, next) => {
@@ -74,7 +74,7 @@ export const createSession = async (req, res, next) => {
   }
 };
 
-// ── PATCH /api/telemedicine/session/:sessionId/start ──────────────────────────
+// PATCH /api/telemedicine/session/:sessionId/start
 // Called when doctor actually joins Agora and video starts
 export const markSessionActive = async (req, res, next) => {
   try {
@@ -105,7 +105,7 @@ export const markSessionActive = async (req, res, next) => {
   }
 };
 
-// ── PATCH /api/telemedicine/session/:sessionId/end ────────────────────────────
+// PATCH /api/telemedicine/session/:sessionId/end
 // Called when doctor ends the call
 export const endSession = async (req, res, next) => {
   try {
@@ -141,7 +141,7 @@ export const endSession = async (req, res, next) => {
   }
 };
 
-// ── GET /api/telemedicine/session/appointment/:appointmentId ──────────────────
+// GET /api/telemedicine/session/appointment/:appointmentId
 // Get session info for an appointment
 export const getSessionByAppointment = async (req, res, next) => {
   try {

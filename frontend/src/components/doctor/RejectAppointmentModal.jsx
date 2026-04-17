@@ -61,7 +61,7 @@ export default function RejectAppointmentModal({ appointment, onClose, onRejecte
       <div className="fixed inset-0 z-70 flex items-center justify-center p-4 pointer-events-none">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto animate-fade-in">
 
-          {/* ── SUCCESS STATE ── */}
+          {/* Success state */}
           {rejected ? (
             <div className="flex flex-col items-center justify-center px-6 py-10 gap-4 text-center">
               <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">

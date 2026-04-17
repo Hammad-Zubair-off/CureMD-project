@@ -26,7 +26,7 @@ export default function DoctorVideoRoom() {
   const [error, setError]               = useState(null);
   const [duration, setDuration]         = useState(0);
 
-  // ── DURATION COUNTER ─────────────────────────────────────────────────────
+  // Duration counter
   useEffect(() => {
     if (!joined) return;
     const interval = setInterval(() => setDuration(d => d + 1), 1000);
@@ -39,7 +39,7 @@ export default function DoctorVideoRoom() {
     return `${m}:${s}`;
   };
 
-  // ── PLAY LOCAL VIDEO after joined=true renders the video divs ────────────
+  // Local video playback
   useEffect(() => {
     if (!joined) return;
     const videoTrack = localTracksRef.current.video;
@@ -48,7 +48,7 @@ export default function DoctorVideoRoom() {
     }
   }, [joined]);
 
-  // ── JOIN AGORA CHANNEL ───────────────────────────────────────────────────
+  // Agora channel join logic
   useEffect(() => {
     if (!sessionData) {
       setError('No session data. Please start session from the telemedicine page.');
@@ -91,7 +91,7 @@ export default function DoctorVideoRoom() {
 
         client.on('user-left', () => setRemoteJoined(false));
 
-        // ── KEY FIX: check isCancelled before every async step ──
+        // check isCancelled before every async step
         // If StrictMode cleanup already fired, stop here — don't join at all
         if (isCancelled) return;
 
@@ -147,7 +147,7 @@ export default function DoctorVideoRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── LEAVE & CLEANUP ──────────────────────────────────────────────────────
+  // Cleanup logic
   const leaveCleanup = async () => {
     localTracksRef.current.audio?.close();
     localTracksRef.current.video?.close();
@@ -168,7 +168,7 @@ export default function DoctorVideoRoom() {
     navigate('/doctor/telemedicine');
   };
 
-  // ── CONTROLS ─────────────────────────────────────────────────────────────
+  // Mic/Cam controls
   const toggleMic = async () => {
     const track = localTracksRef.current.audio;
     if (!track) return;
@@ -183,7 +183,7 @@ export default function DoctorVideoRoom() {
     setCamOff(prev => !prev);
   };
 
-  // ── ERROR STATE ──────────────────────────────────────────────────────────
+  // Error state view
   if (error) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
@@ -202,7 +202,7 @@ export default function DoctorVideoRoom() {
     );
   }
 
-  // ── LOADING ──────────────────────────────────────────────────────────────
+  // Loading view
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
@@ -212,7 +212,7 @@ export default function DoctorVideoRoom() {
     );
   }
 
-  // ── VIDEO ROOM ───────────────────────────────────────────────────────────
+  // Main video room view
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col">
 

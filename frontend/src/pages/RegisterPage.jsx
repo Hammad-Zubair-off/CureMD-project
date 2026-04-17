@@ -65,7 +65,7 @@ export default function RegisterPage() {
     }
   };
 
-  // ── Doctor pending approval screen ──────────────────────
+  // Doctor pending approval screen
   if (registered && registeredData?.user?.role === 'doctor') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
@@ -108,7 +108,7 @@ export default function RegisterPage() {
     );
   }
 
-  // ── Main register form ───────────────────────────────────
+  // Main register form
   return (
     <div className="min-h-screen flex bg-white font-sans text-slate-900">
 

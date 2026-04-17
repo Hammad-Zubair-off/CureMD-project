@@ -52,7 +52,7 @@ const doctorSchema = new mongoose.Schema(
         yearsOfExperience: { type: Number, required: true, min: 0 },
         licenseNumber: { type: String, required: true, unique: true, trim: true },
 
-        // ── Telephone numbers (max 5) ──────────────────────────────────────────
+        // Telephone numbers (max 5)
         phoneNumbers: {
             type: [{ type: String, trim: true }],
             default: [],

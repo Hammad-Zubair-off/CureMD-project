@@ -171,7 +171,7 @@ export default function PatientSettings() {
                 </div>
             </div>
 
-            {/* ── Security Tab ── */}
+            {/* Security Tab */}
             {activeTab === 'security' && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-4">
@@ -256,7 +256,7 @@ export default function PatientSettings() {
                 </div>
             )}
 
-            {/* ── Account Tab ── */}
+            {/* Account Tab */}
             {activeTab === 'account' && (
                 <div className="space-y-8">
                     {/* Account Info Card */}
