@@ -35,11 +35,6 @@ const DoctorCard = ({ doctor, onBookNow, onViewDetails, bookLoading }) => {
             {/* Stats Row */}
             <div className="flex items-center space-x-4 mb-4">
                 <div className="flex items-center space-x-1">
-                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                    <span className="text-sm font-semibold text-slate-700">{doctor.rating}</span>
-                    <span className="text-xs text-slate-400">({doctor.reviewCount})</span>
-                </div>
-                <div className="flex items-center space-x-1">
                     <Briefcase className="w-3.5 h-3.5 text-slate-400" />
                     <span className="text-xs text-slate-500">{doctor.experience} yrs exp</span>
                 </div>
