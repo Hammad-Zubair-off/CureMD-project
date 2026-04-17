@@ -19,6 +19,7 @@ import MyProfile from './pages/patient/MyProfile'
 import MedicalHistory from './pages/patient/MedicalHistory'
 import Telemedicine from './pages/patient/Telemedicine'
 import SymptomChecker from './pages/patient/SymptomChecker';
+import PatientSettings from './pages/patient/PatientSettings';
 import PatientVideoRoom from './pages/patient/PatientVideoRoom';
 
 //doctor
@@ -82,6 +83,7 @@ function App() {
         <Route path="medical-history" element={<MedicalHistory />} />
         <Route path="telemedicine" element={<Telemedicine />} />
         <Route path="symptom-checker" element={<SymptomChecker />} />
+        <Route path="settings" element={<PatientSettings />} />
         <Route path="video-room" element={<PatientVideoRoom />} />
       </Route>
 

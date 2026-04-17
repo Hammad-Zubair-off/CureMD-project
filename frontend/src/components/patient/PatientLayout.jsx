@@ -3,7 +3,7 @@ import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import patientService from '../../services/patientService';
 import {
-    Activity,
+    Stethoscope,
     LayoutDashboard,
     CalendarPlus,
     CalendarCheck,
@@ -15,14 +15,14 @@ import {
     X,
     Settings,
     ChevronRight,
-    Bot
+    Brain
 } from 'lucide-react';
 
 const navItems = [
     { to: '/patient/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/patient/book-appointment', label: 'Book Appointment', icon: CalendarPlus },
     { to: '/patient/my-appointments', label: 'My Appointments', icon: CalendarCheck },
-    { to: '/patient/symptom-checker', label: 'AI Symptom Checker', icon: Bot },
+    { to: '/patient/symptom-checker', label: 'AI Symptom Checker', icon: Brain },
     { to: '/patient/profile', label: 'My Profile', icon: UserCircle },
     { to: '/patient/medical-history', label: 'Medical History', icon: FileText },
     { to: '/patient/telemedicine', label: 'Telemedicine', icon: Video },
@@ -58,7 +58,7 @@ export default function PatientLayout() {
             {/* Logo — desktop only, hidden on mobile (mobile has its own header row above) */}
             <div className="hidden lg:flex items-center space-x-2 px-6 py-5 border-b border-slate-100">
                 <div className="bg-blue-600 p-1.5 rounded-lg">
-                    <Activity className="w-5 h-5 text-white" />
+                    <Stethoscope className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-lg font-bold text-slate-900 tracking-tight">HealthConnect</span>
             </div>
@@ -164,7 +164,7 @@ export default function PatientLayout() {
                         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
                             <div className="flex items-center space-x-2">
                                 <div className="bg-blue-600 p-1.5 rounded-lg">
-                                    <Activity className="w-4 h-4 text-white" />
+                                    <Stethoscope className="w-4 h-4 text-white" />
                                 </div>
                                 <span className="text-base font-bold text-slate-900 tracking-tight">HealthConnect</span>
                             </div>
@@ -195,7 +195,7 @@ export default function PatientLayout() {
                     </button>
                     <div className="flex items-center space-x-2">
                         <div className="bg-blue-600 p-1 rounded-md">
-                            <Activity className="w-4 h-4 text-white" />
+                            <Stethoscope className="w-4 h-4 text-white" />
                         </div>
                         <span className="text-base font-bold text-slate-900 tracking-tight">HealthConnect</span>
                     </div>

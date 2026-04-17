@@ -5,7 +5,6 @@ import PatientProfileUpdate from '../../components/patient/PatientProfileUpdate'
 import Toast from '../../components/common/Toast';
 import {
     Loader2,
-    Activity,
     Lock,
     ExternalLink,
     Settings,

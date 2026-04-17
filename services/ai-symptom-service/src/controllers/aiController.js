@@ -37,6 +37,7 @@ const getModel = (keyIndex, modelName, systemInstruction) => {
  */
 const generateWithKeyRotation = async (modelName, systemInstruction, promptData, generationConfig) => {
     const totalKeys = apiKeys.length;
+    let lastError = null;
 
     for (let attempt = 0; attempt < totalKeys; attempt++) {
         const keyIndex = (currentKeyIndex + attempt) % totalKeys;
@@ -48,31 +49,22 @@ const generateWithKeyRotation = async (modelName, systemInstruction, promptData,
                 generationConfig,
             });
 
-            // Success — persist the winning key for next call
-            if (attempt > 0) {
-                logger.info(`[ai-symptom-service] Succeeded with Gemini Key ${keyIndex + 1} after ${attempt} rotation(s).`);
-            }
             currentKeyIndex = keyIndex;
             return completion.response.text();
         } catch (err) {
-            const isRateLimit = err.status === 429 || (err.message && err.message.includes('429'));
+            lastError = err;
+            const statusCode = err.status || (err.message?.includes('403') ? 403 : err.message?.includes('429') ? 429 : null);
+            const isRotatable = statusCode === 429 || statusCode === 403;
 
-            if (isRateLimit && attempt < totalKeys - 1) {
-                logger.warn(
-                    `[ai-symptom-service] Key ${keyIndex + 1} rate-limited (429). Rotating to Key ${((keyIndex + 1) % totalKeys) + 1}…`
-                );
-                continue; // try next key
+            if (isRotatable && attempt < totalKeys - 1) {
+                logger.warn(`[ai-symptom-service] Key ${keyIndex + 1} failed (${statusCode}). Rotating...`);
+                continue;
             }
-
-            // Not a rate-limit error, or we've exhausted all keys — re-throw
-            throw err;
+            break;
         }
     }
 
-    // All keys exhausted
-    const allExhaustedErr = new Error('All Gemini API keys are currently rate-limited.');
-    allExhaustedErr.status = 429;
-    throw allExhaustedErr;
+    throw lastError || new Error('All Gemini API keys exhausted.');
 };
 
 // Helpers
@@ -236,31 +228,42 @@ export const sendMessage = async (req, res, next) => {
 
         // Build the lean prompt — rolling summary + new message + any file content
         const promptText = `
-CURRENT ROLLING SUMMARY:
-${session.rollingSummary}
+            CURRENT ROLLING SUMMARY:
+            ${session.rollingSummary}
 
-NEW PATIENT MESSAGE:
-"${message.trim()}"
-${extractedText ? `\nATTACHED DOCUMENT TEXT:\n${extractedText}` : ''}
+            NEW PATIENT MESSAGE:
+            "${message.trim()}"
+            ${extractedText ? `\nATTACHED DOCUMENT TEXT:\n${extractedText}` : ''}
         `.trim();
 
         // Call Gemini — automatically rotates through all API keys on 429
         const systemInstruction = `You are a highly analytical clinical AI triage assistant. Analyze the CURRENT ROLLING SUMMARY and the NEW PATIENT MESSAGE. You MUST return a raw JSON object with EXACTLY this structure:
-{
-  "isEmergency": boolean,
-  "triageLevel": "Pending" | "Routine" | "Urgent" | "Emergency",
-  "suggestedDepartment": "string" or null,
-  "rollingSummary": "string (A concise summary of ALL symptoms discussed so far, max 4 sentences)",
-  "userFacingMessage": "string"
-}
+        {
+        "isEmergency": boolean,
+        "triageLevel": "Pending" | "Routine" | "Urgent" | "Emergency",
+        "suggestedDepartment": "string" or null,
+        "rollingSummary": "string",
+        "userFacingMessage": "string"
+        }
 
-CRITICAL CLINICAL LOGIC & RULES:
-1. DEFINITIVE EMERGENCY (isEmergency: true): ONLY trigger this if symptoms unambiguously indicate an immediate life threat (e.g., crushing chest pain, sudden facial drooping/paralysis, active heavy bleeding, explicit suicidal intent). -> userFacingMessage: DO NOT ask follow-up questions. Advise immediate emergency care.
-2. AMBIGUOUS / POTENTIAL EMERGENCY (isEmergency: false, triageLevel: "Urgent"): If symptoms might be serious but are mild or vague, do NOT trigger emergency. -> userFacingMessage: Ask 1-2 targeted rule-out questions.
-3. ROUTINE (isEmergency: false, triageLevel: "Routine" or "Pending"): -> userFacingMessage: Provide an empathetic reply and ask ONE relevant follow-up question.
-4. ROLLING SUMMARY RETENTION: Always retain patient age, gender, known conditions, and allergies in rollingSummary if present. Never delete baseline profile data.
+        CRITICAL CLINICAL LOGIC & RULES:
 
-Do not wrap the JSON in markdown blocks. Return only raw JSON.`;
+        1. THE ROLLING SUMMARY (CRITICAL): 
+        - You MUST retain patient age, gender, known conditions, and allergies if present. 
+        - You MUST summarize current active symptoms.
+        - You MUST record "pertinent negatives" (e.g., "Patient denies pain, redness, or itching"). If a patient says "no" to a symptom, save that "no" here so you don't ask again.
+
+        2. CONVERSATIONAL TONE:
+        - Be conversational, natural, and professional. 
+        - DO NOT repeat phrases like "Thank you for letting us know" or "To help us understand this better." Vary your responses natively. 
+        - Acknowledge their answer briefly, then move on.
+
+        3. TRIAGE PHASES & EXIT CONDITION:
+        - DEFINITIVE EMERGENCY: Trigger if symptoms unambiguously indicate a life threat (crushing chest pain, active heavy bleeding, etc.). isEmergency: true. userFacingMessage: DO NOT ask follow-up questions. Advise immediate emergency care.
+        - GATHERING INFO (triageLevel: "Pending"): If you still need 1-2 critical pieces of info to safely triage, ask ONE targeted question. Do NOT ask about symptoms the patient has already denied.
+        - TRIAGE COMPLETE (triageLevel: "Routine" or "Urgent"): ONCE YOU HAVE ENOUGH INFO to understand the situation, STOP ASKING QUESTIONS. Your userFacingMessage should provide a brief, reassuring clinical assessment of what might be happening (e.g., contact dermatitis from cashew oil) and advise them on next steps or which doctor to see. 
+
+        Do not wrap the JSON in markdown blocks. Return only raw JSON.`;
 
         const promptData = [{ text: promptText }, ...imageParts];
 

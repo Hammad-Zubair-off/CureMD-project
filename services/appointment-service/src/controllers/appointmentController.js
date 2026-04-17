@@ -824,7 +824,9 @@ export const getMyAppointments = async (req, res, next) => {
             filter.paymentStatus = 'unpaid';
         }
         if (tab === 'past') {
-            filter.status = 'completed';
+            // 'past'      = auto-transitioned by scheduler when appointment time elapses
+            // 'completed' = manually marked done by the doctor after consultation
+            filter.status = { $in: ['completed', 'past'] };
         }
         if (tab === 'cancelled') {
             filter.status = { $in: ['cancelled', 'expired'] };
@@ -840,8 +842,11 @@ export const getMyAppointments = async (req, res, next) => {
             };
         }
 
+        // upcoming: ascending (nearest first); everything else: descending (most recent first)
+        const sortOrder = tab === 'upcoming' ? 1 : -1;
+
         const [appointments, total] = await Promise.all([
-            Appointment.find(filter).sort({ appointmentDate: -1 }).skip(skip).limit(limit),
+            Appointment.find(filter).sort({ appointmentDate: sortOrder }).skip(skip).limit(limit),
             Appointment.countDocuments(filter),
         ]);
 

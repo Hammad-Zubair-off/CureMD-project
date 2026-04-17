@@ -4,7 +4,7 @@ const statusHistorySchema = new mongoose.Schema(
     {
         status: {
             type: String,
-            enum: ['pending', 'confirmed', 'cancelled', 'completed', 'expired'],
+            enum: ['pending', 'confirmed', 'cancelled', 'completed', 'expired', 'past'],
             required: true,
         },
         changedAt: {
@@ -95,7 +95,7 @@ const appointmentSchema = new mongoose.Schema(
         status: {
             type: String,
             enum: {
-                values: ['pending', 'confirmed', 'cancelled', 'completed', 'expired'],
+                values: ['pending', 'confirmed', 'cancelled', 'completed', 'expired', 'past'],
                 message: 'Invalid appointment status',
             },
             default: 'pending',

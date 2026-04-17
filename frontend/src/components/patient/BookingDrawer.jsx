@@ -311,7 +311,7 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
                         options={[
                             { value: "none", label: "Do not share" },
                             { value: "MINIMAL", label: "Share the Latest Medical Data" },
-                            { value: "FULL", label: "Grant Full access for 24 hours" },
+                            { value: "FULL", label: "Share Medical Data with Full File Access" },
                         ]}
                         className="pl-12 pt-1"
                     />
@@ -399,7 +399,7 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack, fron
             <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Booking Summary</p>
                 <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 space-y-4">
-                    
+
                     {/* Doctor Info (Matched to Step 1) */}
                     <div className="flex items-center space-x-3 pb-4 border-b border-slate-200">
                         <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">

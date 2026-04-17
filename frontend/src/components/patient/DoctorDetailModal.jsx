@@ -18,13 +18,13 @@ const getNext7Days = () => {
 };
 
 const isDoctorAvailable = (doctor, date) => {
-    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
     return doctor.availability?.some(a => a.day === dayName && a.slots?.length > 0);
 };
 
 const getSlotsForDate = (doctor, date) => {
     if (!date) return [];
-    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
     const dayEntry = doctor.availability?.find(a => a.day === dayName);
     if (!dayEntry) return [];
     return dayEntry.slots.map(s => `${s.startTime} - ${s.endTime}`);
@@ -70,7 +70,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
 
             {/* Modal */}
             <div className="relative bg-white rounded-md shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden pb-4 pl-3">
-                
+
                 {/* Header */}
                 <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
                     <h2 className="text-lg font-bold text-slate-900">Doctor Details & Booking</h2>
@@ -85,10 +85,10 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                 {/* Content area */}
                 <div className="flex-1 overflow-y-auto p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        
+
                         {/* ================= LEFT SIDE (Details) ================= */}
                         <div className="lg:col-span-6 space-y-8">
-                            
+
                             {/* Header Info */}
                             <div className="flex items-center space-x-4">
                                 <div className="w-20 h-20 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-2xl shrink-0">
@@ -108,14 +108,6 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                         <span className="text-sm">Location</span>
                                     </div>
                                     <p className="text-slate-900 font-medium truncate" title={doctor.location}>{doctor.location}</p>
-                                </div>
-
-                                <div>
-                                    <div className="flex items-center space-x-2 text-slate-500 mb-1">
-                                        <Star className="w-4 h-4" />
-                                        <span className="text-sm">Rating</span>
-                                    </div>
-                                    <p className="text-slate-900 font-medium">{doctor.rating} <span className="text-sm text-slate-400 font-normal">({doctor.reviewCount} reviews)</span></p>
                                 </div>
 
                                 <div>
@@ -159,7 +151,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
 
                         {/* ================= RIGHT SIDE (Scheduling Panel) ================= */}
                         <div className="lg:col-span-6 flex flex-col  bg-white border-l-2 border-slate-200 p-6">
-                            
+
                             <div className="space-y-6 flex-1">
                                 {/* Available Days */}
                                 <div>
@@ -168,9 +160,9 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                         <span>Available Weekly Schedule</span>
                                     </h4>
                                     <div className="flex flex-wrap gap-2">
-                                        {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day) => {
+                                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
                                             const isAvailable = doctor.availability?.some(a => a.day === day && a.slots?.length > 0);
-                                            if (!isAvailable) return null; 
+                                            if (!isAvailable) return null;
                                             return (
                                                 <span
                                                     key={day}
