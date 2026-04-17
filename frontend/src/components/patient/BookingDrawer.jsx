@@ -21,7 +21,7 @@ import paymentService from "../../services/paymentService";
 import { StripePaymentWrapper } from "../payment/StripePaymentElement";
 import Dropdown from "../common/Dropdown";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 const getDayLabel = (date) => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -70,7 +70,7 @@ const formatDateDisplay = (date) =>
 
 const PHONE_REGEX = /^(?:0?7\d{8}|\+947\d{8})$/;
 
-// ─── Step Indicator ───────────────────────────────────────────────────────────
+// Step Indicator component
 
 const StepIndicator = ({ currentStep }) => (
     <div className="flex items-center space-x-2 mb-6">
@@ -96,7 +96,7 @@ const StepIndicator = ({ currentStep }) => (
     </div>
 );
 
-// ─── Step 1 — Appointment Details ─────────────────────────────────────────────
+// Step 1 — Appointment Details
 
 const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading, error }) => {
     const next7Days = getNext7Days();
@@ -337,7 +337,7 @@ const Step1 = ({ doctor, formData, setFormData, preSelectedSlot, onNext, loading
     );
 };
 
-// ─── Step 2 — Payment (Stripe embedded inside drawer) ─────────────────────────
+// Step 2 — Payment (Stripe embedded inside drawer)
 
 const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack, frontendDeadlineAt, paymentOnly, }) => {
     const [paymentIntent, setPaymentIntent] = useState(null);
@@ -497,7 +497,7 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack, fron
     );
 };
 
-// ─── Success Screen ────────────────────────────────────────────────────────────
+// Success Screen component
 
 const SuccessScreen = ({ doctor, formData, onDone }) => (
     <div className="flex flex-col items-center text-center space-y-4 py-6">
@@ -536,7 +536,7 @@ const SuccessScreen = ({ doctor, formData, onDone }) => (
     </div>
 );
 
-// ─── Main Drawer ───────────────────────────────────────────────────────────────
+// Main Drawer component
 
 export default function BookingDrawer({
     doctor,

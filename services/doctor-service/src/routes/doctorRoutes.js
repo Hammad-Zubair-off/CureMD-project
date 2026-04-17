@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { protect, authorize, requireApproved } from '../middleware/auth.js';
 
-// ── Controllers ───────────────────────────────────────────────────────────────
+// Controllers
 import {
     createProfile,
     getMyProfile,

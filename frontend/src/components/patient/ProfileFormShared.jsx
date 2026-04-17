@@ -13,7 +13,7 @@ export const InputWrapper = ({ label, icon: Icon, children, required, error }) =
         </label>
         <div className="relative group">
             {Icon && (
-                <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${error ? 'text-red-400' : 'text-slate-400 group-focus-within:text-blue-500'}`}>
+                <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 z-10 transition-colors ${error ? 'text-red-400' : 'text-slate-400 group-focus-within:text-blue-500'}`}>
                     <Icon className="w-4 h-4" />
                 </div>
             )}

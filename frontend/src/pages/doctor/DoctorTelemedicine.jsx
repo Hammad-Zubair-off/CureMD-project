@@ -18,7 +18,7 @@ const canStartByDate = (dateStr) => {
   return new Date(dateStr).toDateString() === new Date().toDateString();
 };
 
-// ── Avatar initials ───────────────────────────────────────────────────────────
+// Avatar component
 const Avatar = ({ firstName, lastName, size = 'md' }) => {
     const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-12 h-12 text-sm', lg: 'w-16 h-16 text-lg' };
     return (
@@ -28,7 +28,7 @@ const Avatar = ({ firstName, lastName, size = 'md' }) => {
     );
 };
 
-// ── Appointment Card ──────────────────────────────────────────────────────────
+// Appointment Card component
 const TelemedicineCard = ({ appt, onClick }) => {
     const isToday = new Date(appt.appointmentDate).toDateString() === new Date().toDateString();
     const isUpcoming = ['confirmed', 'pending'].includes(appt.status) && new Date(appt.appointmentDate) >= new Date();
@@ -87,7 +87,7 @@ const TelemedicineCard = ({ appt, onClick }) => {
     );
 };
 
-// ── Session Modal ─────────────────────────────────────────────────────────────
+// Session Modal component
 const SessionModal = ({ appt, onClose, onStartSession, sessionLoading }) => {
     if (!appt) return null;
 
@@ -231,7 +231,7 @@ const SessionModal = ({ appt, onClose, onStartSession, sessionLoading }) => {
     );
 };
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// Main page component
 export default function DoctorTelemedicine() {
     const navigate = useNavigate();
 
@@ -258,7 +258,7 @@ export default function DoctorTelemedicine() {
 
     useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
-    // ── Start Session ─────────────────────────────────────────────────────────
+    // Session startup logic
     // 1. Calls telemedicine-service to create/retrieve an Agora session
     // 2. Receives { channelName, token, agoraAppId, uid, sessionId, patientJoinUrl }
     // 3. Navigates to DoctorVideoRoom, passing the session data via router state

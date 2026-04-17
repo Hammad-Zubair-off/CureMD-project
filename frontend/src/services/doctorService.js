@@ -1,7 +1,7 @@
 import api from './api.js';
 
 const doctorService = {
-    // ── Profile ──────────────────────────────────────────────────────────────
+    // Profile settings
 
     createProfile: async (profileData) => {
         const res = await api.post('/doctors/profile', profileData);
@@ -18,7 +18,7 @@ const doctorService = {
         return res.data;
     },
 
-    // ── Availability ──────────────────────────────────────────────────────────
+    // Availability management
 
     getMyAvailability: async () => {
         const res = await api.get('/doctors/availability/me');
@@ -30,7 +30,7 @@ const doctorService = {
         return res.data;
     },
 
-    // ── Public ────────────────────────────────────────────────────────────────
+    // Public lookups
 
     searchDoctors: async (params) => {
         const res = await api.get('/doctors', { params });

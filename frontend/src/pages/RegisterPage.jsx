@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Activity, AlertCircle, Stethoscope, UserCircle, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, Activity, AlertCircle, Stethoscope, UserCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register, error: authError } = useAuth();
@@ -18,6 +18,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [registeredData, setRegisteredData] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,7 +65,7 @@ export default function RegisterPage() {
     }
   };
 
-  // ── Doctor pending approval screen ──────────────────────
+  // Doctor pending approval screen
   if (registered && registeredData?.user?.role === 'doctor') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
@@ -106,21 +108,26 @@ export default function RegisterPage() {
     );
   }
 
-  // ── Main register form ───────────────────────────────────
+  // Main register form
   return (
     <div className="min-h-screen flex bg-white font-sans text-slate-900">
-      
+
       {/* Left Panel */}
       <div className="hidden lg:flex lg:w-[45%] bg-slate-50 border-r border-slate-200 p-12 flex-col relative overflow-hidden">
-        <div className="flex items-center space-x-2 text-blue-600 mb-16 relative z-10">
-          <Activity className="w-8 h-8" />
-          <span className="text-2xl font-bold text-slate-900 tracking-tight">HealthConnect</span>
+        {/* Top Logo */}
+        <div className="relative z-10">
+          <Link to="/" className="flex items-center space-x-2 text-blue-600">
+            <Stethoscope className="w-8 h-8" />
+            <span className="text-2xl font-bold text-slate-900 tracking-tight">MediCare</span>
+          </Link>
         </div>
-        <div className="relative z-10 mt-10">
+
+        {/* Center Content */}
+        <div className="relative z-10 flex-1 flex flex-col justify-center">
           <h1 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">
             Join the future of <br/>digital healthcare.
           </h1>
-          <div className="space-y-6 mt-12">
+          <div className="space-y-6 mt-6">
             {[
               'Manage appointments and availability seamlessly.',
               'Conduct secure telemedicine consultations.',
@@ -135,6 +142,11 @@ export default function RegisterPage() {
             ))}
           </div>
         </div>
+
+        {/* Bottom copyright */}
+        <div className="relative z-10 text-slate-400 text-sm mt-auto">
+          © 2026 MediCare AI Platform.
+        </div>
       </div>
 
       {/* Right Panel */}
@@ -148,8 +160,8 @@ export default function RegisterPage() {
         </Link>
         <div className="w-full max-w-xl">
           <Link to="/" className="flex lg:hidden items-center space-x-2 text-blue-600 mb-8">
-            <Activity className="w-8 h-8" />
-            <span className="text-2xl font-bold text-slate-900 tracking-tight">HealthConnect</span>
+            <Stethoscope className="w-8 h-8" />
+            <span className="text-2xl font-bold text-slate-900 tracking-tight">MediCare</span>
           </Link>
 
           <h2 className="text-3xl font-bold tracking-tight mb-2">Create an account</h2>
@@ -169,11 +181,10 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setRole('patient')}
-                  className={`flex items-center p-4 border rounded-xl transition-all ${
-                    formData.role === 'patient'
+                  className={`flex items-center p-4 border rounded-xl transition-all ${formData.role === 'patient'
                       ? 'border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <UserCircle className={`w-6 h-6 mr-3 ${formData.role === 'patient' ? 'text-blue-600' : 'text-slate-400'}`} />
                   <span className="font-medium text-sm">Patient</span>
@@ -181,11 +192,10 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setRole('doctor')}
-                  className={`flex items-center p-4 border rounded-xl transition-all ${
-                    formData.role === 'doctor'
+                  className={`flex items-center p-4 border rounded-xl transition-all ${formData.role === 'doctor'
                       ? 'border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <Stethoscope className={`w-6 h-6 mr-3 ${formData.role === 'doctor' ? 'text-blue-600' : 'text-slate-400'}`} />
                   <span className="font-medium text-sm">Doctor</span>
@@ -255,10 +265,17 @@ export default function RegisterPage() {
                     <Lock className="h-5 w-5 text-slate-400" />
                   </div>
                   <input
-                    type="password" name="password" value={formData.password}
+                    type={showPassword ? "text" : "password"} name="password" value={formData.password}
                     onChange={handleChange} placeholder="••••••••" required
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    className="w-full pl-10 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
               <div>
@@ -268,10 +285,17 @@ export default function RegisterPage() {
                     <Lock className="h-5 w-5 text-slate-400" />
                   </div>
                   <input
-                    type="password" name="confirmPassword" value={formData.confirmPassword}
+                    type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword}
                     onChange={handleChange} placeholder="••••••••" required
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    className="w-full pl-10 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
             </div>

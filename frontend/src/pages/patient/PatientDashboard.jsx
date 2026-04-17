@@ -44,14 +44,14 @@ export default function PatientDashboard() {
     const fetchQuote = async () => {
         const CACHE_KEY = 'wellness_quote';
         const CACHE_TIME_KEY = 'wellness_quote_time';
-        const ONE_HOUR = 60 * 60 * 1000;
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
         try {
             const cachedQuoteStr = localStorage.getItem(CACHE_KEY);
             const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
             const now = new Date().getTime();
 
-            if (cachedQuoteStr && cachedTime && (now - cachedTime < ONE_HOUR)) {
+            if (cachedQuoteStr && cachedTime && (now - cachedTime < TWELVE_HOURS)) {
                 const quote = JSON.parse(cachedQuoteStr);
                 // If it's a real quote (not fallback), use it. 
                 // If it's a Care Team fallback, try to fetch a real one anyway.
