@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Doctor } from '../models/Doctor.js';
 
 // ── PUT /api/doctors/availability ─────────────────────────────────────────────
@@ -59,19 +60,26 @@ export const getMyAvailability = async (req, res, next) => {
 };
 
 // ── GET /api/doctors/:id/availability ────────────────────────────────────────
-// Public: get a specific doctor's availability (used by appointment service & detail page)
+// Public: get a specific doctor's availability (supports doctor _id or userId)
 export const getDoctorAvailability = async (req, res, next) => {
     try {
-        const doctor = await Doctor.findOne({ _id: req.params.id, isActive: true })
+        const id = req.params.id;
+
+        const orFilter = mongoose.Types.ObjectId.isValid(id)
+            ? [{ _id: id }, { userId: id }]
+            : [{ userId: id }];
+
+        const doctor = await Doctor.findOne({
+            isActive: true,
+            $or: orFilter,
+        })
             .select('availability consultationFee consultationTypes firstName lastName title')
             .lean({ virtuals: true });
-
-        console.log('doctor found:', doctor);
 
         if (!doctor) {
             return res.status(404).json({ success: false, error: 'Doctor not found.' });
         }
-        console.log('returning 200');
+
         return res.status(200).json({
             success: true,
             data: {
