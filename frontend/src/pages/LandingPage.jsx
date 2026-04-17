@@ -564,7 +564,7 @@ export default function LandingPage() {
               to="/register?type=user"
               className="px-8 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-full transition-colors active:scale-95 w-full sm:w-auto"
             >
-              Become a User
+              Become a Member
             </Link>
           </div>
         </div>
