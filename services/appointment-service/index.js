@@ -6,6 +6,7 @@ import { connectRabbitMQ } from './src/config/rabbitmq.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
 import appointmentRoutes from './src/routes/appointmentRoutes.js';
+import { startAppointmentExpirer } from './src/utils/appointmentExpirer.js';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ const startServer = async () => {
 
     try {
         await connectDB();
+        startAppointmentExpirer(); // auto-transition confirmed → past when time elapses
         await connectRabbitMQ(); // connect before server starts — publishEvent must be ready
 
         const server = app.listen(PORT, () => {
