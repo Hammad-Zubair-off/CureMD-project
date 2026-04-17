@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Doctor } from '../models/Doctor.js';
 
-// ── PUT /api/doctors/availability ─────────────────────────────────────────────
+// PUT /api/doctors/availability
 // Doctor replaces their entire weekly availability schedule
 export const setAvailability = async (req, res, next) => {
     try {
@@ -45,7 +45,7 @@ export const setAvailability = async (req, res, next) => {
     }
 };
 
-// ── GET /api/doctors/availability/me ─────────────────────────────────────────
+// GET /api/doctors/availability/me
 // Logged-in doctor views their own schedule
 export const getMyAvailability = async (req, res, next) => {
     try {

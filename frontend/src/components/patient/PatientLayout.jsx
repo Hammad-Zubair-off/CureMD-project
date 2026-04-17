@@ -60,7 +60,7 @@ export default function PatientLayout() {
                 <div className="bg-blue-600 p-1.5 rounded-lg">
                     <Stethoscope className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-lg font-bold text-slate-900 tracking-tight">HealthConnect</span>
+                <span className="text-lg font-bold text-slate-900 tracking-tight">MediCare</span>
             </div>
 
             {/* User Info */}
@@ -166,7 +166,7 @@ export default function PatientLayout() {
                                 <div className="bg-blue-600 p-1.5 rounded-lg">
                                     <Stethoscope className="w-4 h-4 text-white" />
                                 </div>
-                                <span className="text-base font-bold text-slate-900 tracking-tight">HealthConnect</span>
+                                <span className="text-base font-bold text-slate-900 tracking-tight">MediCare</span>
                             </div>
                             <button
                                 onClick={() => setSidebarOpen(false)}
@@ -197,7 +197,7 @@ export default function PatientLayout() {
                         <div className="bg-blue-600 p-1 rounded-md">
                             <Stethoscope className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-base font-bold text-slate-900 tracking-tight">HealthConnect</span>
+                        <span className="text-base font-bold text-slate-900 tracking-tight">MediCare</span>
                     </div>
                     {profile?.profileImageUrl ? (
                         <img

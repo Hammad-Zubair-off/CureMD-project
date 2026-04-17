@@ -23,6 +23,7 @@ import {
     commonInputClass,
     commonSelectClass
 } from './ProfileFormShared';
+import DatePicker from '../common/DatePicker';
 
 export default function PatientProfileUpdate({ initialData, onSave, saving = false }) {
     const [formData, setFormData] = useState({
@@ -111,8 +112,13 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
         if (formData.dateOfBirth) {
             const today = new Date();
             const dob = new Date(formData.dateOfBirth);
+            const hundredYearsAgo = new Date();
+            hundredYearsAgo.setFullYear(today.getFullYear() - 100);
+
             if (dob > today) {
                 newErrors.dateOfBirth = "Date of birth cannot be in the future";
+            } else if (dob < hundredYearsAgo) {
+                newErrors.dateOfBirth = "Date of birth cannot be more than 100 years ago";
             }
         }
 
@@ -154,8 +160,8 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
     return (
         <form onSubmit={handleSubmit} className="space-y-10">
             {/* Identity & Contact Section */}
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
+                <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 rounded-t-xl flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-600/20">
                             <User className="w-5 h-5 text-white" />
@@ -167,15 +173,12 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                 <div className="p-10 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <InputWrapper label="Date of Birth" icon={Calendar} required error={errors.dateOfBirth}>
-                            <input
-                                type="date"
-                                name="dateOfBirth"
+                            <DatePicker
                                 value={formData.dateOfBirth}
-                                onChange={handleChange}
-                                min={new Date(new Date().setFullYear(new Date().getFullYear() - 90)).toISOString().split("T")[0]}
-                                max={new Date().toISOString().split("T")[0]}
-                                required
-                                className={commonInputClass}
+                                onChange={(val) => setFormData(prev => ({ ...prev, dateOfBirth: val }))}
+                                minDate={new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split("T")[0]}
+                                maxDate={new Date().toISOString().split("T")[0]}
+                                placeholder="Select your birth date"
                             />
                         </InputWrapper>
 
@@ -307,8 +310,8 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
             </div>
 
             {/* Emergency Contact */}
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
+                <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 rounded-t-xl flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <div className="bg-orange-500 p-2.5 rounded-xl shadow-lg shadow-orange-500/20">
                             <Siren className="w-5 h-5 text-white" />

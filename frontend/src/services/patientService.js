@@ -2,7 +2,7 @@ import api from './api';
 
 const patientService = {
 
-  // ── Profile ───────────────────────────────────────────────────────────────
+  // Profile management
 
   /**
    * Get the logged-in patient's profile.
@@ -69,7 +69,7 @@ const patientService = {
     }
   },
 
-  // ── Snapshots ─────────────────────────────────────────────────────────────
+  // Snapshots
 
   /**
    * Get all confirmed snapshots for the logged-in patient.
@@ -103,7 +103,7 @@ const patientService = {
     }
   },
 
-  // ── Medical Reports ───────────────────────────────────────────────────────
+  // Medical Reports
 
   /**
    * Upload a medical report file to Cloudinary.
@@ -165,7 +165,7 @@ const patientService = {
     }
   },
 
-  // ── Medical History & AI ──────────────────────────────────────────────────
+  // Medical History & AI
 
   /**
    * Generate a 1-hour history token for AI access.

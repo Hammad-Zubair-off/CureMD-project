@@ -11,7 +11,7 @@ const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
 const fail = (res, errors) =>
     res.status(400).json({ success: false, errors });
 
-// ── shared phone validator helper ─────────────────────────────────────────────
+// shared phone validator helper
 function validatePhoneNumbers(phones, errors) {
     if (!Array.isArray(phones)) {
         errors.push({ field: 'phoneNumbers', message: 'phoneNumbers must be an array' });
@@ -30,7 +30,7 @@ function validatePhoneNumbers(phones, errors) {
     });
 }
 
-// ── POST /api/doctors/profile ─────────────────────────────────────────────────
+// POST /api/doctors/profile
 export const createProfileValidator = (req, res, next) => {
     const errors = [];
     const b = req.body;
@@ -106,7 +106,7 @@ export const createProfileValidator = (req, res, next) => {
     next();
 };
 
-// ── PUT /api/doctors/profile ──────────────────────────────────────────────────
+// PUT /api/doctors/profile
 export const updateProfileValidator = (req, res, next) => {
     const errors = [];
     const b = req.body;
@@ -169,7 +169,7 @@ export const updateProfileValidator = (req, res, next) => {
     next();
 };
 
-// ── PUT /api/doctors/availability ─────────────────────────────────────────────
+// PUT /api/doctors/availability
 export const availabilityValidator = (req, res, next) => {
     const errors = [];
     const { availability } = req.body;
@@ -199,7 +199,7 @@ export const availabilityValidator = (req, res, next) => {
     next();
 };
 
-// ── GET /api/doctors (search query params) ────────────────────────────────────
+// GET /api/doctors (search query params)
 export const searchValidator = (req, res, next) => {
     const errors = [];
     const q = req.query;
@@ -226,7 +226,7 @@ export const searchValidator = (req, res, next) => {
     next();
 };
 
-// ── :id param validator ───────────────────────────────────────────────────────
+// :id param validator
 export const mongoIdParam = (paramName = 'id') => (req, res, next) => {
     if (!OBJECT_ID_REGEX.test(req.params[paramName])) {
         return res.status(400).json({
