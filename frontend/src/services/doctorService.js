@@ -51,6 +51,14 @@ const doctorService = {
         const res = await api.get('/doctors/specializations');
         return res.data;
     },
+
+    // Prescriptions
+    getPrescriptionsByAppointment: async (patientId, appointmentId) => {
+        const res = await api.get(`/doctors/prescriptions/patient/${patientId}`, {
+            params: { appointmentId },
+        });
+        return res.data;
+    },
 };
 
 export default doctorService;
