@@ -22,6 +22,18 @@ import {
     updateRating,
 } from '../controllers/adminController.js';
 
+import {
+    savePrescription,
+    issuePrescription,
+    getPrescriptionByAppointment,
+    getPrescriptionsByPatient,
+} from '../controllers/prescriptionController.js';
+
+import {
+    savePrescriptionValidator,
+    mongoIdParam as prescriptionMongoIdParam,
+} from '../validators/prescriptionValidator.js';
+
 // ── Validators ────────────────────────────────────────────────────────────────
 import {
     createProfileValidator,
@@ -92,6 +104,40 @@ router.get('/:id/availability', mongoIdParam('id'), getDoctorAvailability);
 
 // GET /api/doctors/:id                Public single doctor full profile (detail page)
 router.get('/:id', mongoIdParam('id'), getDoctorById);
+
+// PRESCRIPTIONS  (role: doctor)
+
+// POST   /api/doctors/prescriptions    Save / update draft
+router.post(
+    '/prescriptions',
+    protect, authorize('doctor'), requireApproved,
+    savePrescriptionValidator,
+    savePrescription
+);
+
+// POST   /api/doctors/prescriptions/:id/issue  Issue the prescription
+router.post(
+    '/prescriptions/:id/issue',
+    protect, authorize('doctor'), requireApproved,
+    prescriptionMongoIdParam('id'),
+    issuePrescription
+);
+
+// GET    /api/doctors/prescriptions/appointment/:appointmentId
+router.get(
+    '/prescriptions/appointment/:appointmentId',
+    protect, authorize('doctor'),
+    prescriptionMongoIdParam('appointmentId'),
+    getPrescriptionByAppointment
+);
+
+// GET    /api/doctors/prescriptions/patient/:patientId  (doctor or patient role)
+router.get(
+    '/prescriptions/patient/:patientId',
+    protect, authorize('doctor', 'patient', 'admin'),
+    prescriptionMongoIdParam('patientId'),
+    getPrescriptionsByPatient
+);
 
 
 
