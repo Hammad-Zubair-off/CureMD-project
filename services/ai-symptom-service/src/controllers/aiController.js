@@ -4,67 +4,19 @@ import { logger } from '../utils/logger.js';
 import axios from 'axios';
 import pdfParse from 'pdf-parse';
 
-const apiKeys = [
-    process.env.GEMINI_API_KEY_1,
-    process.env.GEMINI_API_KEY_2,
-    process.env.GEMINI_API_KEY_3,
-    process.env.GEMINI_API_KEY_4,
-].filter(Boolean);
-
-if (apiKeys.length === 0) {
-    logger.error('[ai-symptom-service] FATAL: No Gemini API keys found in environment variables.');
+if (!process.env.GEMINI_API_KEY) {
+    logger.error('[ai-symptom-service] FATAL: GEMINI_API_KEY not found in environment variables.');
 }
 
-let currentKeyIndex = 0;
+const geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * Returns a GoogleGenerativeAI model configured with the given key index.
- */
-const getModel = (keyIndex, modelName, systemInstruction) => {
-    const client = new GoogleGenerativeAI(apiKeys[keyIndex]);
-    return client.getGenerativeModel({ model: modelName, systemInstruction });
-};
-
-/**
- * Calls Gemini with automatic key rotation on 429.
- * Tries every available key before giving up.
- *
- * @param {string}   modelName         - e.g. 'gemini-2.5-flash'
- * @param {string}   systemInstruction - system prompt
- * @param {Array}    promptData        - array of Gemini `parts`
- * @param {object}   generationConfig  - e.g. { responseMimeType: 'application/json' }
- * @returns {Promise<string>}          - raw response text
- */
-const generateWithKeyRotation = async (modelName, systemInstruction, promptData, generationConfig) => {
-    const totalKeys = apiKeys.length;
-    let lastError = null;
-
-    for (let attempt = 0; attempt < totalKeys; attempt++) {
-        const keyIndex = (currentKeyIndex + attempt) % totalKeys;
-
-        try {
-            const model = getModel(keyIndex, modelName, systemInstruction);
-            const completion = await model.generateContent({
-                contents: [{ role: 'user', parts: promptData }],
-                generationConfig,
-            });
-
-            currentKeyIndex = keyIndex;
-            return completion.response.text();
-        } catch (err) {
-            lastError = err;
-            const statusCode = err.status || (err.message?.includes('403') ? 403 : err.message?.includes('429') ? 429 : null);
-            const isRotatable = statusCode === 429 || statusCode === 403;
-
-            if (isRotatable && attempt < totalKeys - 1) {
-                logger.warn(`[ai-symptom-service] Key ${keyIndex + 1} failed (${statusCode}). Rotating...`);
-                continue;
-            }
-            break;
-        }
-    }
-
-    throw lastError || new Error('All Gemini API keys exhausted.');
+const callGemini = async (modelName, systemInstruction, promptData, generationConfig) => {
+    const model = geminiClient.getGenerativeModel({ model: modelName, systemInstruction });
+    const completion = await model.generateContent({
+        contents: [{ role: 'user', parts: promptData }],
+        generationConfig,
+    });
+    return completion.response.text();
 };
 
 // Helpers
@@ -87,7 +39,12 @@ const processSelectedFiles = async (selectedReports) => {
             url.match(/\.(jpeg|jpg|png|webp)$/i);
 
         try {
-            const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 10000 });
+            const response = await axios.get(url, {
+                responseType: 'arraybuffer',
+                timeout: 15000,
+                maxRedirects: 5,
+            });
+            logger.info(`[ai-symptom-service] Downloaded "${report.title}" — status: ${response.status} | content-type: ${response.headers['content-type']} | bytes: ${response.data.byteLength}`);
 
             if (isPDF) {
                 const pdfData = await pdfParse(response.data);
@@ -267,14 +224,25 @@ export const sendMessage = async (req, res, next) => {
 
         const promptData = [{ text: promptText }, ...imageParts];
 
-        const rawText = await generateWithKeyRotation(
+        const rawText = await callGemini(
             'gemini-2.5-flash',
             systemInstruction,
             promptData,
             { responseMimeType: 'application/json' }
         );
 
-        const aiResponse = JSON.parse(rawText);
+        const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+
+        let aiResponse;
+        try {
+            aiResponse = JSON.parse(cleaned);
+        } catch (parseErr) {
+            logger.error(`[ai-symptom-service] Gemini returned non-JSON: ${rawText.slice(0, 300)}`);
+            return res.status(502).json({
+                success: false,
+                error: 'The AI returned an unexpected response. Please try again.',
+            });
+        }
 
         // Update session with AI response
         session.rollingSummary = aiResponse.rollingSummary;
