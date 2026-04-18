@@ -102,58 +102,56 @@ export default function SymptomChecker() {
     const userMessage = input;
     const attachedReports = [...selectedReports];
 
-    const newUserMessage = {
+    // Stable ID so rollback filter works regardless of React batching
+    const tempId = `temp_${Date.now()}`;
+    const tempMessage = {
+      _tempId: tempId,
       role: 'user',
-      content: input,
-      attachments: [...selectedReports] // Store the attachments temporarily for the UI
+      content: userMessage,
+      attachments: attachedReports,
     };
 
-    // Optimistic update
-    const tempMessage = { role: 'user', content: userMessage };
+    // Optimistic update — safe even when prev is null (new chat)
     setViewingSession(prev => ({
-      ...prev,
-      messages: [...(prev?.messages || []), tempMessage]
+      ...(prev || {}),
+      messages: [...(prev?.messages || []), tempMessage],
     }));
 
     setInput('');
     setSelectedReports([]);
+    setLoadingText(attachedReports.length > 0
+      ? `Parsing and analyzing ${attachedReports.length} file${attachedReports.length > 1 ? 's' : ''}...`
+      : 'AI is thinking...'
+    );
     setIsLoading(true);
 
     try {
       let targetSessionId = viewingSession?._id;
 
-      // If no session exists yet (New Chat), create it first
       if (!targetSessionId) {
         const newSessionRes = await aiService.createSession({ vitals: patientVitals });
         targetSessionId = newSessionRes.session._id;
       }
 
-      if (selectedReports.length > 0) {
-        setLoadingText(`Parsing and analyzing ${selectedReports.length} file${selectedReports.length > 1 ? 's' : ''}...`);
-      } else {
-        setLoadingText('AI is thinking...');
-      }
-      setIsLoading(true);
-
-      // Send the message to the targeted session
       const response = await aiService.sendMessage(targetSessionId, {
         message: userMessage,
-        selectedReports: attachedReports
+        selectedReports: attachedReports,
       });
 
       setViewingSession(response.session || response.data);
 
-      // Refresh sidebar to update the rolling summary list
       const historyRes = await aiService.getAllSessions();
       setSessionsHistory(historyRes.sessions || historyRes.data || []);
 
     } catch (error) {
       console.error("Chat Error:", error);
-      // Rollback optimistic update on error if needed
-      setViewingSession(prev => ({
-        ...prev,
-        messages: prev.messages.filter(msg => msg !== tempMessage)
-      }));
+      setViewingSession(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.filter(msg => msg._tempId !== tempId),
+        };
+      });
     } finally {
       setIsLoading(false);
     }
@@ -210,7 +208,7 @@ export default function SymptomChecker() {
 
   return (
     <div className="h-[100dvh] bg-slate-50 p-3 md:p-6 lg:p-8 flex flex-col overflow-hidden">
-      <Toast 
+      <Toast
         isOpen={!!deleteConfirmSessionId}
         type="confirm"
         message="Are you sure you want to delete this consultation history?"
