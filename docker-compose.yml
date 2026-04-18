@@ -61,6 +61,7 @@ services:
       - frontend_modules:/app/node_modules
     environment:
       - NGINX_HOST=nginx
+      - VITE_STRIPE_PUBLIC_KEY=pk_test_51SrwQUIr67jlhsA0wRKDUtEQME3i7U9iJzviUOLM32RDGehQJHoKsqacl6VXFFxM2PQW4Eq08tJ72sJPpMatW7Qb005tOPm6pi
     networks:
       - healthcare-net
     restart: unless-stopped

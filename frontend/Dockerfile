@@ -3,6 +3,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+ARG VITE_STRIPE_PUBLIC_KEY
+ENV VITE_STRIPE_PUBLIC_KEY=$VITE_STRIPE_PUBLIC_KEY
+
 RUN npm run build
 
 FROM nginx:1.25-alpine
