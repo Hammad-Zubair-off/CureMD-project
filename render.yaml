@@ -1,0 +1,201 @@
+envVarGroups:
+  - name: curemd-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: INTERNAL_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+
+services:
+  # --- API Gateway (Nginx) ---
+  - type: web
+    name: curemd-api-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: ./api-gateway/Dockerfile.render
+    dockerContext: ./api-gateway
+    healthCheckPath: /health
+
+  # --- Auth Service ---
+  - type: web
+    name: curemd-auth-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/auth-service/Dockerfile
+    dockerContext: ./services/auth-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3001
+      - key: SERVICE_NAME
+        value: auth_service
+      - key: MONGODB_URI
+        sync: false
+
+  # --- Patient Service ---
+  - type: web
+    name: curemd-patient-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/patient-service/Dockerfile
+    dockerContext: ./services/patient-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3002
+      - key: SERVICE_NAME
+        value: patient
+      - key: MONGODB_URI
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: APPOINTMENT_SERVICE_URL
+        value: http://curemd-appointment-service:3004
+
+  # --- Doctor Service ---
+  - type: web
+    name: curemd-doctor-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/doctor-service/Dockerfile
+    dockerContext: ./services/doctor-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3003
+      - key: SERVICE_NAME
+        value: doctor
+      - key: MONGODB_URI
+        sync: false
+
+  # --- Appointment Service ---
+  - type: web
+    name: curemd-appointment-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/appointment-service/Dockerfile
+    dockerContext: ./services/appointment-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3004
+      - key: SERVICE_NAME
+        value: appointment
+      - key: MONGODB_URI
+        sync: false
+      - key: SKIP_PAYMENT
+        value: "true"
+      - key: PATIENT_SERVICE_URL
+        value: http://curemd-patient-service:3002
+      - key: DOCTOR_SERVICE_URL
+        value: http://curemd-doctor-service:3003
+
+  # --- Payment Service ---
+  - type: web
+    name: curemd-payment-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/payment-service/Dockerfile
+    dockerContext: ./services/payment-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3005
+      - key: SERVICE_NAME
+        value: payment
+      - key: MONGODB_URI
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: APPOINTMENT_SERVICE_URL
+        value: http://curemd-appointment-service:3004
+
+  # --- Notification Service ---
+  - type: web
+    name: curemd-notification-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/notification-service/Dockerfile
+    dockerContext: ./services/notification-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3006
+      - key: SERVICE_NAME
+        value: notification
+      - key: MONGODB_URI
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        sync: false
+      - key: SENDGRID_FROM_NAME
+        value: CureMD
+
+  # --- Telemedicine Service ---
+  - type: web
+    name: curemd-telemedicine-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/telemedicine-service/Dockerfile
+    dockerContext: ./services/telemedicine-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3007
+      - key: SERVICE_NAME
+        value: telemedicine
+      - key: MONGODB_URI
+        sync: false
+      - key: AGORA_APP_ID
+        sync: false
+      - key: AGORA_APP_CERTIFICATE
+        sync: false
+      - key: TELEMEDICINE_DEV_AUTO_SESSION
+        value: "true"
+      - key: APPOINTMENT_SERVICE_URL
+        value: http://curemd-appointment-service:3004
+
+  # --- AI Symptom Service ---
+  - type: web
+    name: curemd-ai-symptom-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/ai-symptom-service/Dockerfile
+    dockerContext: ./services/ai-symptom-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: curemd-shared
+      - key: PORT
+        value: 3008
+      - key: SERVICE_NAME
+        value: ai_symptoms
+      - key: MONGODB_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PATIENT_SERVICE_URL
+        value: http://curemd-patient-service:3002
+      - key: DOCTOR_SERVICE_URL
+        value: http://curemd-doctor-service:3003
