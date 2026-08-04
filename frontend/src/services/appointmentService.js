@@ -31,6 +31,19 @@ const appointmentService = {
     },
 
     /**
+     * Confirm appointment without payment (local dev only)
+     */
+    skipPayment: async (appointmentId) => {
+        try {
+            const response = await api.patch(`/appointments/${appointmentId}/skip-payment`);
+            return response.data;
+        } catch (error) {
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
+        }
+    },
+
+    /**
      * Get all appointments for the logged-in patient
      * Called in MyAppointments
      */

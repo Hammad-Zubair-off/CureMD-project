@@ -321,6 +321,11 @@ export default function DoctorTelemedicine() {
                         <p className="text-slate-500 text-sm mt-1">
                             Manage and start your virtual consultation sessions.
                         </p>
+                        {ALLOW_UPCOMING_TEST_START && (
+                            <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mt-3 inline-block">
+                                Dev mode: you can start sessions before the appointment day.
+                            </p>
+                        )}
                     </div>
                     <button
                         onClick={fetchAppointments}

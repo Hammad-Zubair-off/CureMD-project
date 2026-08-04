@@ -19,6 +19,46 @@ import {
     commonSelectClass
 } from './ProfileFormShared';
 
+const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
+const VALID_BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+const validateBookingForm = (formData) => {
+    const errors = [];
+
+    if (!formData.dateOfBirth) {
+        errors.push('Date of birth is required.');
+    } else {
+        const dob = new Date(formData.dateOfBirth);
+        if (Number.isNaN(dob.getTime())) errors.push('Date of birth must be a valid date.');
+        else if (dob >= new Date()) errors.push('Date of birth must be in the past.');
+    }
+
+    if (!formData.gender) errors.push('Gender is required.');
+
+    if (!formData.contactNumber?.trim()) {
+        errors.push('Contact number is required.');
+    } else if (!PHONE_REGEX.test(formData.contactNumber.trim())) {
+        errors.push('Contact number must be 7–15 digits and may start with +.');
+    }
+
+    if (!formData.bloodType) {
+        errors.push('Blood type is required.');
+    } else if (!VALID_BLOOD_TYPES.includes(formData.bloodType)) {
+        errors.push('Please select a valid blood type.');
+    }
+
+    const ec = formData.emergencyContact || {};
+    if (!ec.name?.trim()) errors.push('Emergency contact name is required.');
+    if (!ec.relationship?.trim()) errors.push('Emergency contact relationship is required.');
+    if (!ec.phone?.trim()) {
+        errors.push('Emergency contact phone is required.');
+    } else if (!PHONE_REGEX.test(ec.phone.trim())) {
+        errors.push('Emergency contact phone must be 7–15 digits and may start with +.');
+    }
+
+    return errors;
+};
+
 export default function PatientProfileInit({ onSave, saving = false }) {
     const [formData, setFormData] = useState({
         dateOfBirth: '',
@@ -32,6 +72,8 @@ export default function PatientProfileInit({ onSave, saving = false }) {
         }
     });
 
+    const [formError, setFormError] = useState('');
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         if (name.startsWith('emergency.')) {
@@ -43,15 +85,29 @@ export default function PatientProfileInit({ onSave, saving = false }) {
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
+        if (formError) setFormError('');
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        const errors = validateBookingForm(formData);
+        if (errors.length > 0) {
+            setFormError(errors.join(' '));
+            return;
+        }
         onSave(formData);
     };
 
+    const maxDob = new Date().toISOString().split('T')[0];
+
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
+
+            {formError && (
+                <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl">
+                    {formError}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputWrapper label="Date of Birth" icon={Calendar} required>
@@ -60,6 +116,7 @@ export default function PatientProfileInit({ onSave, saving = false }) {
                         name="dateOfBirth"
                         value={formData.dateOfBirth}
                         onChange={handleChange}
+                        max={maxDob}
                         required
                         className={commonInputClass}
                     />
@@ -87,7 +144,8 @@ export default function PatientProfileInit({ onSave, saving = false }) {
                         value={formData.contactNumber}
                         onChange={handleChange}
                         required
-                        placeholder="+94 77 123 4567"
+                        placeholder="0771234567 or +94771234567"
+                        inputMode="tel"
                         className={commonInputClass}
                     />
                 </InputWrapper>

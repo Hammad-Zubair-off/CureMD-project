@@ -61,7 +61,7 @@ function App() {
         }
       />
 
-      <Route path="/doctor" element={<ProtectedRoute role="doctor"><DoctorLayout /></ProtectedRoute>}>
+      <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorLayout /></ProtectedRoute>}>
         <Route path="dashboard" element={<DoctorDashboard />} />
         <Route path="profile" element={<DoctorProfile />} />
         <Route path="availability" element={<DoctorAvailability />} />

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const AuthContext = createContext();
 
@@ -49,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
       return data;
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setError(getApiErrorMessage(err, 'Login failed'));
       throw err;
     }
   };
@@ -61,7 +62,7 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
       return data;
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      setError(getApiErrorMessage(err, 'Registration failed'));
       throw err;
     }
   };

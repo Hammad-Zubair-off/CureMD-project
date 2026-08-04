@@ -3,6 +3,7 @@ import { protect, authorize, requireApproved } from '../middleware/auth.js';
 import {
     bookAppointment,
     confirmAppointment,
+    skipPaymentForAppointment,
     rejectAppointment,
     rescheduleAppointment,
     cancelAppointment,
@@ -58,6 +59,9 @@ router.patch('/:id/reschedule', protect, authorize('patient'), rescheduleAppoint
 
 // Patient cancels appointment
 router.patch('/:id/cancel', protect, authorize('patient'), cancelAppointment);
+
+// Local dev — confirm without payment when SKIP_PAYMENT=true
+router.patch('/:id/skip-payment', protect, authorize('patient'), skipPaymentForAppointment);
 
 // Doctor marks appointment as completed after consultation
 router.patch('/:id/status', protect, authorize('doctor'), requireApproved, updateAppointmentStatus);

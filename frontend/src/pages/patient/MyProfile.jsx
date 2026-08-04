@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import patientService from '../../services/patientService';
+import { getApiErrorMessage } from '../../utils/apiError';
 import authService from '../../services/authService';
 import PatientProfileUpdate from '../../components/patient/PatientProfileUpdate';
 import Toast from '../../components/common/Toast';
@@ -97,11 +98,10 @@ export default function MyProfile() {
             setProfileData(prev => ({ ...prev, ...formData }));
             setIsEditing(false); // Switch back to view mode on success
         } catch (err) {
-            const backendErrors = err.response?.data?.errors;
-            const errorText = Array.isArray(backendErrors)
-                ? backendErrors.join(' ')
-                : (err.response?.data?.message || err.error || 'Failed to update profile.');
-            setMessage({ type: 'error', text: errorText });
+            setMessage({
+                type: 'error',
+                text: getApiErrorMessage(err, 'Failed to update profile.'),
+            });
         } finally {
             setSaving(false);
         }

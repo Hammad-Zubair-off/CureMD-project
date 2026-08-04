@@ -332,7 +332,7 @@ export default function DoctorVideoRoom() {
                 await client.publish([audioTrack, videoTrack]);
                 setJoined(true);
                 setLoading(false);
-                await telemedicineService.markActive(sessionId);
+                await telemedicineService.markSessionActive(sessionId);
             } catch (err) {
                 if (isCancelled) return;
                 setError(err.message || 'Failed to join video session');

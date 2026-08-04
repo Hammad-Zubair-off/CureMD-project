@@ -56,7 +56,7 @@ const ApprovalBadge = ({ isApproved, isActive }) => {
     );
 };
 
-export default function DoctorManagement({ showToast }) {
+export default function DoctorManagement({ showToast, statusFilter: initialStatusFilter = '' }) {
     // Auth-service users with role=doctor (for approve/reject/deactivate)
     const [doctorUsers, setDoctorUsers] = useState([]);
     const [total, setTotal] = useState(0);
@@ -67,7 +67,7 @@ export default function DoctorManagement({ showToast }) {
     const [doctorProfiles, setDoctorProfiles] = useState({});
 
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
     const [page, setPage] = useState(1);
     const [actionLoading, setActionLoading] = useState(null);
     const [modal, setModal] = useState(null);
@@ -112,6 +112,11 @@ export default function DoctorManagement({ showToast }) {
             console.error('Failed to fetch doctor profiles:', err);
         }
     }, []);
+
+    useEffect(() => {
+        setStatusFilter(initialStatusFilter);
+        setPage(1);
+    }, [initialStatusFilter]);
 
     useEffect(() => {
         fetchDoctorUsers();
@@ -177,6 +182,12 @@ export default function DoctorManagement({ showToast }) {
                     onConfirm={() => handleAction(modal.type, modal.userId, modal.userName)}
                     onCancel={() => setModal(null)}
                 />
+            )}
+
+            {initialStatusFilter === 'pending' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-sm text-amber-900">
+                    New doctor sign-ups appear here until you approve or reject them. This is not for appointment cancellations.
+                </div>
             )}
 
             {/* Stats */}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Activity, AlertCircle, Stethoscope, UserCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export default function RegisterPage() {
   const { register, error: authError } = useAuth();
@@ -33,12 +34,36 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (formData.firstName.trim().length < 2) {
+      setError('First name must be at least 2 characters.');
+      return;
+    }
+    if (formData.lastName.trim().length < 2) {
+      setError('Last name must be at least 2 characters.');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
     if (formData.password.length < 8) {
       setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(formData.password)) {
+      setError('Password must contain at least one uppercase letter (A-Z).');
+      return;
+    }
+    if (!/[a-z]/.test(formData.password)) {
+      setError('Password must contain at least one lowercase letter (a-z).');
+      return;
+    }
+    if (!/[0-9]/.test(formData.password)) {
+      setError('Password must contain at least one number (0-9).');
+      return;
+    }
+    if (!/[@#$%!&*()_+\-=\[\]{};':",.<>?]/.test(formData.password)) {
+      setError('Password must contain at least one special character (@, #, $, !, etc.).');
       return;
     }
 
@@ -59,7 +84,7 @@ export default function RegisterPage() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.error || err.message || 'Registration failed');
+      setError(getApiErrorMessage(err, 'Registration failed'));
     } finally {
       setLoading(false);
     }

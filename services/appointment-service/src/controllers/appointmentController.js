@@ -19,11 +19,72 @@ appointmentEvents.setMaxListeners(100); // Allow up to 100 concurrent SSE connec
 
 // ─ Constants ─
 const APPOINTMENT_EXPIRY_MINUTES = 30; // 30 min buffer — prevents TTL vs payment race
+const SKIP_PAYMENT = process.env.SKIP_PAYMENT === 'true';
 
 // ─ Helpers ─
 
 // Normalize incoming date strings to UTC — prevents timezone issues (e.g. IST +5:30)
 const toUTC = (dateStr) => new Date(new Date(dateStr).toISOString());
+
+const finalizeAppointmentConfirmation = async (appointment, { paymentId = null, changedBy = 'payment-service' } = {}) => {
+    if (appointment.status === 'confirmed') {
+        return appointment;
+    }
+
+    appointment.status = 'confirmed';
+    appointment.paymentStatus = 'paid';
+    appointment.paymentId = paymentId;
+    appointment.expiresAt = null;
+    appointment.statusHistory.push({
+        status: 'confirmed',
+        changedBy,
+        changedAt: new Date(),
+    });
+
+    await appointment.save();
+
+    appointmentEvents.emit(appointment._id.toString(), {
+        status: 'confirmed',
+        changedAt: new Date(),
+        changedBy,
+    });
+
+    logger.success(`Appointment confirmed: ${appointment._id}`);
+
+    if (appointment.patientMedicalHistoryId) {
+        patientClient.patch(
+            SERVICES.patient.endpoints.confirmSnapshot(
+                appointment.patientMedicalHistoryId.toString()
+            ),
+            {},
+            {
+                headers: {
+                    'x-internal-secret': process.env.INTERNAL_SECRET,
+                },
+            }
+        ).then(() => {
+            logger.info(`Snapshot confirmed: ${appointment.patientMedicalHistoryId}`);
+        }).catch((err) => {
+            logger.warn(`[appointment-service] Could not confirm snapshot ${appointment.patientMedicalHistoryId}: ${err.message}`);
+        });
+    }
+
+    publishEvent('appointment.confirmed', {
+        appointmentId: appointment._id,
+        patientFullName: appointment.patientFullName,
+        patientEmail: appointment.patientEmail,
+        patientPhone: appointment.patientPhone,
+        doctorId: appointment.doctorId,
+        doctorFullName: appointment.doctorFullName,
+        specialty: appointment.specialty,
+        consultationFee: appointment.consultationFee,
+        appointmentDate: appointment.appointmentDate,
+        timeSlot: appointment.timeSlot,
+        paymentId: appointment.paymentId,
+    });
+
+    return appointment;
+};
 
 // ─ Controllers ─
 
@@ -164,6 +225,20 @@ export const bookAppointment = async (req, res, next) => {
             timeSlot: appointment.timeSlot,
             reason: appointment.reason,
         });
+
+        if (SKIP_PAYMENT) {
+            await finalizeAppointmentConfirmation(appointment, {
+                paymentId: 'dev-skip',
+                changedBy: 'system',
+            });
+            const confirmed = await Appointment.findById(appointment._id);
+            return res.status(201).json({
+                success: true,
+                message: 'Appointment booked and confirmed (payment skipped for local dev).',
+                appointment: confirmed,
+                skipPayment: true,
+            });
+        }
 
         res.status(201).json({
             success: true,
@@ -311,6 +386,86 @@ export const confirmAppointment = async (req, res, next) => {
         });
     } catch (err) {
         // VersionError — concurrent update conflict
+        if (err.name === 'VersionError') {
+            return res.status(409).json({
+                success: false,
+                error: 'Appointment was updated by another request. Please try again.',
+            });
+        }
+        next(err);
+    }
+};
+
+/**
+ * @desc    Confirm a pending appointment without payment (local dev only)
+ * @route   PATCH /api/appointments/:id/skip-payment
+ * @access  Private — patient only, when SKIP_PAYMENT=true
+ */
+export const skipPaymentForAppointment = async (req, res, next) => {
+    try {
+        if (!SKIP_PAYMENT) {
+            return res.status(403).json({
+                success: false,
+                error: 'Payment skip is not enabled.',
+            });
+        }
+
+        const appointment = await Appointment.findById(req.params.id);
+
+        if (!appointment) {
+            return res.status(404).json({
+                success: false,
+                error: 'Appointment not found.',
+            });
+        }
+
+        if (appointment.patientId !== req.user.id.toString()) {
+            return res.status(403).json({
+                success: false,
+                error: 'You are not authorized to confirm this appointment.',
+            });
+        }
+
+        if (appointment.status === 'expired') {
+            return res.status(400).json({
+                success: false,
+                error: 'Appointment has expired. Please book again.',
+            });
+        }
+
+        if (appointment.status === 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                error: 'Appointment has been cancelled.',
+            });
+        }
+
+        if (appointment.status === 'confirmed') {
+            return res.status(200).json({
+                success: true,
+                message: 'Appointment is already confirmed.',
+                appointment,
+            });
+        }
+
+        if (appointment.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                error: `Cannot confirm appointment with status: ${appointment.status}.`,
+            });
+        }
+
+        await finalizeAppointmentConfirmation(appointment, {
+            paymentId: 'dev-skip',
+            changedBy: 'patient',
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Appointment confirmed without payment (local dev).',
+            appointment: await Appointment.findById(appointment._id),
+        });
+    } catch (err) {
         if (err.name === 'VersionError') {
             return res.status(409).json({
                 success: false,

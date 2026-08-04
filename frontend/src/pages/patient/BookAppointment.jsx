@@ -6,6 +6,7 @@ import BookingDrawer from '../../components/patient/BookingDrawer';
 import DoctorDetailModal from '../../components/patient/DoctorDetailModal';
 import PatientProfileInit from '../../components/patient/PatientProfileInit';
 import patientService from '../../services/patientService';
+import { getApiErrorMessage } from '../../utils/apiError';
 import Dropdown from '../../components/common/Dropdown';
 import doctorService from '../../services/doctorService';
 
@@ -77,8 +78,11 @@ const CompleteProfileModal = ({ onClose, onSuccess }) => {
             await patientService.saveBookingProfile(payload);
             onSuccess();
         } catch (err) {
-            const backendErrors = err.response?.data?.errors;
-            setError(backendErrors || err.response?.data?.message || err.error || 'Failed to complete profile.');
+            if (Array.isArray(err?.errors) && err.errors.length > 0) {
+                setError(err.errors);
+            } else {
+                setError(getApiErrorMessage(err, 'Failed to complete profile.'));
+            }
         } finally {
             setLoading(false);
         }

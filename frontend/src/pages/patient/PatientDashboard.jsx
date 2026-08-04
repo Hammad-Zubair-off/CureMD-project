@@ -38,10 +38,10 @@ export default function PatientDashboard() {
     const fallbackQuotes = [
         { text: "Every step toward health is a victory. Keep going!", author: "Care Team" },
         { text: "Your wellness is a journey, and we're with you every mile.", author: "Care Team" },
-        { text: "Strength lies in consistency. Your progress matters.", author: "Care Team" }
+        { text: "Strength lies in consistency. Your progress matters.", author: "Care Team" },
     ];
 
-    const fetchQuote = async () => {
+    const pickDailyQuote = () => {
         const CACHE_KEY = 'wellness_quote';
         const CACHE_TIME_KEY = 'wellness_quote_time';
         const TWELVE_HOURS = 12 * 60 * 60 * 1000;
@@ -49,77 +49,30 @@ export default function PatientDashboard() {
         try {
             const cachedQuoteStr = localStorage.getItem(CACHE_KEY);
             const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
-            const now = new Date().getTime();
+            const now = Date.now();
 
-            if (cachedQuoteStr && cachedTime && (now - cachedTime < TWELVE_HOURS)) {
-                const quote = JSON.parse(cachedQuoteStr);
-                // If it's a real quote (not fallback), use it. 
-                // If it's a Care Team fallback, try to fetch a real one anyway.
-                if (quote.author !== "Care Team") {
-                    setDailyQuote(quote);
-                    return;
-                }
+            if (cachedQuoteStr && cachedTime && now - Number(cachedTime) < TWELVE_HOURS) {
+                return JSON.parse(cachedQuoteStr);
             }
-
-            // Attempt direct fetch first (matches user's documentation example)
-            const tryFetch = async (url) => {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                if (data && data.length > 0) return data[0];
-                throw new Error('Empty or invalid response');
-            };
-
-            try {
-                // Try direct primary endpoint from user docs
-                let quoteData;
-                try {
-                    quoteData = await tryFetch('https://zenquotes.io/api/quotes/&keyword=happiness');
-                } catch (e) {
-                    // Try alternative endpoint
-                    quoteData = await tryFetch('https://zenquotes.io/api/today');
-                }
-
-                if (quoteData) {
-                    const newQuote = { text: quoteData.q, author: quoteData.a };
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(newQuote));
-                    localStorage.setItem(CACHE_TIME_KEY, now.toString());
-                    setDailyQuote(newQuote);
-                }
-            } catch (err) {
-                console.warn('Direct fetch failed (likely CORS), trying CORS proxy...');
-
-                // Final attempt using a public CORS proxy
-                try {
-                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://zenquotes.io/api/today')}`;
-                    const response = await fetch(proxyUrl);
-                    const data = await response.json();
-
-                    if (data && data.length > 0) {
-                        const newQuote = { text: data[0].q, author: data[0].a };
-                        localStorage.setItem(CACHE_KEY, JSON.stringify(newQuote));
-                        localStorage.setItem(CACHE_TIME_KEY, now.toString());
-                        setDailyQuote(newQuote);
-                        return;
-                    }
-                } catch (proxyErr) {
-                    console.error('All fetch attempts failed:', proxyErr);
-                }
-
-                // If all fails, use random fallback but don't cache it for an hour (so we retry sooner)
-                const randomFallback = fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
-                setDailyQuote(randomFallback);
-            }
-        } catch (err) {
-            console.error('Quote logic error:', err);
-            setDailyQuote(fallbackQuotes[0]);
+        } catch {
+            // ignore corrupt cache
         }
+
+        const quote = fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
+        try {
+            localStorage.setItem('wellness_quote', JSON.stringify(quote));
+            localStorage.setItem('wellness_quote_time', String(Date.now()));
+        } catch {
+            // private browsing / storage full
+        }
+        return quote;
     };
 
     useEffect(() => {
+        setDailyQuote(pickDailyQuote());
+
         const fetchDashboardData = async () => {
             try {
-                // Fetch upcoming (backend already excludes 'past' — the scheduler handles transitions)
                 const [upcomingData, pastData] = await Promise.all([
                     appointmentService.getMyAppointments(1, 3, 'upcoming'),
                     appointmentService.getMyAppointments(1, 1, 'past'),
@@ -128,7 +81,6 @@ export default function PatientDashboard() {
                 const upcomingApps = upcomingData.appointments || [];
                 setUpcomingAppointments(upcomingApps);
 
-                // "Next Session" — days until the first upcoming appointment
                 let nextSessionStr = '---';
                 if (upcomingApps.length > 0) {
                     const next = upcomingApps[0];
@@ -142,9 +94,6 @@ export default function PatientDashboard() {
                     past: pastData.total ?? 0,
                     nextSession: nextSessionStr,
                 });
-
-                await fetchQuote();
-
             } catch (err) {
                 console.error('Failed to fetch dashboard data:', err);
             } finally {
@@ -315,7 +264,7 @@ export default function PatientDashboard() {
                                 { label: 'Book Appt.', icon: Plus, path: '/patient/book-appointment', color: 'blue' },
                                 { label: 'View Reports', icon: FileText, path: '/patient/medical-history', color: 'slate' },
                                 { label: 'Update Profile', icon: User, path: '/patient/profile', color: 'orange' },
-                                { label: 'Consult AI', icon: Brain, path: '/patient/symptom-checke', color: 'rose' }
+                                { label: 'Consult AI', icon: Brain, path: '/patient/symptom-checker', color: 'rose' }
                             ].map((action, i) => (
                                 <button
                                     key={i}

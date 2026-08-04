@@ -69,30 +69,38 @@ const formatDateDisplay = (date) =>
     });
 
 const PHONE_REGEX = /^(?:0?7\d{8}|\+947\d{8})$/;
+const SKIP_PAYMENT = import.meta.env.VITE_SKIP_PAYMENT === 'true';
 
 // Step Indicator component
 
 const StepIndicator = ({ currentStep }) => (
     <div className="flex items-center space-x-2 mb-6">
-        {[1, 2].map((step) => (
-            <div key={step} className="flex items-center">
-                <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
-                        ${currentStep === step
-                            ? "bg-blue-600 text-white"
-                            : currentStep > step
-                                ? "bg-green-500 text-white"
-                                : "bg-slate-100 text-slate-400"
-                        }`}
-                >
-                    {currentStep > step ? <CheckCircle className="w-4 h-4" /> : step}
-                </div>
-                <span className={`ml-2 text-xs font-medium ${currentStep === step ? "text-slate-900" : "text-slate-400"}`}>
-                    {step === 1 ? "Appointment Details" : "Payment"}
-                </span>
-                {step < 2 && <div className="w-8 h-px bg-slate-200 mx-3" />}
+        {SKIP_PAYMENT ? (
+            <div className="flex items-center">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-blue-600 text-white">1</div>
+                <span className="ml-2 text-xs font-medium text-slate-900">Appointment Details</span>
             </div>
-        ))}
+        ) : (
+            [1, 2].map((step) => (
+                <div key={step} className="flex items-center">
+                    <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                            ${currentStep === step
+                                ? "bg-blue-600 text-white"
+                                : currentStep > step
+                                    ? "bg-green-500 text-white"
+                                    : "bg-slate-100 text-slate-400"
+                            }`}
+                    >
+                        {currentStep > step ? <CheckCircle className="w-4 h-4" /> : step}
+                    </div>
+                    <span className={`ml-2 text-xs font-medium ${currentStep === step ? "text-slate-900" : "text-slate-400"}`}>
+                        {step === 1 ? "Appointment Details" : "Payment"}
+                    </span>
+                    {step < 2 && <div className="w-8 h-px bg-slate-200 mx-3" />}
+                </div>
+            ))
+        )}
     </div>
 );
 
@@ -353,7 +361,7 @@ const Step1 = ({
                 {loading ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /><span>Creating Appointment...</span></>
                 ) : (
-                    <><span>Continue to Payment</span><ArrowRight className="w-4 h-4" /></>
+                    <><span>{SKIP_PAYMENT ? "Confirm Booking" : "Continue to Payment"}</span>{!SKIP_PAYMENT && <ArrowRight className="w-4 h-4" />}</>
                 )}
             </button>
         </div>
@@ -641,6 +649,33 @@ export default function BookingDrawer({
         setAppointmentId(existingAppointmentId);
     }, [existingAppointmentId]);
 
+    useEffect(() => {
+        if (!paymentOnly || !SKIP_PAYMENT || !appointmentId || success) return;
+
+        let cancelled = false;
+
+        const confirmWithoutPayment = async () => {
+            setLoading(true);
+            setError("");
+            try {
+                await appointmentService.skipPayment(appointmentId);
+                if (!cancelled) setSuccess(true);
+            } catch (err) {
+                if (!cancelled) {
+                    setError(err.error || "Failed to confirm appointment. Please try again.");
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        confirmWithoutPayment();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [paymentOnly, appointmentId, success]);
+
     // Step 1 Submit — create appointment, then move to Step 2 inside the drawer
     const handleNext = async () => {
         setLoading(true);
@@ -660,7 +695,12 @@ export default function BookingDrawer({
 
             const data = await appointmentService.createAppointment(payload);
             setAppointmentId(data.appointment._id);
-            setStep(2); // stay in drawer, go to Step 2
+
+            if (SKIP_PAYMENT || data.skipPayment || data.appointment?.status === 'confirmed') {
+                setSuccess(true);
+            } else {
+                setStep(2);
+            }
         } catch (err) {
             setError(
                 err.error ||

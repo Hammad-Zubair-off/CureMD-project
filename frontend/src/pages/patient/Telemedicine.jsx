@@ -30,8 +30,9 @@ const canJoinByDate = (dateStr) => {
 const ENABLE_CAMERA_TEST_MODE =
     import.meta.env.VITE_TELEMEDICINE_CAMERA_TEST_MODE === 'true';
 
-function SessionCard({ appt, onJoin, joining, canJoin }) { //can join for testing
+function SessionCard({ appt, onJoin, joining, canJoin }) {
     const today = isToday(appt.appointmentDate);
+    const joinAllowed = canJoin ?? canJoinByDate(appt.appointmentDate);
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -71,8 +72,7 @@ function SessionCard({ appt, onJoin, joining, canJoin }) { //can join for testin
                 )}
                 <button
                     onClick={() => onJoin(appt)}
-                    //   disabled={!today || joining} // production
-                    disabled={!canJoin || joining} // for testing
+                    disabled={!joinAllowed || joining}
                     className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
                     {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
@@ -145,7 +145,7 @@ export default function Telemedicine() {
             }
 
             if (!sessionData.token || !sessionData.agoraAppId) {
-                alert('Doctor has not started the session yet. Please try again shortly.');
+                alert('Session is not ready yet. Please try again in a moment.');
                 return;
             }
 
@@ -203,6 +203,12 @@ export default function Telemedicine() {
                     Refresh
                 </button>
             </div>
+
+            {ALLOW_UPCOMING_TEST_JOIN && (
+                <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    Dev mode: you can join upcoming appointments immediately for testing.
+                </div>
+            )}
 
             {loading ? (
                 <div className="h-40 rounded-xl border border-slate-200 bg-white flex items-center justify-center">

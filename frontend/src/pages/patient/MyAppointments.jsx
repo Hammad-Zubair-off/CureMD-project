@@ -26,6 +26,7 @@ const getDayLabel = (date) => {
 
 const FRONTEND_PAYMENT_WINDOW_MINUTES = 25;
 const FRONTEND_GRACE_BLOCK_MINUTES = 5;
+const SKIP_PAYMENT = import.meta.env.VITE_SKIP_PAYMENT === 'true';
 
 const getFrontendPaymentDeadline = (appointment) => {
     // Prefer backend expiry minus 5-min safety buffer
@@ -888,12 +889,26 @@ export default function MyAppointments() {
         }
     };
 
-    const handlePayNow = (appointment) => {
+    const handlePayNow = async (appointment) => {
         const deadline = getFrontendPaymentDeadline(appointment);
         const remainingMs = getRemainingMs(deadline, Date.now());
 
         if (remainingMs <= 0) {
             showToast('Payment window is closed for this appointment.', 'error');
+            return;
+        }
+
+        if (SKIP_PAYMENT) {
+            try {
+                setActionLoading(true);
+                await appointmentService.skipPayment(appointment._id);
+                showToast('Appointment confirmed successfully');
+                fetchAppointments();
+            } catch (err) {
+                showToast(err.error || 'Failed to confirm appointment', 'error');
+            } finally {
+                setActionLoading(false);
+            }
             return;
         }
 

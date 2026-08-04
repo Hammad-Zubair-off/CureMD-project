@@ -10,7 +10,7 @@ const telemedicineService = {
     return response.data.data;
   },
 
-  markActive: async (sessionId) => {
+  markSessionActive: async (sessionId) => {
     const response = await api.patch(`/telemedicine/session/${sessionId}/start`);
     return response.data;
   },

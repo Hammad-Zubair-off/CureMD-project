@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import patientService from '../../services/patientService';
 import appointmentService from '../../services/appointmentService';
+import { getApiErrorMessage } from '../../utils/apiError';
 import Toast from '../../components/common/Toast';
 import Dropdown from '../../components/common/Dropdown';
 import DateRangePicker from '../../components/common/DateRangePicker';
+import MedicalHistoryGuide from '../../components/patient/MedicalHistoryGuide';
+import ClinicalDataQuickEdit from '../../components/patient/ClinicalDataQuickEdit';
 import {
     Loader2,
     HeartPulse,
@@ -19,12 +23,16 @@ import {
     ExternalLink,
     Search,
     Image as ImageIcon,
-    CalendarDays
+    CalendarDays,
+    CalendarPlus,
+    FolderOpen,
 } from 'lucide-react';
 
 export default function MedicalHistory() {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [savingClinical, setSavingClinical] = useState(false);
 
     const [profileData, setProfileData] = useState(null);
     const [snapshots, setSnapshots] = useState([]);
@@ -35,7 +43,7 @@ export default function MedicalHistory() {
     const [loadingAppointments, setLoadingAppointments] = useState({});
 
     // UI State
-    const [activeTab, setActiveTab] = useState('Clinical Timeline');
+    const [activeTab, setActiveTab] = useState('timeline');
     const [expandedSnapshot, setExpandedSnapshot] = useState(null);
 
     // Filters for Documents
@@ -107,6 +115,19 @@ export default function MedicalHistory() {
 
     const clearMessage = useCallback(() => setMessage({ type: '', text: '' }), []);
 
+    const handleClinicalSave = async (payload) => {
+        setSavingClinical(true);
+        try {
+            await patientService.updateProfile(payload);
+            setProfileData((prev) => ({ ...prev, ...payload }));
+            setMessage({ type: 'success', text: 'Health information updated.' });
+        } catch (err) {
+            setMessage({ type: 'error', text: getApiErrorMessage(err, 'Failed to update health info.') });
+        } finally {
+            setSavingClinical(false);
+        }
+    };
+
     const getReportIcon = (fileUrl, iconClass = "w-4 h-4 text-slate-600") => {
         if (!fileUrl) return <FileText className={iconClass} />;
         const ext = fileUrl.split('.').pop().toLowerCase();
@@ -141,7 +162,7 @@ export default function MedicalHistory() {
             setUploadCategory('Lab Result');
             if (fileInputRef.current) fileInputRef.current.value = '';
         } catch (err) {
-            setMessage({ type: 'error', text: err.message || 'Upload failed.' });
+            setMessage({ type: 'error', text: getApiErrorMessage(err, 'Upload failed.') });
         } finally {
             setIsUploading(false);
         }
@@ -183,12 +204,11 @@ export default function MedicalHistory() {
     const activeReports = filteredReports.filter(r => String(r.isDeleted) !== "true");
     const archivedReports = filteredReports.filter(r => String(r.isDeleted) === "true");
 
-    // NEW: Snapshot Filtering Logic
     const filteredSnapshots = snapshots.filter(snap => {
         if (!snapshotStartDate && !snapshotEndDate) return true;
 
         const snapDate = new Date(snap.createdAt);
-        snapDate.setHours(0, 0, 0, 0); // Normalize time for accurate day comparison
+        snapDate.setHours(0, 0, 0, 0);
 
         let isAfterStart = true;
         let isBeforeEnd = true;
@@ -201,12 +221,17 @@ export default function MedicalHistory() {
 
         if (snapshotEndDate) {
             const end = new Date(snapshotEndDate);
-            end.setHours(23, 59, 59, 999); // Include the entire end day
+            end.setHours(23, 59, 59, 999);
             isBeforeEnd = snapDate <= end;
         }
 
         return isAfterStart && isBeforeEnd;
     });
+
+    const tabs = [
+        { id: 'timeline', label: 'Clinical Timeline', count: filteredSnapshots.length, icon: Clock },
+        { id: 'vault', label: 'Document Vault', count: activeReports.length, icon: FolderOpen },
+    ];
 
     // Render Helpers
     if (loading) {
@@ -221,22 +246,60 @@ export default function MedicalHistory() {
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
             {/* Header & Tabs */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Medical History</h1>
-                    <p className="text-sm font-medium text-slate-500 mt-1">Your clinical timeline and documents</p>
+                    <p className="text-sm font-medium text-slate-500 mt-1">
+                        Manage your health records, snapshots, and documents
+                    </p>
                 </div>
                 <div className="flex items-center space-x-2 bg-slate-100/50 p-1.5 rounded-xl w-full md:w-auto justify-center">
-                    {['Clinical Timeline', 'Medical Records'].map((tab) => (
+                    {tabs.map(({ id, label, count, icon: Icon }) => (
                         <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-6 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === tab ? 'bg-white text-blue-600 shadow-xl shadow-blue-600/5' : 'text-slate-500 hover:text-slate-900'}`}
+                            key={id}
+                            type="button"
+                            onClick={() => setActiveTab(id)}
+                            className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-lg text-sm font-bold transition-all ${
+                                activeTab === id
+                                    ? 'bg-white text-blue-600 shadow-xl shadow-blue-600/5'
+                                    : 'text-slate-500 hover:text-slate-900'
+                            }`}
                         >
-                            {tab}
+                            <Icon className="w-4 h-4 shrink-0" />
+                            <span className="hidden sm:inline">{label}</span>
+                            <span className="sm:hidden">{id === 'timeline' ? 'Timeline' : 'Vault'}</span>
+                            {count > 0 && (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                    activeTab === id ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                    {count}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
+            </div>
+
+            <div className="mb-8">
+                <MedicalHistoryGuide />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                {[
+                    { label: 'Clinical snapshots', value: snapshots.length, icon: FileScan, tone: 'text-violet-600 bg-violet-50' },
+                    { label: 'Active documents', value: activeReports.length, icon: FileText, tone: 'text-blue-600 bg-blue-50' },
+                    { label: 'Archived documents', value: archivedReports.length, icon: Archive, tone: 'text-slate-600 bg-slate-100' },
+                ].map(({ label, value, icon: Icon, tone }) => (
+                    <div key={label} className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 shadow-sm">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
+                            <Icon className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-slate-900">{value}</p>
+                            <p className="text-xs text-slate-500 font-medium">{label}</p>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             <Toast isOpen={!!message.text} type={message.type} message={message.text} onClose={clearMessage} />
@@ -249,8 +312,16 @@ export default function MedicalHistory() {
             />
 
             {/* TAB 1: CLINICAL TIMELINE & SNAPSHOTS */}
-            {activeTab === 'Clinical Timeline' && (
+            {activeTab === 'timeline' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+
+                    {profileData && (
+                        <ClinicalDataQuickEdit
+                            profile={profileData}
+                            onSave={handleClinicalSave}
+                            saving={savingClinical}
+                        />
+                    )}
 
                     {/* Compact Medical Data Overview */}
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 relative overflow-hidden">
@@ -333,12 +404,28 @@ export default function MedicalHistory() {
                         </div>
 
                         {filteredSnapshots.length === 0 ? (
-                            <div className="text-center p-8 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-                                <p className="text-slate-500 font-medium">
+                            <div className="text-center p-8 md:p-12 bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-2xl border border-slate-200 border-dashed">
+                                <FileScan className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                                <p className="text-slate-700 font-bold mb-2">
                                     {snapshots.length === 0
-                                        ? "No medical snapshots captured yet."
-                                        : "No snapshots found for the selected date range."}
+                                        ? 'No snapshots yet'
+                                        : 'No snapshots in this date range'}
                                 </p>
+                                <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
+                                    {snapshots.length === 0
+                                        ? 'A clinical snapshot is created automatically when you book an appointment — it freezes your health data for that visit.'
+                                        : 'Try clearing the date filter to see all snapshots.'}
+                                </p>
+                                {snapshots.length === 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/patient/book-appointment')}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-all"
+                                    >
+                                        <CalendarPlus className="w-4 h-4" />
+                                        Book an appointment
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -553,8 +640,17 @@ export default function MedicalHistory() {
             )}
 
             {/* TAB 2: MEDICAL RECORDS */}
-            {activeTab === 'Medical Records' && (
+            {activeTab === 'vault' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+
+                    <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm text-blue-900">
+                        <strong>You can upload here.</strong> Add lab results, prescriptions, or imaging files below.
+                        Doctors only see these if you choose <strong>FULL</strong> sharing when booking.
+                        {' '}
+                        <Link to="/patient/profile" className="font-semibold underline hover:text-blue-700">
+                            Full profile edit
+                        </Link>
+                    </div>
 
                     {/* Upload Section */}
                     <div className="bg-blue-50 p-5 md:p-6 rounded-2xl border border-blue-100 flex flex-col gap-5 items-start shadow-sm">

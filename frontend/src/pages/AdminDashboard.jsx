@@ -27,7 +27,8 @@ const navItems = [
         label: 'Doctor Management',
         icon: Stethoscope,
         subItems: [
-            { key: 'doctor-requests', label: 'Pending Requests', icon: Clock }
+            { key: 'doctor-approvals', label: 'Registration Approvals', icon: Clock },
+            { key: 'doctor-rejections', label: 'Appointment Rejections', icon: XCircle },
         ]
     },
     {
@@ -68,7 +69,7 @@ export default function AdminDashboard() {
     };
 
     useEffect(() => {
-        if (activeTab === 'doctor-requests') {
+        if (activeTab === 'doctor-rejections') {
             fetchRejectionRequests();
         }
     }, [activeTab]);
@@ -351,10 +352,15 @@ export default function AdminDashboard() {
                     <div className="transition-opacity duration-300">
                         {activeTab === 'users' && <UserManagement currentUser={user} showToast={showToast} />}
                         
-                        {activeTab === 'doctors' && <DoctorManagement showToast={showToast} />}
-                        
-                        {/* Placeholder component for Requests to be built later */}
-                        {activeTab === 'doctor-requests' && (
+                        {activeTab === 'doctors' && (
+                            <DoctorManagement showToast={showToast} statusFilter="" />
+                        )}
+
+                        {activeTab === 'doctor-approvals' && (
+                            <DoctorManagement showToast={showToast} statusFilter="pending" />
+                        )}
+
+                        {activeTab === 'doctor-rejections' && (
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div>

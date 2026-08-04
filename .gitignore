@@ -142,3 +142,5 @@ vite.config.ts.timestamp-*
 # Kubernetes
 secrets.yaml
 !*.secrets.yaml
+.DS_Store
+**/.DS_Store
