@@ -1,4 +1,6 @@
 FROM nginx:1.25-alpine
-COPY nginx.render.conf /etc/nginx/nginx.conf
+COPY nginx.render.conf.template /etc/nginx/nginx.conf.template
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/start.sh"]

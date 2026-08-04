@@ -3,6 +3,10 @@ events {
 }
 
 http {
+    # Defer DNS resolution to request time instead of boot time, since
+    # Render's internal service hostnames aren't known when nginx starts.
+    resolver $RESOLVER_IP valid=10s ipv6=off;
+
     server {
         listen 80;
         client_max_body_size 10M;
@@ -21,35 +25,43 @@ http {
         proxy_read_timeout 60s;
 
         location /api/auth {
-            proxy_pass http://curemd-auth-service:3001;
+            set $upstream_auth curemd-auth-service:3001;
+            proxy_pass http://$upstream_auth;
         }
 
         location /api/patients {
-            proxy_pass http://curemd-patient-service:3002;
+            set $upstream_patient curemd-patient-service:3002;
+            proxy_pass http://$upstream_patient;
         }
 
         location /api/doctors {
-            proxy_pass http://curemd-doctor-service:3003;
+            set $upstream_doctor curemd-doctor-service:3003;
+            proxy_pass http://$upstream_doctor;
         }
 
         location /api/appointments {
-            proxy_pass http://curemd-appointment-service:3004;
+            set $upstream_appointment curemd-appointment-service:3004;
+            proxy_pass http://$upstream_appointment;
         }
 
         location /api/payments {
-            proxy_pass http://curemd-payment-service:3005;
+            set $upstream_payment curemd-payment-service:3005;
+            proxy_pass http://$upstream_payment;
         }
 
         location /api/notifications {
-            proxy_pass http://curemd-notification-service:3006;
+            set $upstream_notification curemd-notification-service:3006;
+            proxy_pass http://$upstream_notification;
         }
 
         location /api/telemedicine {
-            proxy_pass http://curemd-telemedicine-service:3007;
+            set $upstream_telemedicine curemd-telemedicine-service:3007;
+            proxy_pass http://$upstream_telemedicine;
         }
 
         location /api/ai {
-            proxy_pass http://curemd-ai-symptom-service:3008;
+            set $upstream_ai curemd-ai-symptom-service:3008;
+            proxy_pass http://$upstream_ai;
         }
 
         location /health {
