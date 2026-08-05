@@ -4,6 +4,7 @@ import patientService from '../../services/patientService';
 import { getApiErrorMessage } from '../../utils/apiError';
 import authService from '../../services/authService';
 import PatientProfileUpdate from '../../components/patient/PatientProfileUpdate';
+import PatientProfileInit from '../../components/patient/PatientProfileInit';
 import Toast from '../../components/common/Toast';
 import {
     Loader2,
@@ -49,6 +50,7 @@ export default function MyProfile() {
     const [isEditing, setIsEditing] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [profileData, setProfileData] = useState(null);
+    const [bookingProfileComplete, setBookingProfileComplete] = useState(true);
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -59,11 +61,13 @@ export default function MyProfile() {
                     authService.getMe()
                 ]);
 
-                const p = profileRes.profile || profileRes;
+                setBookingProfileComplete(Boolean(profileRes.bookingProfileComplete));
+
+                const p = profileRes.profile || {};
                 const u = userRes.user || userRes;
 
-                setProfileData({ 
-                    ...p, 
+                setProfileData({
+                    ...p,
                     email: u.email || p.email,
                     fullName: u.fullName || u.displayName || u.name || p.fullName
                 });
@@ -107,6 +111,25 @@ export default function MyProfile() {
         }
     };
 
+    const handleOnboardingSave = async (formData) => {
+        setSaving(true);
+        setMessage({ type: '', text: '' });
+
+        try {
+            await patientService.saveBookingProfile(formData);
+            setBookingProfileComplete(true);
+            setProfileData(prev => ({ ...prev, ...formData }));
+            setMessage({ type: 'success', text: 'Profile completed successfully!' });
+        } catch (err) {
+            setMessage({
+                type: 'error',
+                text: getApiErrorMessage(err, 'Failed to complete profile.'),
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -142,6 +165,23 @@ export default function MyProfile() {
             <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400">
                 <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
                 <p className="font-bold text-slate-900 tracking-wide uppercase text-xs">Accessing Clinical Records...</p>
+            </div>
+        );
+    }
+
+    if (!bookingProfileComplete) {
+        return (
+            <div className="p-8 max-w-3xl mx-auto">
+                <div className="mb-8">
+                    <h1 className="text-2xl font-bold text-slate-900">Complete Your Profile</h1>
+                    <p className="text-sm font-medium text-slate-500 mt-1">
+                        Please provide your details before we can show your medical records.
+                    </p>
+                </div>
+                <Toast isOpen={!!message.text} type={message.type} message={message.text} onClose={clearMessage} />
+                <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200">
+                    <PatientProfileInit onSave={handleOnboardingSave} saving={saving} />
+                </div>
             </div>
         );
     }
