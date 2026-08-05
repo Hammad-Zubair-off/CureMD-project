@@ -64,7 +64,7 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: APPOINTMENT_SERVICE_URL
-        value: http://curemd-appointment-service:3004
+        value: https://curemd-appointment-service.onrender.com
 
   # --- Doctor Service ---
   - type: web
@@ -102,9 +102,9 @@ services:
       - key: SKIP_PAYMENT
         value: "true"
       - key: PATIENT_SERVICE_URL
-        value: http://curemd-patient-service:3002
+        value: https://curemd-patient-service.onrender.com
       - key: DOCTOR_SERVICE_URL
-        value: http://curemd-doctor-service:3003
+        value: https://curemd-doctor-service.onrender.com
 
   # --- Payment Service ---
   - type: web
@@ -127,7 +127,7 @@ services:
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: APPOINTMENT_SERVICE_URL
-        value: http://curemd-appointment-service:3004
+        value: https://curemd-appointment-service.onrender.com
 
   # --- Notification Service ---
   - type: web
@@ -175,7 +175,7 @@ services:
       - key: TELEMEDICINE_DEV_AUTO_SESSION
         value: "true"
       - key: APPOINTMENT_SERVICE_URL
-        value: http://curemd-appointment-service:3004
+        value: https://curemd-appointment-service.onrender.com
 
   # --- AI Symptom Service ---
   - type: web
@@ -196,6 +196,6 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: PATIENT_SERVICE_URL
-        value: http://curemd-patient-service:3002
+        value: https://curemd-patient-service.onrender.com
       - key: DOCTOR_SERVICE_URL
-        value: http://curemd-doctor-service:3003
+        value: https://curemd-doctor-service.onrender.com
