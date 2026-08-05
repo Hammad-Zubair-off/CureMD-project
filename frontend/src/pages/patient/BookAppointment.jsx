@@ -164,7 +164,7 @@ export default function BookAppointment() {
         const fetchDoctors = async () => {
             try {
                 setDoctorsLoading(true);
-                const res = await doctorService.searchDoctors();
+                const res = await doctorService.searchDoctors({ limit: 100 });
                 const mapped = (res.data || []).map((d) => ({
                     id: d._id,
                     firstName: d.firstName,
