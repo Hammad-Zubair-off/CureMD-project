@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
  * for a specific patient, tied to a specific appointment.
  *
  * Created the FIRST TIME a doctor calls GET /api/patients/history/doctor/:patientId
- * for an appointment where sharingMode is 'full_history_24h'.
+ * for an appointment where sharingMode is 'FULL'.
  * The 24h clock starts at that moment — not at booking time.
  *
  * MongoDB TTL index auto-deletes the record after expiresAt,
@@ -35,12 +35,12 @@ const doctorHistoryAccessSchema = new mongoose.Schema(
             required: true,
         },
 
-        // Always 'full_history_24h' — stored for audit trail
+        // Always 'FULL' — stored for audit trail
         sharingMode: {
             type: String,
-            enum: ['full_history_24h'],
+            enum: ['FULL'],
             required: true,
-            default: 'full_history_24h',
+            default: 'FULL',
         },
 
         // When this access window expires — 24h from first access
