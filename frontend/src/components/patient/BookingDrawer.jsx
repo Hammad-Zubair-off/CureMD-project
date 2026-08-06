@@ -60,6 +60,23 @@ const getSlotsForDate = (doctor, date) => {
 
 const formatDateForAPI = (date) => date.toISOString();
 
+// Combines the selected calendar day with the selected slot's start time,
+// in local time, before converting to ISO. Using midnight (the raw
+// `selectedDate`) for every booking meant "today" always encoded as a
+// timestamp already in the past once converted to UTC in any
+// ahead-of-UTC timezone (e.g. midnight PKT = 19:00 UTC the day before) --
+// same-day bookings failed the backend's "must be in the future" check
+// no matter which time slot was picked, since the slot was never actually
+// factored into the timestamp sent to the server.
+const combineDateAndSlotStart = (date, timeSlot) => {
+    const startTime = timeSlot?.split(" - ")[0];
+    if (!startTime) return date.toISOString();
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const combined = new Date(date);
+    combined.setHours(hours, minutes, 0, 0);
+    return combined.toISOString();
+};
+
 const formatDateDisplay = (date) =>
     date.toLocaleDateString("en-US", {
         weekday: "long",
@@ -757,7 +774,7 @@ export default function BookingDrawer({
                 doctorFullName: doctor.fullName,
                 specialty: doctor.specialty,
                 consultationFee: doctor.consultationFee,
-                appointmentDate: formatDateForAPI(formData.selectedDate),
+                appointmentDate: combineDateAndSlotStart(formData.selectedDate, formData.timeSlot),
                 timeSlot: formData.timeSlot,
                 reason: formData.reason.trim(),
                 patientPhone: formData.patientPhone.trim(),
