@@ -5,7 +5,7 @@ import RejectAppointmentModal from './RejectAppointmentModal';
 import {
   X, User, Phone, Mail, Calendar, Droplet, AlertTriangle,
   Pill, Heart, FileText, ExternalLink, ChevronDown, ChevronUp,
-  Loader2, Clock, ShieldCheck, XCircle,
+  Loader2, Clock, ShieldCheck, XCircle, CheckCircle2,
 } from 'lucide-react';
 
 const SectionCard = ({ title, icon, children, defaultOpen = true }) => {
@@ -187,7 +187,7 @@ const HistoryPanel = ({ history, expiresAt }) => {
   );
 };
 
-export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected }) {
+export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected, onAppointmentCompleted }) {
   const [tab, setTab] = useState('info');
   const [snapshot, setSnapshot] = useState(null);
   const [history, setHistory] = useState(null);
@@ -197,6 +197,8 @@ export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected
   const [snapError, setSnapError] = useState('');
   const [historyError, setHistoryError] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);   // ← NEW
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState('');
 
   const sharingMode = appt?.sharingMode;
 
@@ -243,10 +245,25 @@ export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const handleMarkCompleted = async () => {
+    setCompleting(true);
+    setCompleteError('');
+    try {
+      await appointmentService.markCompleted(appt._id);
+      onAppointmentCompleted?.(appt._id);
+      onClose();
+    } catch (err) {
+      setCompleteError(err?.error || 'Failed to mark appointment as completed.');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   if (!appt) return null;
 
-  // Only show reject button when appointment is confirmed
+  // Only show reject/complete buttons when appointment is confirmed
   const canReject = appt.status === 'confirmed';
+  const canComplete = appt.status === 'confirmed';
 
   const tabs = [
     { id: 'info',     label: 'Patient Info' },
@@ -354,9 +371,31 @@ export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected
                 </SectionCard>
               )}
 
+              {completeError && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm text-red-700">
+                  {completeError}
+                </div>
+              )}
+
+              {/* Mark Completed — only for confirmed appointments */}
+              {canComplete && (
+                <div className="pt-2">
+                  <button
+                    onClick={handleMarkCompleted}
+                    disabled={completing}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-green-700 bg-green-50 hover:bg-green-100 active:bg-green-200 border border-green-200 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {completing
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <CheckCircle2 className="w-4 h-4" />}
+                    Mark as Completed
+                  </button>
+                </div>
+              )}
+
               {/* Reject button — only for confirmed appointments */}
               {canReject && (
-                <div className="pt-2">
+                <div>
                   <button
                     onClick={() => setShowRejectModal(true)}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 active:bg-red-200 border border-red-200 rounded-2xl transition-colors"

@@ -425,6 +425,12 @@ export default function DoctorAppointments() {
                         );
                         setDrawerAppt(null);
                     }}
+                    onAppointmentCompleted={(completedId) => {
+                        setAppointments(prev =>
+                            prev.map(a => a._id === completedId ? { ...a, status: 'completed' } : a)
+                        );
+                        setDrawerAppt(null);
+                    }}
                 />
             )}
         </div>

@@ -114,6 +114,20 @@ const appointmentService = {
     },
 
     /**
+     * Mark a confirmed appointment as completed
+     * Called by the doctor after a consultation is finished
+     */
+    markCompleted: async (appointmentId, notes) => {
+        try {
+            const response = await api.patch(`/appointments/${appointmentId}/status`, { notes });
+            return response.data;
+        } catch (error) {
+            const errData = error.response?.data;
+            throw errData || { error: error.message || 'Something went wrong.' };
+        }
+    },
+
+    /**
      * Get a single appointment by ID
      * Called in MedicalHistory (snapshot linked appointment context)
      */
