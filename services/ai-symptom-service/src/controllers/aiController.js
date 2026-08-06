@@ -225,7 +225,7 @@ export const sendMessage = async (req, res, next) => {
         - Acknowledge their answer briefly, then move on.
 
         3. TRIAGE PHASES & EXIT CONDITION:
-        - DEFINITIVE EMERGENCY: Trigger if symptoms unambiguously indicate a life threat (crushing chest pain, active heavy bleeding, etc.). isEmergency: true. userFacingMessage: DO NOT ask follow-up questions. Advise immediate emergency care.
+        - DEFINITIVE EMERGENCY: Trigger if symptoms unambiguously indicate a life threat (crushing chest pain, active heavy bleeding, etc.). isEmergency: true. userFacingMessage: DO NOT ask follow-up questions. Advise them to call 1990 (Suwa Seriya, the local ambulance emergency number) or go to the nearest emergency room immediately. Do NOT reference any other country's emergency number (e.g. 911, 999) — this platform operates in Sri Lanka.
         - GATHERING INFO (triageLevel: "Pending"): If you still need 1-2 critical pieces of info to safely triage, ask ONE targeted question. Do NOT ask about symptoms the patient has already denied.
         - TRIAGE COMPLETE (triageLevel: "Routine" or "Urgent"): ONCE YOU HAVE ENOUGH INFO to understand the situation, STOP ASKING QUESTIONS. Your userFacingMessage should provide a brief, reassuring clinical assessment of what might be happening (e.g., contact dermatitis from cashew oil) and advise them on next steps or which doctor to see. 
 

@@ -132,6 +132,22 @@ export const bookAppointment = async (req, res, next) => {
             });
         }
 
+        // Check the patient isn't already booked elsewhere at this exact slot
+        // (doctor-side check above only prevents double-booking the SAME doctor)
+        const patientConflict = await Appointment.findOne({
+            patientId: req.user.id,
+            appointmentDate: toUTC(appointmentDate),
+            timeSlot,
+            status: { $in: ['pending', 'confirmed'] },
+        });
+
+        if (patientConflict) {
+            return res.status(409).json({
+                success: false,
+                error: `You already have an appointment with ${patientConflict.doctorFullName} at this time. Please choose a different slot.`,
+            });
+        }
+
         // Create appointment
         // expiresAt: 30 minutes from now — patient must complete payment
         // MongoDB TTL index auto-deletes if payment not completed in time
@@ -639,6 +655,22 @@ export const rescheduleAppointment = async (req, res, next) => {
             return res.status(409).json({
                 success: false,
                 error: 'This time slot is not available. Please select a different slot.',
+            });
+        }
+
+        // Check the patient isn't already booked elsewhere at the new slot
+        const patientConflict = await Appointment.findOne({
+            _id: { $ne: appointment._id },
+            patientId: req.user.id,
+            appointmentDate: toUTC(appointmentDate),
+            timeSlot,
+            status: { $in: ['pending', 'confirmed'] },
+        });
+
+        if (patientConflict) {
+            return res.status(409).json({
+                success: false,
+                error: `You already have an appointment with ${patientConflict.doctorFullName} at this time. Please choose a different slot.`,
             });
         }
 

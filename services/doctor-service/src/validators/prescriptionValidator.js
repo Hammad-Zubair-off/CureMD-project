@@ -21,8 +21,10 @@ export const savePrescriptionValidator = (req, res, next) => {
     if (!patientId || !isMongoId(patientId))
         errors.push({ field: 'patientId', message: 'Valid patientId is required.' });
 
-    if (!sessionId || typeof sessionId !== 'string' || !sessionId.trim())
-        errors.push({ field: 'sessionId', message: 'sessionId is required.' });
+    // sessionId is optional — set when written live during a video call,
+    // omitted (defaults to 'manual-entry' server-side) when written afterward
+    if (sessionId !== undefined && (typeof sessionId !== 'string' || !sessionId.trim()))
+        errors.push({ field: 'sessionId', message: 'sessionId must be a non-empty string when provided.' });
 
     // ── Medications array ─────────────────────────────────────────────────────
     if (!Array.isArray(medications) || medications.length === 0) {

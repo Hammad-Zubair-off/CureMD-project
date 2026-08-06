@@ -1,12 +1,193 @@
 import { useEffect, useState, useCallback } from 'react';
 import patientService from '../../services/patientService';
 import appointmentService from '../../services/appointmentService';
+import prescriptionService from '../../services/prescriptionService';
 import RejectAppointmentModal from './RejectAppointmentModal';
 import {
   X, User, Phone, Mail, Calendar, Droplet, AlertTriangle,
   Pill, Heart, FileText, ExternalLink, ChevronDown, ChevronUp,
-  Loader2, Clock, ShieldCheck, XCircle, CheckCircle2,
+  Loader2, Clock, ShieldCheck, XCircle, CheckCircle2, Plus, Trash2, Save,
 } from 'lucide-react';
+
+const emptyMed = () => ({ name: '', dosage: '', frequency: '', duration: '', notes: '' });
+
+// Prescription editor for the drawer — used for completed appointments where
+// the doctor didn't (or couldn't) write one live during the video call.
+const PrescriptionPanel = ({ appt }) => {
+  const [loading, setLoading] = useState(true);
+  const [medications, setMedications] = useState([emptyMed()]);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [prescriptionId, setPrescriptionId] = useState(null);
+  const [status, setStatus] = useState('draft');
+  const [saving, setSaving] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    prescriptionService.getByAppointment(appt._id).then(data => {
+      if (cancelled) return;
+      if (data) {
+        setMedications(data.medications?.length ? data.medications : [emptyMed()]);
+        setDiagnosis(data.diagnosis || '');
+        setInstructions(data.instructions || '');
+        setPrescriptionId(data._id);
+        setStatus(data.status);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+    return () => { cancelled = true; };
+  }, [appt._id]);
+
+  const updateMed = (idx, field, value) =>
+    setMedications(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
+  const addMed = () => setMedications(prev => [...prev, emptyMed()]);
+  const removeMed = (idx) => setMedications(prev => prev.filter((_, i) => i !== idx));
+
+  const payload = () => ({
+    appointmentId: appt._id,
+    patientId: appt.patientId,
+    medications,
+    diagnosis,
+    instructions,
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg('');
+    try {
+      const saved = await prescriptionService.save(payload());
+      setPrescriptionId(saved._id);
+      setStatus(saved.status);
+      setMsg('Saved');
+    } catch {
+      setMsg('Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleIssue = async () => {
+    setIssuing(true);
+    setMsg('');
+    try {
+      const saved = await prescriptionService.save(payload());
+      const issued = await prescriptionService.issue(saved._id);
+      setPrescriptionId(saved._id);
+      setStatus(issued.status);
+      setMsg('Issued to patient');
+    } catch {
+      setMsg('Issue failed');
+    } finally {
+      setIssuing(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-blue-500" /></div>;
+  }
+
+  const isIssued = status === 'issued';
+
+  return (
+    <div className="space-y-4 mt-1">
+      {isIssued && (
+        <div className="flex items-center gap-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+          <CheckCircle2 className="w-4 h-4" /> Prescription issued to patient
+        </div>
+      )}
+
+      <SectionCard title="Diagnosis" icon={<FileText className="w-4 h-4 text-blue-500" />}>
+        <textarea
+          rows={2}
+          disabled={isIssued}
+          value={diagnosis}
+          onChange={e => setDiagnosis(e.target.value)}
+          placeholder="Primary diagnosis..."
+          className="w-full mt-2 bg-slate-50 text-slate-800 text-sm rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:border-blue-400 resize-none disabled:opacity-60"
+        />
+      </SectionCard>
+
+      <SectionCard title="Medications" icon={<Pill className="w-4 h-4 text-blue-500" />}>
+        <div className="space-y-3 mt-2">
+          {medications.map((med, idx) => (
+            <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium">#{idx + 1}</span>
+                {medications.length > 1 && !isIssued && (
+                  <button onClick={() => removeMed(idx)} className="text-red-500 hover:text-red-600">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {[
+                { field: 'name', placeholder: 'Drug name', label: 'Name' },
+                { field: 'dosage', placeholder: 'e.g. 500mg', label: 'Dosage' },
+                { field: 'frequency', placeholder: 'e.g. Twice daily', label: 'Frequency' },
+                { field: 'duration', placeholder: 'e.g. 7 days', label: 'Duration' },
+              ].map(({ field, placeholder, label }) => (
+                <div key={field}>
+                  <label className="text-xs text-slate-400 mb-0.5 block">{label}</label>
+                  <input
+                    type="text"
+                    disabled={isIssued}
+                    value={med[field]}
+                    onChange={e => updateMed(idx, field, e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full bg-white text-slate-800 text-xs rounded-lg px-2.5 py-1.5 border border-slate-200 focus:outline-none focus:border-blue-400 disabled:opacity-60"
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+          {!isIssued && (
+            <button onClick={addMed} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700">
+              <Plus className="w-3.5 h-3.5" /> Add medication
+            </button>
+          )}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Instructions" icon={<Heart className="w-4 h-4 text-purple-500" />}>
+        <textarea
+          rows={2}
+          disabled={isIssued}
+          value={instructions}
+          onChange={e => setInstructions(e.target.value)}
+          placeholder="Diet, rest, follow-up advice..."
+          className="w-full mt-2 bg-slate-50 text-slate-800 text-sm rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:border-blue-400 resize-none disabled:opacity-60"
+        />
+      </SectionCard>
+
+      {msg && (
+        <p className={`text-center text-xs font-medium ${msg.includes('failed') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>
+      )}
+
+      {!isIssued && (
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving || issuing}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-colors disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save Draft
+          </button>
+          <button
+            onClick={handleIssue}
+            disabled={saving || issuing || medications.every(m => !m.name)}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-2xl transition-colors disabled:opacity-50"
+          >
+            {issuing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            Issue Prescription
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SectionCard = ({ title, icon, children, defaultOpen = true }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -269,6 +450,7 @@ export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected
     { id: 'info',     label: 'Patient Info' },
     { id: 'snapshot', label: 'Snapshot'     },
     ...(sharingMode === 'FULL' ? [{ id: 'history', label: 'Full History' }] : []),
+    ...(appt.status === 'completed' ? [{ id: 'prescription', label: 'Prescription' }] : []),
   ];
 
   return (
@@ -447,6 +629,9 @@ export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected
               )}
             </>
           )}
+
+          {/* Tab: Prescription (completed appointments only) */}
+          {tab === 'prescription' && <PrescriptionPanel appt={appt} />}
         </div>
       </div>
 

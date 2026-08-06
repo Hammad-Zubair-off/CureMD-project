@@ -18,7 +18,7 @@ export const savePrescription = async (req, res) => {
                 $set: {
                     doctorId,
                     patientId,
-                    sessionId,
+                    sessionId: sessionId || 'manual-entry',
                     medications,
                     diagnosis:    diagnosis    || '',
                     instructions: instructions || '',

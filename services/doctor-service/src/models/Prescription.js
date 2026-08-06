@@ -12,7 +12,7 @@ const prescriptionSchema = new mongoose.Schema({
     doctorId:      { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
     patientId:     { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
     appointmentId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
-    sessionId:     { type: String, required: true },           // Agora/telemedicine session ID
+    sessionId:     { type: String, default: 'manual-entry' },  // Agora/telemedicine session ID, or 'manual-entry' when written outside a live call
 
     medications:   { type: [medicationSchema], required: true, validate: v => v.length > 0 },
 
