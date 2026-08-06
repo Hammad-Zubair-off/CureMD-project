@@ -4,11 +4,13 @@ import { logger } from '../utils/logger.js';
 import axios from 'axios';
 import pdfParse from 'pdf-parse';
 
-if (!process.env.GEMINI_API_KEY) {
-    logger.error('[ai-symptom-service] FATAL: GEMINI_API_KEY not found in environment variables.');
+const isGeminiConfigured = Boolean(process.env.GEMINI_API_KEY);
+
+if (!isGeminiConfigured) {
+    logger.error('[ai-symptom-service] GEMINI_API_KEY not found in environment variables. AI triage will be unavailable.');
 }
 
-const geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const geminiClient = isGeminiConfigured ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 const callGemini = async (modelName, systemInstruction, promptData, generationConfig) => {
     const model = geminiClient.getGenerativeModel({ model: modelName, systemInstruction });
@@ -165,6 +167,13 @@ export const sendMessage = async (req, res, next) => {
             return res.status(400).json({ success: false, error: 'Maximum 3 reports can be shared per message.' });
         }
 
+        if (!isGeminiConfigured) {
+            return res.status(503).json({
+                success: false,
+                error: 'AI triage is temporarily unavailable. Please try again later or contact a doctor directly.',
+            });
+        }
+
         // Load session and verify ownership
         const session = await AITriageSession.findById(req.params.sessionId);
 
@@ -225,7 +234,7 @@ export const sendMessage = async (req, res, next) => {
         const promptData = [{ text: promptText }, ...imageParts];
 
         const rawText = await callGemini(
-            'gemini-2.5-flash',
+            'gemini-flash-latest',
             systemInstruction,
             promptData,
             { responseMimeType: 'application/json' }
@@ -268,6 +277,16 @@ export const sendMessage = async (req, res, next) => {
                 error: 'AI service is currently busy. Please try again in a few moments.',
             });
         }
+
+        // Invalid/expired API key — surface as a service-unavailable, not a generic 500
+        const msg = String(err.message || '').toLowerCase();
+        if (err.status === 400 || err.status === 403 || msg.includes('api key')) {
+            return res.status(503).json({
+                success: false,
+                error: 'AI triage is temporarily unavailable. Please try again later or contact a doctor directly.',
+            });
+        }
+
         next(err);
     }
 };
