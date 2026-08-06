@@ -78,6 +78,8 @@ const StatusBadge = ({ isActive, isApproved, role }) => {
 export default function UserManagement({ currentUser, showToast }) {
     const [users, setUsers] = useState([]);
     const [total, setTotal] = useState(0);
+    const [activeCount, setActiveCount] = useState(0);
+    const [inactiveCount, setInactiveCount] = useState(0);
     const [pages, setPages] = useState(1);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -87,10 +89,14 @@ export default function UserManagement({ currentUser, showToast }) {
     const [modal, setModal] = useState(null);
     const LIMIT = 10;
 
+    // Active/inactive counts come from the backend's aggregate count across
+    // ALL matching users, not just the current page -- filtering the local
+    // `users` array (only LIMIT=10 at a time) undercounted whenever there
+    // was more than one page of results.
     const stats = {
         total,
-        active: users.filter(u => u.isActive).length,
-        inactive: users.filter(u => !u.isActive).length,
+        active: activeCount,
+        inactive: inactiveCount,
     };
 
     const fetchUsers = useCallback(async () => {
@@ -102,6 +108,8 @@ export default function UserManagement({ currentUser, showToast }) {
             const data = await authService.getAllUsers(params);
             setUsers(data.users || []);
             setTotal(data.total || 0);
+            setActiveCount(data.activeCount || 0);
+            setInactiveCount(data.inactiveCount || 0);
             setPages(data.pages || 1);
         } catch (err) {
             showToast('Failed to load users', 'error');

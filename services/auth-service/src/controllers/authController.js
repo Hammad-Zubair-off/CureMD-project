@@ -360,17 +360,21 @@ export const getAllUsers = async (req, res, next) => {
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const [users, total] = await Promise.all([
+        const [users, total, activeCount, inactiveCount] = await Promise.all([
             User.find(filter)
                 .skip(skip)
                 .limit(parseInt(limit))
                 .sort({ lastName: 1, firstName: 1 }),
             User.countDocuments(filter),
+            User.countDocuments({ ...filter, isActive: true }),
+            User.countDocuments({ ...filter, isActive: false }),
         ]);
 
         res.status(200).json({
             success: true,
             total,
+            activeCount,
+            inactiveCount,
             page: parseInt(page),
             pages: Math.ceil(total / parseInt(limit)),
             users: users.map(safeUser),
