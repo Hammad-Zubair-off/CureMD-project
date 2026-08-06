@@ -360,7 +360,7 @@ export const getAllUsers = async (req, res, next) => {
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const [users, total, activeCount, inactiveCount] = await Promise.all([
+        const [users, total, activeCount, inactiveCount, approvedCount, pendingCount] = await Promise.all([
             User.find(filter)
                 .skip(skip)
                 .limit(parseInt(limit))
@@ -368,11 +368,15 @@ export const getAllUsers = async (req, res, next) => {
             User.countDocuments(filter),
             User.countDocuments({ ...filter, isActive: true }),
             User.countDocuments({ ...filter, isActive: false }),
+            User.countDocuments({ ...filter, isApproved: true }),
+            User.countDocuments({ ...filter, isApproved: false, isActive: true }),
         ]);
 
         res.status(200).json({
             success: true,
             total,
+            approvedCount,
+            pendingCount,
             activeCount,
             inactiveCount,
             page: parseInt(page),

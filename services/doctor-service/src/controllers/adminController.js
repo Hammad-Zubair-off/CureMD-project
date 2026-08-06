@@ -42,18 +42,22 @@ export const getAllDoctors = async (req, res, next) => {
         if (isApproved !== undefined) filter.isApproved = isApproved === 'true';
         if (isActive !== undefined) filter.isActive = isActive === 'true';
 
-        const [doctors, total] = await Promise.all([
+        const [doctors, total, approvedCount, pendingCount] = await Promise.all([
             Doctor.find(filter)
                 .lean({ virtuals: true })
                 .skip(skip)
                 .limit(limitNum)
                 .sort({ createdAt: -1 }),
             Doctor.countDocuments(filter),
+            Doctor.countDocuments({ ...filter, isApproved: true }),
+            Doctor.countDocuments({ ...filter, isApproved: false, isActive: true }),
         ]);
 
         return res.status(200).json({
             success: true,
             data: doctors,
+            approvedCount,
+            pendingCount,
             pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) },
         });
     } catch (err) {

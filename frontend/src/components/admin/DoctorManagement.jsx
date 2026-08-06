@@ -60,6 +60,8 @@ export default function DoctorManagement({ showToast, statusFilter: initialStatu
     // Auth-service users with role=doctor (for approve/reject/deactivate)
     const [doctorUsers, setDoctorUsers] = useState([]);
     const [total, setTotal] = useState(0);
+    const [approvedCount, setApprovedCount] = useState(0);
+    const [pendingCount, setPendingCount] = useState(0);
     const [pages, setPages] = useState(1);
     const [loading, setLoading] = useState(true);
 
@@ -72,9 +74,6 @@ export default function DoctorManagement({ showToast, statusFilter: initialStatu
     const [actionLoading, setActionLoading] = useState(null);
     const [modal, setModal] = useState(null);
     const LIMIT = 10;
-
-    const pendingCount = doctorUsers.filter(d => !d.isApproved && d.isActive).length;
-    const approvedCount = doctorUsers.filter(d => d.isApproved).length;
 
     // Fetch doctor users from auth-service
     const fetchDoctorUsers = useCallback(async () => {
@@ -89,6 +88,8 @@ export default function DoctorManagement({ showToast, statusFilter: initialStatu
             const data = await authService.getAllUsers(params);
             setDoctorUsers(data.users || []);
             setTotal(data.total || 0);
+            setApprovedCount(data.approvedCount || 0);
+            setPendingCount(data.pendingCount || 0);
             setPages(data.pages || 1);
         } catch (err) {
             showToast('Failed to load doctors', 'error');
