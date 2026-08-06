@@ -528,6 +528,70 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack, fron
     );
 };
 
+// Manual confirm screen — shown instead of Step2 when paying for an
+// existing unpaid appointment while real payment (Stripe) is disabled.
+// Requires an explicit click; nothing finalizes on its own.
+
+const SkipPaymentConfirm = ({ doctor, formData, loading, error, onConfirm }) => (
+    <div className="space-y-6">
+        <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Booking Summary</p>
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 space-y-4">
+                <div className="flex items-center space-x-3 pb-4 border-b border-slate-200">
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
+                        {doctor.firstName[0]}{doctor.lastName[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-900">{doctor.fullName}</p>
+                        <p className="text-sm text-blue-600">{doctor.specialty}</p>
+                    </div>
+                </div>
+                <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center">
+                        <span className="text-slate-500 flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-slate-400" />
+                            Date
+                        </span>
+                        <span className="font-medium text-slate-900">
+                            {formData.selectedDate ? formatDateDisplay(formData.selectedDate) : "—"}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-slate-500 flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-slate-400" />
+                            Time
+                        </span>
+                        <span className="font-medium text-slate-900">{formData.timeSlot}</span>
+                    </div>
+                </div>
+                <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
+                    <span className="font-semibold text-slate-700">Total Due</span>
+                    <span className="text-lg font-bold text-slate-900">LKR {doctor.consultationFee.toLocaleString()}</span>
+                </div>
+            </div>
+        </div>
+
+        {error && (
+            <div className="flex items-start space-x-3 bg-red-50 text-red-700 p-3 rounded-xl border border-red-100">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p className="text-sm">{error}</p>
+            </div>
+        )}
+
+        <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="w-full py-3.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-blue-600/20 flex items-center justify-center space-x-2"
+        >
+            {loading ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /><span>Confirming...</span></>
+            ) : (
+                <><CreditCard className="w-4 h-4" /><span>Confirm Appointment</span></>
+            )}
+        </button>
+    </div>
+);
+
 // Success Screen component
 
 const SuccessScreen = ({ doctor, formData, onDone }) => (
@@ -659,32 +723,27 @@ export default function BookingDrawer({
         setAppointmentId(existingAppointmentId);
     }, [existingAppointmentId]);
 
-    useEffect(() => {
-        if (!paymentOnly || !SKIP_PAYMENT || !appointmentId || success) return;
-
-        let cancelled = false;
-
-        const confirmWithoutPayment = async () => {
-            setLoading(true);
-            setError("");
-            try {
-                await appointmentService.skipPayment(appointmentId);
-                if (!cancelled) setSuccess(true);
-            } catch (err) {
-                if (!cancelled) {
-                    setError(err.error || "Failed to confirm appointment. Please try again.");
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        };
-
-        confirmWithoutPayment();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [paymentOnly, appointmentId, success]);
+    // Manual confirm for the "Pay Now on an existing unpaid appointment"
+    // flow while real payment is disabled (SKIP_PAYMENT). Deliberately NOT
+    // auto-fired on mount — the patient must click "Confirm Appointment"
+    // (rendered below) before anything is finalized. Once real Stripe keys
+    // are active, SKIP_PAYMENT is false and this whole branch is unreachable
+    // — the normal Step2 Stripe form takes over instead.
+    const handleConfirmSkipPayment = async () => {
+        if (submittingRef.current) return;
+        submittingRef.current = true;
+        setLoading(true);
+        setError("");
+        try {
+            await appointmentService.skipPayment(appointmentId);
+            setSuccess(true);
+        } catch (err) {
+            setError(err.error || "Failed to confirm appointment. Please try again.");
+        } finally {
+            submittingRef.current = false;
+            setLoading(false);
+        }
+    };
 
     // Step 1 Submit — create appointment, then move to Step 2 inside the drawer
     const handleNext = async () => {
@@ -778,6 +837,14 @@ export default function BookingDrawer({
                             error={error}
                             takenSlots={takenSlots}
                             slotsLoading={slotsLoading}
+                        />
+                    ) : paymentOnly && SKIP_PAYMENT ? (
+                        <SkipPaymentConfirm
+                            doctor={doctor}
+                            formData={formData}
+                            loading={loading}
+                            error={error}
+                            onConfirm={handleConfirmSkipPayment}
                         />
                     ) : (
                         <Step2
