@@ -3,7 +3,12 @@ import axios from 'axios';
 const api = axios.create({
   //baseURL: import.meta.env.VITE_API_URL || 'http://localhost:80/api',
   baseURL: '/api',
-  timeout: 15000,
+  // 45s, not 15s: a single request can chain through multiple backend
+  // services (gateway -> appointment-service -> patient-service for a
+  // medical-history snapshot, etc), each independently able to be a cold
+  // Render free-tier instance taking 20-30s+ to wake. 15s was aborting
+  // valid in-flight requests before the backend ever got to respond.
+  timeout: 45000,
   headers: {
     'Content-Type': 'application/json',
   },
