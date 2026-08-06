@@ -145,11 +145,11 @@ services:
         value: notification
       - key: MONGODB_URI
         sync: false
-      - key: SENDGRID_API_KEY
+      - key: BREVO_API_KEY
         sync: false
-      - key: SENDGRID_FROM_EMAIL
+      - key: BREVO_FROM_EMAIL
         sync: false
-      - key: SENDGRID_FROM_NAME
+      - key: BREVO_FROM_NAME
         value: CureMD
 
   # --- Telemedicine Service ---

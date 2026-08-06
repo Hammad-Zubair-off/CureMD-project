@@ -203,9 +203,9 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
 | `RABBITMQ_URL` | Yes | RabbitMQ URL |
-| `SENDGRID_API_KEY` | Yes* | SendGrid API key for email |
-| `SENDGRID_FROM_EMAIL` | Yes* | Verified sender email |
-| `SENDGRID_FROM_NAME` | No | Sender display name |
+| `BREVO_API_KEY` | Yes* | Brevo API key for email |
+| `BREVO_FROM_EMAIL` | Yes* | Verified sender email |
+| `BREVO_FROM_NAME` | No | Sender display name |
 | `TWILIO_ACCOUNT_SID` | No | Twilio SID (SMS) |
 | `TWILIO_AUTH_TOKEN` | No | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | No | Twilio from-number |

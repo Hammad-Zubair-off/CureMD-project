@@ -50,7 +50,7 @@ To switch to **MongoDB Atlas**, replace `MONGODB_URI` in each service `.env` wit
 | `INTERNAL_SECRET` | appointment | Auto-generated |
 | `RABBITMQ_URL` | patient, appointment, notification | `amqp://guest:guest@rabbitmq:5672` |
 | `MONGODB_URI` | All 5 | `mongodb://mongo:27017/<db>` |
-| `SENDGRID_API_KEY` | notification | Placeholder (service starts; email sends fail until real key) |
+| `BREVO_API_KEY` | notification | Placeholder (service starts; email sends fail until real key) |
 | `CLOUDINARY_*` | patient | `localdev` placeholders (uploads fail until real keys) |
 
 ## Daily start

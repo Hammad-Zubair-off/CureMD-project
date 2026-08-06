@@ -1,8 +1,9 @@
-import sgMail from '@sendgrid/mail';
+import * as brevo from '@getbrevo/brevo';
+import { getBrevoClient } from '../config/brevo.js';
 import { logger } from './logger.js';
 
 /**
- * Send an email via SendGrid.
+ * Send an email via Brevo.
  * Never throws — logs error and returns false on failure.
  *
  * @param {string} to         Recipient email address
@@ -11,25 +12,30 @@ import { logger } from './logger.js';
  * @returns {Promise<boolean>} true if sent, false if failed
  */
 export const sendEmail = async (to, subject, html) => {
-    try {
-        const msg = {
-            to,
-            from: {
-                email: process.env.SENDGRID_FROM_EMAIL,
-                name: process.env.SENDGRID_FROM_NAME,
-            },
-            subject,
-            html,
-        };
+    const client = getBrevoClient();
 
-        await sgMail.send(msg);
+    if (!client) {
+        logger.warn('[EmailSender] Brevo client is not initialized. Skipping email.');
+        return false;
+    }
+
+    try {
+        const email = new brevo.SendSmtpEmail();
+        email.to = [{ email: to }];
+        email.sender = {
+            email: process.env.BREVO_FROM_EMAIL,
+            name: process.env.BREVO_FROM_NAME,
+        };
+        email.subject = subject;
+        email.htmlContent = html;
+
+        await client.sendTransacEmail(email);
         logger.success(`[EmailSender] Email sent to ${to} — "${subject}"`);
         return true;
 
     } catch (error) {
-        // Log SendGrid's detailed error if available
         if (error.response) {
-            logger.error(`[EmailSender] SendGrid error:`, error.response.body);
+            logger.error(`[EmailSender] Brevo error:`, error.response.body || error.response.text);
         } else {
             logger.error(`[EmailSender] Failed to send email to ${to}:`, error.message);
         }

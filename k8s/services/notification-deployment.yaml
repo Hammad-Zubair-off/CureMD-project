@@ -38,21 +38,21 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: rabbitmq-url
-        - name: SENDGRID_API_KEY
+        - name: BREVO_API_KEY
           valueFrom:
             secretKeyRef:
               name: app-secrets
-              key: sendgrid-api-key
-        - name: SENDGRID_FROM_EMAIL
+              key: brevo-api-key
+        - name: BREVO_FROM_EMAIL
           valueFrom:
             configMapKeyRef:
               name: service-config
-              key: SENDGRID_FROM_EMAIL
-        - name: SENDGRID_FROM_NAME
+              key: BREVO_FROM_EMAIL
+        - name: BREVO_FROM_NAME
           valueFrom:
             configMapKeyRef:
               name: service-config
-              key: SENDGRID_FROM_NAME
+              key: BREVO_FROM_NAME
         - name: TWILIO_ACCOUNT_SID
           valueFrom:
             secretKeyRef:

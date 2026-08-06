@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { connectDB } from './src/config/db.js';
 import { connectRabbitMQ } from './src/config/rabbitmq.js';
-import { initSendGrid } from './src/config/sendgrid.js';
+import { initBrevo } from './src/config/brevo.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 import { logger } from './src/utils/logger.js';
 import { registerAppointmentHandlers } from './src/handlers/appointmentHandlers.js';
@@ -52,8 +52,8 @@ const registerAllHandlers = async () => {
 //  Startup 
 const startServer = async () => {
     try {
-        // 1. Initialize SendGrid
-        initSendGrid();
+        // 1. Initialize Brevo
+        initBrevo();
         
         // 1.1 Initialize Twilio
         initTwilio();

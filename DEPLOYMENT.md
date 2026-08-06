@@ -55,7 +55,7 @@ instead of clicking through the dashboard 9 times.
      `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` (placeholder ok, payment is
      skipped via `SKIP_PAYMENT=true`)
    - **curemd-notification-service**: `MONGODB_URI` (notification-db),
-     `SENDGRID_API_KEY`/`SENDGRID_FROM_EMAIL` (placeholder ok, emails just
+     `BREVO_API_KEY`/`BREVO_FROM_EMAIL` (placeholder ok, emails just
      won't send yet)
    - **curemd-telemedicine-service**: `MONGODB_URI` (telemedicine-db),
      `AGORA_APP_ID`/`AGORA_APP_CERTIFICATE` (placeholder ok, dev auto-session

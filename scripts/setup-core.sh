@@ -92,9 +92,9 @@ for SERVICE in "${CORE_SERVICES[@]}"; do
 
   if [[ "$SERVICE" == "notification-service" ]]; then
     grep -q '^MONGODB_URI=' "$TARGET" || echo "MONGODB_URI=${MONGO_BASE}/notification-db" >> "$TARGET"
-    grep -q '^SENDGRID_API_KEY=' "$TARGET" || echo "SENDGRID_API_KEY=SG.localdev_placeholder_replace_with_real_key" >> "$TARGET"
-    grep -q '^SENDGRID_FROM_EMAIL=' "$TARGET" || echo "SENDGRID_FROM_EMAIL=dev@example.com" >> "$TARGET"
-    grep -q '^SENDGRID_FROM_NAME=' "$TARGET" || echo "SENDGRID_FROM_NAME=Healthcare Dev" >> "$TARGET"
+    grep -q '^BREVO_API_KEY=' "$TARGET" || echo "BREVO_API_KEY=xkeysib-localdev_placeholder_replace_with_real_key" >> "$TARGET"
+    grep -q '^BREVO_FROM_EMAIL=' "$TARGET" || echo "BREVO_FROM_EMAIL=dev@example.com" >> "$TARGET"
+    grep -q '^BREVO_FROM_NAME=' "$TARGET" || echo "BREVO_FROM_NAME=Healthcare Dev" >> "$TARGET"
   fi
 
   if [[ "$SERVICE" == "patient-service" ]]; then
@@ -113,7 +113,7 @@ echo "================================================"
 echo "  Replace MONGODB_URI in each services/*/.env with Atlas connection strings."
 echo "  Keep JWT_SECRET identical across all core services."
 echo "  appointment-service needs INTERNAL_SECRET (auto-generated if new)."
-echo "  notification-service needs a real SENDGRID_API_KEY for email."
+echo "  notification-service needs a real BREVO_API_KEY for email."
 echo "  patient-service needs real Cloudinary keys for file uploads."
 echo ""
 echo "  Local MongoDB (default): use docker-compose.local.yml overlay."
