@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -599,6 +599,16 @@ export default function BookingDrawer({
     const [takenSlots, setTakenSlots] = useState([]);
     const [slotsLoading, setSlotsLoading] = useState(false);
 
+    // Guards against double-submit: React's `loading` state disables the
+    // button, but that disable only takes effect after a re-render. Two
+    // clicks/taps fired within the same event-loop tick (fast double-click,
+    // or a slow network masking the first click's visual feedback) can both
+    // fire handleNext before the button re-renders as disabled, creating
+    // two appointments or a spurious "slot no longer available" error from
+    // the second request. A ref updates synchronously, so it closes that
+    // window regardless of render timing.
+    const submittingRef = useRef(false);
+
     useEffect(() => {
         setStep(initialStep);
     }, [initialStep]);
@@ -678,6 +688,8 @@ export default function BookingDrawer({
 
     // Step 1 Submit — create appointment, then move to Step 2 inside the drawer
     const handleNext = async () => {
+        if (submittingRef.current) return;
+        submittingRef.current = true;
         setLoading(true);
         setError("");
         try {
@@ -708,6 +720,7 @@ export default function BookingDrawer({
                 "Failed to create appointment. Please try again.",
             );
         } finally {
+            submittingRef.current = false;
             setLoading(false);
         }
     };
