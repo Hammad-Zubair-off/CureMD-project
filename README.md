@@ -8,17 +8,16 @@ Distributed, cloud-native healthcare platform for doctor appointments, video con
 
 | Service | Port | Responsibility |
 |---------|------|----------------|
-| **API Gateway (Nginx)** | 80 | Single entry for all `/api/*` traffic |
+| **API Gateway (Nginx)** | 80 | Single entry for all `/api/*` traffic — **local dev only** (production routing is Vercel rewrites in `frontend/vercel.json`) |
 | **Frontend (React + Vite)** | 5173 | Patient / doctor / admin dashboards |
 | **Auth Service** | 3001 | JWT auth, RBAC (Admin, Doctor, Patient) |
 | **Patient Service** | 3002 | Profiles, medical history, Cloudinary uploads |
 | **Doctor Service** | 3003 | Doctor profiles, specialties, approval |
 | **Appointment Service** | 3004 | Booking, scheduling, payment handoff |
 | **Payment Service** | 3005 | Stripe payments & webhooks |
-| **Notification Service** | 3006 | Email (SendGrid) / SMS (Twilio) via RabbitMQ |
+| **Notification Service** | 3006 | Email (Brevo) / SMS (Twilio) via QStash events |
 | **Telemedicine Service** | 3007 | Agora video session tokens |
 | **AI Symptom Service** | 3008 | Gemini-based triage |
-| **RabbitMQ** | 5672 / 15672 | Async messaging + management UI |
 | **MongoDB** | 27017 | Per-service databases |
 
 ## Tech stack
@@ -26,10 +25,11 @@ Distributed, cloud-native healthcare platform for doctor appointments, video con
 - **Backend:** Node.js (Express)
 - **Frontend:** React 19, Vite, Tailwind CSS
 - **Databases:** MongoDB
-- **Messaging:** RabbitMQ
+- **Async events:** Upstash QStash (HTTP) — direct HTTP locally
 - **Payments:** Stripe
 - **Video:** Agora RTC
 - **AI:** Google Gemini
+- **Hosting:** Vercel serverless (backend + frontend)
 - **Containers:** Docker & Docker Compose
 - **Orchestration:** Kubernetes manifests under `k8s/`
 
@@ -41,7 +41,7 @@ Distributed, cloud-native healthcare platform for doctor appointments, video con
 
 - Docker Desktop **or** Colima + Docker
 - Node.js 18+ (for frontend `npm run dev`)
-- Free ports: `80`, `5173`, `3001–3008`, `5672`, `15672`, `27017`
+- Free ports: `80`, `5173`, `3001–3008`, `27017`
 
 ### 1. Clone
 
@@ -54,7 +54,6 @@ cd CureMD-project
 
 ```bash
 # Copy all example env files (or use the helper script for core services)
-cp rabbitmq.env.example rabbitmq.env
 cp frontend/.env.example frontend/.env
 
 for s in auth patient doctor appointment payment notification telemedicine ai-symptom; do
@@ -98,13 +97,6 @@ More detail: see [`LOCAL_SETUP.md`](./LOCAL_SETUP.md).
 
 Real `.env` files are **gitignored**. Copy each `*.example` file and fill in values.
 
-### Root — `rabbitmq.env`
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `RABBITMQ_DEFAULT_USER` | Yes | RabbitMQ username (local: `guest`) |
-| `RABBITMQ_DEFAULT_PASS` | Yes | RabbitMQ password (local: `guest`) |
-
 ### Frontend — `frontend/.env`
 
 | Variable | Required | Description |
@@ -124,6 +116,7 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3001` |
 | `SERVICE_NAME` | Yes | e.g. `auth_service` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB connection string (`auth-db`) |
 | `JWT_SECRET` | Yes | Shared signing secret (must match all services) |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
@@ -135,15 +128,17 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3002` |
 | `SERVICE_NAME` | Yes | e.g. `patient` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB URI (`patient_db`) |
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
-| `RABBITMQ_URL` | Yes | e.g. `amqp://guest:guest@rabbitmq:5672` |
+| `QSTASH_TOKEN` | No | Empty locally; Upstash token in prod |
 | `CLOUDINARY_CLOUD_NAME` | Yes* | Cloudinary cloud name (file uploads) |
 | `CLOUDINARY_API_KEY` | Yes* | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Yes* | Cloudinary API secret |
 | `APPOINTMENT_SERVICE_URL` | No | Default `http://appointment-service:3004` |
+| `NOTIFICATION_SERVICE_URL` | No | Default `http://notification-service:3006` |
 
 \*Uploads fail until real Cloudinary credentials are set.
 
@@ -153,6 +148,7 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3003` |
 | `SERVICE_NAME` | Yes | e.g. `doctor` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB URI (`doctor-db`) |
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
@@ -164,15 +160,18 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3004` |
 | `SERVICE_NAME` | Yes | e.g. `appointment` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB URI (`appointment-db`) |
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
-| `RABBITMQ_URL` | Yes | RabbitMQ URL |
+| `QSTASH_TOKEN` | No | Empty locally; Upstash token in prod |
 | `INTERNAL_SECRET` | Yes | Shared secret for service-to-service calls |
 | `SKIP_PAYMENT` | No | `true` skips payment confirmation in local/dev |
 | `PATIENT_SERVICE_URL` | No | Default `http://patient-service:3002` |
 | `DOCTOR_SERVICE_URL` | No | Default `http://doctor-service:3003` |
+| `NOTIFICATION_SERVICE_URL` | No | Default `http://notification-service:3006` |
+| `PAYMENT_SERVICE_URL` | No | Default `http://payment-service:3005` |
 
 ### Payment service — `services/payment-service/.env`
 
@@ -281,9 +280,4 @@ CureMD-project/
 
 - Never commit real `.env` files — they are ignored via `.gitignore`.
 - Commit only `*.env.example` / `rabbitmq.env.example` with placeholders.
-- Rotate any keys that were previously committed or shared in chat.
-- Doctor accounts start with `isApproved: false`; approve in MongoDB for local testing (see `LOCAL_SETUP.md`).
-
-## License
-
-ISC / project course use — update as needed for your organization.
+- Rotate any keys that were previously commit

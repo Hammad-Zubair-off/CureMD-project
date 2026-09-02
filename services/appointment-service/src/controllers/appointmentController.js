@@ -941,14 +941,26 @@ export const trackAppointment = async (req, res, next) => {
         res.setHeader('Connection', 'keep-alive');
         res.flushHeaders();
 
-        // Push current state immediately on connect
-        res.write(`data: ${JSON.stringify({
+        const snapshotFrame = `data: ${JSON.stringify({
             status: appointment.status,
             statusHistory: appointment.statusHistory,
             appointmentDate: appointment.appointmentDate,
             timeSlot: appointment.timeSlot,
             expiresAt: appointment.expiresAt,
-        })}\n\n`);
+        })}\n\n`;
+
+        // Push current state immediately on connect
+        res.write(snapshotFrame);
+
+        // Serverless (Vercel): there is no shared in-process EventEmitter across
+        // function invocations and streams are capped at maxDuration, so we send
+        // the snapshot and close. The browser's EventSource auto-reconnects
+        // (~3s), which degrades this endpoint to short-poll-over-SSE without any
+        // frontend change.
+        if (process.env.VERCEL) {
+            res.write('retry: 3000\n\n');
+            return res.end();
+        }
 
         // Register listener for this appointment's events
         const appointmentId = appointment._id.toString();

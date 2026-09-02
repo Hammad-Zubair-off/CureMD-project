@@ -138,6 +138,25 @@ After all 8 are deployed, fill the real URLs into:
 
 ---
 
+## Known limitations / behaviour changes on serverless
+
+| Area | Before | After |
+|---|---|---|
+| **Real-time appointment tracking** (`GET /api/appointments/:id/track`) | SSE stream held open 5 min, pushed live status via an in-process `EventEmitter` | On Vercel (`process.env.VERCEL` set) the endpoint sends the current snapshot and closes. The browser `EventSource` auto-reconnects (~3s), degrading it to short-poll-over-SSE. No frontend change needed; true server-push would need Pusher/Ably/Upstash Redis pub-sub — out of scope here. |
+| **Appointment expiry** | 60s `setInterval` in every running instance | Local dev keeps the timer. Production needs an external scheduler calling `POST /api/appointments/internal/run-expiry` with header `x-internal-secret: <INTERNAL_SECRET>` (cron-job.org every 5–15 min, or Vercel Cron once/day on Hobby). |
+| **Cold starts** | Render free instances slept after 15 min | Vercel functions cold-start too; the frontend axios timeout is already 45s. |
+| **QStash free tier** | unlimited (self-hosted RabbitMQ) | ~500 messages/day on Upstash free. A booking emits 1–2 events; a refund ~3. Fine for demo, watch under load. |
+| **`k8s/` manifests** | referenced RabbitMQ | RabbitMQ wiring stripped, but k8s is not a target of this migration and is otherwise unmaintained. |
+
+## Verification done in this branch
+
+- `npm install` resolves for all 8 services (`@upstash/qstash@^2.11.3`, `amqplib` removed).
+- Every `src/app.js` imports without error; QStash `Client.publishJSON` / `Receiver.verify` confirmed present.
+- `publishEvent()` routes correctly (no-op for unrouted keys, direct HTTP when `QSTASH_TOKEN` unset).
+- Event handler maps: notification `{appointment.confirmed, appointment.created, consultation.completed, payment.refunded}`, appointment `{payment.refunded}`, payment `{appointment.rejected_by_doctor, appointment.cancelled}`.
+
+Not verified (needs live infra): end-to-end event delivery through QStash, MongoDB Atlas connectivity, Stripe webhook signature, a real Vercel deploy.
+
 ## Local development (after migration)
 
 RabbitMQ is gone. Everything else is the same:
