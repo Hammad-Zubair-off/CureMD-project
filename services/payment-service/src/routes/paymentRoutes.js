@@ -1,15 +1,11 @@
 import { Router } from 'express';
-import express from 'express';
 import { protect, authorize } from '../middleware/auth.js';
-import { createPaymentIntent, stripeWebhook, refundPayment, getPaymentByAppointment, confirmPaymentFromFrontend, getAllPayments, } from '../controllers/paymentController.js';
+import { createPaymentIntent, refundPayment, getPaymentByAppointment, confirmPaymentFromFrontend, getAllPayments, } from '../controllers/paymentController.js';
 
 const router = Router();
 
-router.post(
-    '/webhook',
-    express.raw({ type: 'application/json' }),
-    stripeWebhook
-);
+// NOTE: POST /api/payments/webhook is mounted in src/app.js *before* the JSON
+// body parser so Stripe's raw payload survives for signature verification.
 
 // Patient creates a payment intent (triggers Stripe checkout flow)
 router.post('/create-intent', protect, authorize('patient'), createPaymentIntent);

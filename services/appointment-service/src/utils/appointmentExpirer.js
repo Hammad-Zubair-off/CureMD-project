@@ -40,8 +40,9 @@ const getEndUtcMs = (appointment) => {
 /**
  * @desc  One expiry tick — finds all confirmed appointments whose
  *        end datetime has passed and bulk-updates them to 'past'.
+ *        Exported so a serverless cron endpoint can invoke it directly.
  */
-const runExpiryTick = async () => {
+export const runExpiryTick = async () => {
     try {
         const now = Date.now();
 
