@@ -23,17 +23,6 @@ if ! docker info > /dev/null 2>&1; then
 fi
 echo "✅ Docker is running"
 
-# RabbitMQ env
-if [[ ! -f rabbitmq.env ]]; then
-  cat > rabbitmq.env <<'EOF'
-RABBITMQ_DEFAULT_USER=guest
-RABBITMQ_DEFAULT_PASS=guest
-EOF
-  echo "✅ Created rabbitmq.env"
-else
-  echo "⏭️  rabbitmq.env already exists"
-fi
-
 CORE_SERVICES=(
   auth-service
   patient-service
@@ -83,7 +72,6 @@ for SERVICE in "${CORE_SERVICES[@]}"; do
   [[ -n "$(tail -c1 "$TARGET" 2>/dev/null)" ]] && echo "" >> "$TARGET"
 
   # Append vars missing from .env.example
-  grep -q '^RABBITMQ_URL=' "$TARGET" || echo "RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672" >> "$TARGET"
   grep -q '^ALLOWED_ORIGINS=' "$TARGET" || echo "ALLOWED_ORIGINS=http://localhost:5173,http://localhost:80" >> "$TARGET"
 
   if [[ "$SERVICE" == "appointment-service" ]]; then

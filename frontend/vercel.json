@@ -1,6 +1,15 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "_comment": "Replace each curemd-<svc>.vercel.app host with the real production URL of that service's Vercel project (see MIGRATION.md).",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://curemd-api-gateway.onrender.com/api/$1" },
+    { "source": "/api/auth/:path*", "destination": "https://curemd-auth-service.vercel.app/api/auth/:path*" },
+    { "source": "/api/patients/:path*", "destination": "https://curemd-patient-service.vercel.app/api/patients/:path*" },
+    { "source": "/api/doctors/:path*", "destination": "https://curemd-doctor-service.vercel.app/api/doctors/:path*" },
+    { "source": "/api/appointments/:path*", "destination": "https://curemd-appointment-service.vercel.app/api/appointments/:path*" },
+    { "source": "/api/payments/:path*", "destination": "https://curemd-payment-service.vercel.app/api/payments/:path*" },
+    { "source": "/api/notifications/:path*", "destination": "https://curemd-notification-service.vercel.app/api/notifications/:path*" },
+    { "source": "/api/telemedicine/:path*", "destination": "https://curemd-telemedicine-service.vercel.app/api/telemedicine/:path*" },
+    { "source": "/api/ai/:path*", "destination": "https://curemd-ai-symptom-service.vercel.app/api/ai/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
