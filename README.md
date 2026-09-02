@@ -179,15 +179,17 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3005` |
 | `SERVICE_NAME` | Yes | e.g. `payment` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB URI (`payment-db`) |
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
-| `RABBITMQ_URL` | Yes | RabbitMQ URL |
+| `QSTASH_TOKEN` | No | Empty locally; Upstash token in prod |
 | `INTERNAL_SECRET` | Yes | Must match appointment service |
 | `STRIPE_SECRET_KEY` | Yes | Stripe secret key (`sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Yes* | Stripe webhook signing secret |
 | `APPOINTMENT_SERVICE_URL` | No | Default `http://appointment-service:3004` |
+| `NOTIFICATION_SERVICE_URL` | No | Default `http://notification-service:3006` |
 
 \*Can be relaxed in development when webhook verification is skipped.
 
@@ -197,11 +199,13 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3006` |
 | `SERVICE_NAME` | Yes | e.g. `notification` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB URI (`notification-db`) |
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
-| `RABBITMQ_URL` | Yes | RabbitMQ URL |
+| `QSTASH_CURRENT_SIGNING_KEY` | No | Empty locally; from Upstash in prod |
+| `QSTASH_NEXT_SIGNING_KEY` | No | Empty locally; from Upstash in prod |
 | `BREVO_API_KEY` | Yes* | Brevo API key for email |
 | `BREVO_FROM_EMAIL` | Yes* | Verified sender email |
 | `BREVO_FROM_NAME` | No | Sender display name |
@@ -209,7 +213,7 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `TWILIO_AUTH_TOKEN` | No | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | No | Twilio from-number |
 
-\*Service starts with placeholders; real emails need a valid SendGrid key.
+\*Service starts with placeholders; real emails need a valid Brevo key.
 
 ### Telemedicine service — `services/telemedicine-service/.env`
 
@@ -217,11 +221,11 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3007` |
 | `SERVICE_NAME` | Yes | e.g. `telemedicine` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB URI (`telemedicine-db`) |
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
-| `RABBITMQ_URL` | Yes | RabbitMQ URL |
 | `AGORA_APP_ID` | Yes | Agora App ID |
 | `AGORA_APP_CERTIFICATE` | Yes | Agora App Certificate |
 | `FRONTEND_URL` | Yes | e.g. `http://localhost:5173` (join links) |
@@ -234,6 +238,7 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |----------|----------|-------------|
 | `PORT` | Yes | Default `3008` |
 | `SERVICE_NAME` | Yes | e.g. `ai_symptoms` |
+| `NODE_ENV` | No | Default `development` |
 | `MONGODB_URI` | Yes | MongoDB URI (`ai_symptoms`) |
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
@@ -248,7 +253,8 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 |--------|---------|-------|
 | `JWT_SECRET` | **All** services | Must be identical everywhere |
 | `INTERNAL_SECRET` | appointment, payment, patient (internal routes) | Must match between callers |
-| `RABBITMQ_URL` | patient, appointment, payment, notification, telemedicine | Local: `amqp://guest:guest@rabbitmq:5672` |
+| `QSTASH_TOKEN` | patient, appointment, payment (publishers) | Empty locally; Upstash token in prod |
+| `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` | notification, appointment, payment (consumers) | Empty locally; from Upstash in prod |
 | `MONGODB_URI` | Each service | Local Docker: `mongodb://mongo:27017/<db>` or Atlas SRV URIs |
 
 ---
@@ -257,7 +263,7 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 
 ```
 CureMD-project/
-├── api-gateway/           # Nginx configs
+├── api-gateway/           # Nginx configs (local dev only)
 ├── frontend/              # React + Vite client
 ├── services/
 │   ├── auth-service/
@@ -272,12 +278,17 @@ CureMD-project/
 ├── k8s/                   # Kubernetes manifests
 ├── docker-compose.yml
 ├── docker-compose.local.yml
-├── rabbitmq.env.example
+├── MIGRATION.md
 └── LOCAL_SETUP.md
 ```
 
 ## Security notes
 
 - Never commit real `.env` files — they are ignored via `.gitignore`.
-- Commit only `*.env.example` / `rabbitmq.env.example` with placeholders.
-- Rotate any keys that were previously commit
+- Commit only `*.env.example` files with placeholders.
+- Rotate any keys that were previously committed or shared in chat.
+- Doctor accounts start with `isApproved: false`; approve in MongoDB for local testing (see `LOCAL_SETUP.md`).
+
+## License
+
+ISC / project course use — update as needed for your organization.
