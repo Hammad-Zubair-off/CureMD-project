@@ -22,6 +22,14 @@ import {
     Brain
 } from 'lucide-react';
 
+// Static class strings — Tailwind can't see interpolated `bg-${x}-50` names.
+const TILE = {
+    blue: { bg: 'bg-blue-50', fg: 'text-blue-600' },
+    rose: { bg: 'bg-rose-50', fg: 'text-rose-600' },
+    slate: { bg: 'bg-slate-100', fg: 'text-slate-600' },
+    orange: { bg: 'bg-orange-50', fg: 'text-orange-600' },
+};
+
 export default function PatientDashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -157,8 +165,8 @@ export default function PatientDashboard() {
                     { label: 'Next Session', count: stats.nextSession, icon: Bell, color: 'rose' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-                        <div className={`w-12 h-12 rounded-xl bg-${stat.color}-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                            <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
+                        <div className={`w-12 h-12 rounded-xl ${TILE[stat.color].bg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                            <stat.icon className={`w-6 h-6 ${TILE[stat.color].fg}`} />
                         </div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{stat.label}</p>
                         <p className="text-3xl font-black text-slate-800 tracking-tight">{stat.count}</p>
@@ -271,8 +279,8 @@ export default function PatientDashboard() {
                                     onClick={() => navigate(action.path)}
                                     className="aspect-square bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-4 md:p-6 flex flex-col items-center justify-center text-center space-y-3 md:space-y-4 group"
                                 >
-                                    <div className={`p-4 rounded-xl bg-${action.color}-50 group-hover:scale-110 transition-transform`}>
-                                        <action.icon className={`w-6 h-6 text-${action.color}-600`} />
+                                    <div className={`p-4 rounded-xl ${TILE[action.color].bg} group-hover:scale-110 transition-transform`}>
+                                        <action.icon className={`w-6 h-6 ${TILE[action.color].fg}`} />
                                     </div>
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 leading-tight">{action.label}</span>
                                 </button>

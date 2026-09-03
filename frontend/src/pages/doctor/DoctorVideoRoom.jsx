@@ -29,7 +29,7 @@ const PrescriptionSidebar = ({ sessionData, appointmentId, patientId, onClose })
         if (!appointmentId) return;
         prescriptionService.getByAppointment(appointmentId).then(data => {
             if (!data) return;
-            setMedications(data.medications.length ? data.medications : [emptyMed()]);
+            setMedications(data.medications?.length ? data.medications : [emptyMed()]);
             setDiagnosis(data.diagnosis || '');
             setInstructions(data.instructions || '');
             setPrescriptionId(data._id);

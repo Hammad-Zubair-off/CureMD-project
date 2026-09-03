@@ -9,6 +9,8 @@ import TermsAndConditions from './pages/TermsAndConditions'
 // Admin
 import AdminDashboard from './pages/AdminDashboard'
 import PaymentPage from './pages/PaymentPage'
+import PaymentSuccess from './pages/PaymentSuccess'
+import NotFound from './pages/NotFound'
 
 // Patient Layout
 import PatientLayout from './components/patient/PatientLayout'
@@ -53,6 +55,14 @@ function App() {
         }
       />
       <Route
+        path='/payment-success'
+        element={
+          <ProtectedRoute requiredRole="patient">
+            <PaymentSuccess />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin"
         element={
           <ProtectedRoute requiredRole="admin">
@@ -62,6 +72,7 @@ function App() {
       />
 
       <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/doctor/dashboard" replace />} />
         <Route path="dashboard" element={<DoctorDashboard />} />
         <Route path="profile" element={<DoctorProfile />} />
         <Route path="availability" element={<DoctorAvailability />} />
@@ -93,6 +104,9 @@ function App() {
 
       {/* Old dashboard redirect — in case anything still links to /dashboard */}
       <Route path="/dashboard" element={<Navigate to="/patient/dashboard" replace />} />
+
+      {/* Catch-all */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

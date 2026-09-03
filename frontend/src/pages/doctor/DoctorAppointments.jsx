@@ -247,7 +247,7 @@ export default function DoctorAppointments() {
                             { value: '', label: 'All Statuses' },
                             { value: 'pending', label: 'Pending' },
                             { value: 'confirmed', label: 'Confirmed' },
-                            { value: 'completed', label: 'Failed' },
+                            { value: 'completed', label: 'Completed' },
                             { value: 'cancelled', label: 'Cancelled' },
                             { value: 'expired', label: 'Expired' }
                         ]}

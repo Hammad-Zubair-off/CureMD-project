@@ -4,7 +4,7 @@ import {
     Calendar, Clock, Plus, RefreshCw,
     CheckCircle, XCircle, AlertCircle, Clock3, AlertTriangle,
     ChevronLeft, ChevronRight, X, Loader2,
-    Stethoscope, MoreVertical,
+    Stethoscope,
     ChevronDown, ChevronUp,
 } from 'lucide-react';
 import appointmentService from '../../services/appointmentService';
@@ -603,12 +603,6 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPay
                         </>
                     )}
 
-                    {(status === 'completed' || status === 'cancelled' || status === 'expired') && (
-                        <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
-                            <MoreVertical className="w-5 h-5" />
-                        </button>
-                    )}
-
                     {/* Expand Toggle */}
                     <button
                         onClick={() => setExpanded(e => !e)}
@@ -1104,8 +1098,11 @@ export default function MyAppointments() {
                                         </>
                                     ) : (
                                         <>
-                                            <button className="bg-amber-400 text-amber-950 px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:bg-amber-300 active:scale-95 transition-all w-fit">
-                                                Payment Required
+                                            <button
+                                                onClick={() => handlePayNow(nextAppointment)}
+                                                className="bg-amber-400 text-amber-950 px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:bg-amber-300 active:scale-95 transition-all w-fit"
+                                            >
+                                                Pay Now
                                             </button>
                                             <span className="text-[10px] uppercase tracking-widest text-blue-100 opacity-90 text-right">
                                                 Unconfirmed

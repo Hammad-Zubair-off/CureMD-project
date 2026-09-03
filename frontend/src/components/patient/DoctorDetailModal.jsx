@@ -157,7 +157,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                         <Banknote className="w-4 h-4" />
                                         <span className="text-sm">Consultation Fee</span>
                                     </div>
-                                    <p className="text-slate-900 font-medium">${doctor.consultationFee.toLocaleString()}</p>
+                                    <p className="text-slate-900 font-medium">${(doctor.consultationFee ?? 0).toLocaleString()}</p>
                                 </div>
                             </div>
 
@@ -174,7 +174,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                     <span>Qualifications</span>
                                 </h4>
                                 <ul className="list-disc list-outside ml-5 space-y-2 text-slate-600 text-sm">
-                                    {doctor.qualifications.map((q, i) => (
+                                    {(doctor.qualifications || []).map((q, i) => (
                                         <li key={i} className="pl-1 leading-snug">
                                             {q}
                                         </li>

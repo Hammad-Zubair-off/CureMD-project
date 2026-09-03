@@ -165,9 +165,7 @@ export default function SymptomChecker() {
   };
 
   const handleBookDoctor = () => {
-    if (viewingSession?._id) {
-      navigate('/patient/book-appointment', { state: { triageSessionId: viewingSession._id } });
-    }
+    navigate('/patient/book-appointment');
   };
 
   const handleDeleteSessionClick = (e, sessionId) => {

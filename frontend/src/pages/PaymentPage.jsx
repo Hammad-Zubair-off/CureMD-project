@@ -113,7 +113,7 @@ const PaymentPage = () => {
                         <h3 className="text-2xl font-bold text-slate-900 mb-4">Payment Successful!</h3>
                         <p className="text-slate-600 text-lg mb-8">Your appointment is officially confirmed.</p>
                         <div className="bg-slate-100 p-2.5 rounded-none border border-slate-200">
-                            <p className="text-lg font-bold text-slate-500 uppercase tracking-widest">You will be redirect to you profile</p>
+                            <p className="text-lg font-bold text-slate-500 uppercase tracking-widest">You will be redirected to your appointments</p>
                             <p className="text-[12px] font-black text-blue-600 mt-1">In {countdown}</p>
                         </div>
                     </div>
