@@ -6,7 +6,7 @@ import {
     Activity, LogOut, Users, Stethoscope, CreditCard,
     CheckCircle, XCircle, X, ShieldCheck, Crown, Plus,
     ChevronDown, Menu, X as CloseIcon, Clock,
-    RefreshCw
+    RefreshCw, AlertTriangle
 } from 'lucide-react';
 
 import UserManagement from '../components/admin/UserManagement';

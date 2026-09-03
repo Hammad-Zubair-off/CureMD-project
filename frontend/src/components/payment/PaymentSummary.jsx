@@ -65,7 +65,7 @@ const PaymentSummary = ({ appointment }) => {
                         <div className="mt-8 bg-blue-50 border-l-4 border-blue-600 p-6 rounded-none">
                             <p className="text-sm text-blue-900 font-bold uppercase tracking-wider mb-2">Total Fee</p>
                             <p className="text-3xl font-bold text-blue-700">
-                                ${appointment.consultationFee.toLocaleString('en-US')}
+                                ${Number(appointment?.consultationFee ?? 0).toLocaleString('en-US')}
                             </p>
                         </div>
                     </div>

@@ -319,7 +319,7 @@ const Step1 = ({
                     <input
                         type="tel"
                         inputMode="tel"
-                        pattern="/^(?:0?7\d{8}|\+947\d{8})$/"
+                        pattern="^(?:0?7\d{8}|\+947\d{8})$"
                         maxLength={16}
                         placeholder="e.g. 0771234567 or +94771234567"
                         value={formData.patientPhone}

@@ -81,7 +81,7 @@ export default function RegisterPage() {
         setRegisteredData(data);
         setRegistered(true);
       } else {
-        navigate('/dashboard');
+        navigate('/patient/dashboard');
       }
     } catch (err) {
       setError(getApiErrorMessage(err, 'Registration failed'));

@@ -1,5 +1,5 @@
 /**
- * Middleware to catch 404s and centralized error handler to ensure 
+ * Middleware to catch 404s and centralized error handler to ensure
  * consistent API error responses across microservices.
  */
 
@@ -12,17 +12,36 @@ export const notFound = (req, res, next) => {
 };
 
 export const errorHandler = (err, req, res, next) => {
-    let error = { ...err };
-    error.message = err.message;
+    let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    let message = err.message || 'Server Error';
 
-    logger.error(`${req.method} ${req.url}`, err);
+    // Mongoose: malformed ObjectId / cast failure
+    if (err.name === 'CastError') {
+        statusCode = 400;
+        message = `Invalid ${err.path}: ${err.value}`;
+    }
+    // Mongoose: schema validation
+    else if (err.name === 'ValidationError') {
+        statusCode = 400;
+        message = Object.values(err.errors || {}).map((e) => e.message).join(', ') || 'Validation failed';
+    }
+    // Mongo: duplicate key
+    else if (err.code === 11000) {
+        statusCode = 409;
+        message = `Duplicate value for ${Object.keys(err.keyValue || {}).join(', ') || 'field'}`;
+    }
+    // JWT
+    else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+        statusCode = 401;
+        message = 'Invalid or expired token';
+    }
 
-    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-    const message = error.message || 'Server Error';
+    if (statusCode >= 500) logger.error(`${req.method} ${req.url}`, err);
+    else logger.warn(`${req.method} ${req.url} — ${statusCode}: ${message}`);
 
     res.status(statusCode).json({
-        success: false, 
+        success: false,
         error: message,
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    })
-}
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    });
+};

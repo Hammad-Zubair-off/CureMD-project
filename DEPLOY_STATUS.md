@@ -3,7 +3,7 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ **Complete — merged to `main`, deployed, tested**
+**Status:** ✅ Migration complete — merged to `main`, deployed, tested · 🔧 regression fixes staged on `bugfixes` (not yet deployed)
 **Last updated:** 2026-09-04
 
 | | |
@@ -11,7 +11,8 @@
 | Pre-migration `main` | `088f2e3` |
 | Migration branch | `backend` (22 commits) |
 | Merge commit | `e251b66` — "Merge branch 'backend': Render → Vercel migration" |
-| Current `main` / `backend` HEAD | `32f17d8` (kept in sync) |
+| `main` / `backend` HEAD (deployed) | `7c77746` |
+| Regression fixes | branch `bugfixes` @ `6023d9e` — see §14 |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -89,6 +90,8 @@ Times are **PKT (UTC+05:00)**. Commit rows carry their real commit timestamp; no
 | Time | Event |
 |---|---|
 | ~01:10 | This audit rewritten as the definitive record with the full dated/timed timeline. |
+| ~02:30 | **Full regression test** — 91-check API sweep (all 8 services, patient + doctor roles) + static frontend audit (every route/button/link/API call). 86 API PASS. Findings: 3 HIGH, 6 MEDIUM, ~10 LOW. See §14. |
+| ~03:30 | **Bug-fix pass** on branch `bugfixes` (commit `6023d9e`) — all HIGH + MEDIUM + the impactful LOW fixed. Frontend builds clean; backend `node --check` clean. Not yet merged/deployed. |
 
 ---
 
@@ -313,3 +316,40 @@ No data migration is involved — both Render and Vercel talk to the same MongoD
 - Local secret files (`dburi,txt.txt`, `vercel-token.txt`) are on the user's Desktop, **outside** the repo — pending deletion (task #4).
 - QStash consumer endpoints reject unsigned requests (`401`), verified.
 - Internal endpoints (`/api/appointments/internal/run-expiry`, payment/appointment inter-service calls) require `x-internal-secret`.
+
+---
+
+## 14. Regression test & bug-fix pass — 2026-09-04
+
+### Method
+- **API:** 91 automated checks — every route across all 8 services, patient + doctor roles, happy path + auth-guard (401/403) + validation (400) failure cases.
+- **Frontend:** static source audit — every route in `App.jsx`, every `<button>` / `<Link>` / `<a>` / `onClick`, every `api.*` / `fetch` call, cross-checked against the route map and backend contracts.
+- **Result:** 86 API PASS / 3 WARN (test-input formatting, not bugs) / 2 FAIL. Combined with the frontend audit: **3 HIGH, 6 MEDIUM, ~10 LOW** findings.
+
+### Coverage gap (unchanged)
+No admin/superadmin account exists on the production DB (`scripts/seed-admin.sh` was only ever run against local Docker), and self-register cannot create one. So the **admin dashboard logic** and all **doctor-approved actions** (edit profile, set availability, accept/reject appts, mark complete, prescriptions, start a telemedicine session) are still **unverified end-to-end** — only their auth guards were confirmed. Live Stripe payment, live Agora video, and Cloudinary uploads are also untested. To unblock: seed an admin into `auth-db` (same insert `seed-admin.sh` does).
+
+### Findings & fixes — branch `bugfixes`, commit `6023d9e`
+
+| Sev | Finding | Fix |
+|---|---|---|
+| HIGH | `AdminDashboard.jsx:270` used `<AlertTriangle>` without importing it → `ReferenceError` blanked the whole dashboard whenever admin creation failed | added to the `lucide-react` import |
+| HIGH | No `<Route path="*">` in `App.jsx`; Stripe `return_url` → `/payment-success` which wasn't a route → blank screen on any 3-D-Secure redirect | added `NotFound` catch-all, new `PaymentSuccess` page + `/payment-success` route, `/doctor` index redirect |
+| HIGH | `payment` webhook: `stripe.webhooks.constructEventAsync(...)` not `await`ed → `event` was a pending Promise, `event.type` undefined, **signature never verified** (unsigned POST → 200) and real `payment_intent.*` events silently ignored | added `await` |
+| MED | Admin **Refund** button in `FinanceManagement.jsx` was commented out → the entire refund path (`POST /payments/:id/refund`) unreachable from the UI | uncommented; flow already wired |
+| MED | `MyAppointments.jsx` "Payment Required" hero button had no `onClick` — dead | wired to `handlePayNow(nextAppointment)`, relabelled "Pay Now" |
+| MED | `SymptomChecker` "Schedule Appointment" passed `triageSessionId` in router state that `BookAppointment` never reads | stopped passing dead state (carrying triage context into booking remains a feature, not a bug) |
+| MED | `PatientDashboard` stat/action tiles used interpolated `bg-${color}-50` classes — Tailwind v4 can't see them → backgrounds/icon colours didn't render | replaced with a static `TILE` class map |
+| MED | `DoctorAppointments` status filter option labelled **"Failed"** actually filtered `status === 'completed'` | relabelled "Completed" |
+| MED | `RejectAppointmentModal` treated a network error (no `err.response`) as **success** ("Appointment Rejected") | now surfaces an error instead |
+| LOW | Mongoose `CastError` on a malformed `:id` param leaked a **500** (seen on `telemedicine /session/:id/start|end`) | shared `errorHandler` in all 8 services now maps `CastError`/`ValidationError` → 400, Mongo `11000` → 409, JWT errors → 401 |
+| LOW | Unguarded `.qualifications.map` / `.consultationFee.toLocaleString()` / `data.medications.length` → crash if an API response lacks a field | null-guarded in `DoctorDetailModal`, `PaymentSummary`, `DoctorVideoRoom` |
+| LOW | `RegisterPage` navigated to legacy `/dashboard`; `PaymentPage` typo "redirect to you profile"; `BookingDrawer` dead `pattern="/.../"`; `DateRangePicker` leftover "Checkout…" text; dead `<MoreVertical>` button + unused import in `MyAppointments` | all fixed |
+
+### Deferred (not blocking; noted for cleanup)
+- Dead code: orphan `/payment` route + `PaymentPage` (nothing links to it — the pay flow goes through `BookingDrawer`), `pages/Dashboard.jsx` ("coming soon", imported nowhere), `components/patient/PatientProfileForm.jsx` (unused), `data/mockDoctors.js` (only `SPECIALTIES` used), duplicate method defs in `services/patientService.js`, several unused `lucide-react` imports, dead `appointmentService.confirmAppointment` / `paymentService.getPaymentByAppointment`.
+- `MyAppointments` re-sorts the full list every render + a 1 s `setInterval` — perf smell, not a correctness bug.
+- Static `disabled`, `<button type="submit">` outside `<form>`, no-op `onSubmit`: **none found.**
+
+### Verified working (unchanged from §9, re-confirmed)
+All 8 services + frontend healthy; auth + cross-service JWT; full booking flow (book → skip-pay → confirm → reschedule → cancel); QStash → Brevo email delivery; AI symptom sessions + Gemini chat (recovered from the transient 503); every admin route correctly guarded.

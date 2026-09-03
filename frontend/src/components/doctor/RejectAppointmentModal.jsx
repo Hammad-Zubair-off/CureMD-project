@@ -34,16 +34,15 @@ export default function RejectAppointmentModal({ appointment, onClose, onRejecte
       setError(res?.error || 'Failed to reject appointment.');
     } catch (err) {
       console.error('Reject error:', err);
-
-      // Ignore unrelated errors (e.g. SSL issues not from the backend)
-      if (!err?.response) {
-        console.warn('Ignoring non-backend error');
-        onRejected(appointment._id);
-        setRejected(true);
-        return;
-      }
-
-      setError(err.error || 'Failed to reject appointment.');
+      // A missing err.response means the request never reached the backend
+      // (network / CORS / timeout). Surface it — do NOT show the success screen.
+      setError(
+        err?.error ||
+        err?.response?.data?.error ||
+        (!err?.response
+          ? 'Could not reach the server. Check your connection and try again.'
+          : 'Failed to reject appointment.')
+      );
     } finally {
       setLoading(false);
     }

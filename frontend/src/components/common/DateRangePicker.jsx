@@ -84,7 +84,7 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
 
     const displayStr = () => {
         if (!startDate && !endDate) return 'Select Date Range';
-        if (startDate && !endDate) return `${formatDateStr(startDate)} - Checkout...`;
+        if (startDate && !endDate) return `${formatDateStr(startDate)} - select end date`;
         return `${formatDateStr(startDate)} to ${formatDateStr(endDate)}`;
     };
 
