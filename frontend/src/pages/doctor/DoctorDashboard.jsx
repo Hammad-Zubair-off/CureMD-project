@@ -185,7 +185,7 @@ export default function DoctorDashboard() {
                             </div>
                             {profile.consultationFee && (
                                 <div className="text-right shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-                                    <p className="text-lg font-black text-slate-900">Rs.{profile.consultationFee}</p>
+                                    <p className="text-lg font-black text-slate-900">${profile.consultationFee}</p>
                                     <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">per visit</p>
                                 </div>
                             )}

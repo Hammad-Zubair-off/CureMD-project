@@ -120,7 +120,7 @@ const AppointmentCard = ({ appt, onMoreInfo }) => (
         <div className="flex items-center justify-between pt-2 border-t border-slate-100">
             <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
                 <CreditCard className="w-3.5 h-3.5 text-slate-400" />
-                LKR {appt.consultationFee?.toLocaleString()}
+                ${appt.consultationFee?.toLocaleString()}
             </div>
             <PaymentBadge status={appt.paymentStatus} />
         </div>
@@ -319,7 +319,7 @@ export default function DoctorAppointments() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="text-sm font-semibold text-slate-800">
-                                                    LKR {appt.consultationFee?.toLocaleString()}
+                                                    ${appt.consultationFee?.toLocaleString()}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">

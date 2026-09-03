@@ -23,31 +23,6 @@ services:
       - telemedicine 
       - ai-symptom 
       
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    restart: unless-stopped
-    env_file:
-      - ./rabbitmq.env
-    ports:
-      - "5672:5672"    # services connect here
-      - "15672:15672"  # management UI — http://localhost:15672
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - healthcare-net 
-    profiles:
-      - full 
-      - frontend
-      - patient
-      - appointment
-      - payment
-      - notification
-      - telemedicine 
-
   frontend:
     build:
       context: ./frontend
@@ -196,9 +171,6 @@ services:
       - notification_modules:/app/node_modules
     networks:
       - healthcare-net
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     restart: unless-stopped
     profiles:
       - full

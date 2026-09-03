@@ -144,3 +144,6 @@ secrets.yaml
 !*.secrets.yaml
 .DS_Store
 **/.DS_Store
+
+# Vercel
+.vercel

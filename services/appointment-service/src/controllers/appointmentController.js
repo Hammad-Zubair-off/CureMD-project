@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import Appointment from '../models/Appointment.js';
 import { logger } from '../utils/logger.js';
-import { publishEvent, subscribeToEvent } from '../utils/eventBus.js';
+import { publishEvent } from '../utils/eventBus.js';
 import {
     validateBookAppointment,
     validateRescheduleAppointment,
@@ -69,7 +69,7 @@ const finalizeAppointmentConfirmation = async (appointment, { paymentId = null, 
         });
     }
 
-    publishEvent('appointment.confirmed', {
+    await publishEvent('appointment.confirmed', {
         appointmentId: appointment._id,
         patientFullName: appointment.patientFullName,
         patientEmail: appointment.patientEmail,
@@ -228,7 +228,7 @@ export const bookAppointment = async (req, res, next) => {
 
         // Step 4 — Publish event (Method 2 — fire and forget)
         // notification-service sends booking confirmation to patient
-        publishEvent('appointment.created', {
+        await publishEvent('appointment.created', {
             appointmentId: appointment._id,
             patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
@@ -381,7 +381,7 @@ export const confirmAppointment = async (req, res, next) => {
 
         // Publish event (Method 2 — fire and forget)
         // notification-service sends confirmation to patient and doctor
-        publishEvent('appointment.confirmed', {
+        await publishEvent('appointment.confirmed', {
             appointmentId: appointment._id,
             patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
@@ -554,7 +554,7 @@ export const rejectAppointment = async (req, res, next) => {
         // Publish event (Method 2 — fire and forget)
         // notification-service notifies patient
         // payment-service triggers refund
-        publishEvent('appointment.rejected_by_doctor', {
+        await publishEvent('appointment.rejected_by_doctor', {
             appointmentId: appointment._id.toString(),
             patientId: appointment.patientId,
             patientFullName: appointment.patientFullName,
@@ -705,7 +705,7 @@ export const rescheduleAppointment = async (req, res, next) => {
 
         // Publish event (Method 2 — fire and forget)
         // notification-service notifies both patient and doctor
-        publishEvent('appointment.rescheduled', {
+        await publishEvent('appointment.rescheduled', {
             appointmentId: appointment._id,
             patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
@@ -792,7 +792,7 @@ export const cancelAppointment = async (req, res, next) => {
         // Publish event (Method 2 — fire and forget)
         // notification-service notifies both parties
         // payment-service handles refund if appointment was paid
-        publishEvent('appointment.cancelled', {
+        await publishEvent('appointment.cancelled', {
             appointmentId: appointment._id,
             patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
@@ -879,7 +879,7 @@ export const updateAppointmentStatus = async (req, res, next) => {
 
         // Publish event (Method 2 — fire and forget)
         // notification-service notifies both patient and doctor
-        publishEvent('consultation.completed', {
+        await publishEvent('consultation.completed', {
             appointmentId: appointment._id,
             patientFullName: appointment.patientFullName,
             patientEmail: appointment.patientEmail,
@@ -941,14 +941,26 @@ export const trackAppointment = async (req, res, next) => {
         res.setHeader('Connection', 'keep-alive');
         res.flushHeaders();
 
-        // Push current state immediately on connect
-        res.write(`data: ${JSON.stringify({
+        const snapshotFrame = `data: ${JSON.stringify({
             status: appointment.status,
             statusHistory: appointment.statusHistory,
             appointmentDate: appointment.appointmentDate,
             timeSlot: appointment.timeSlot,
             expiresAt: appointment.expiresAt,
-        })}\n\n`);
+        })}\n\n`;
+
+        // Push current state immediately on connect
+        res.write(snapshotFrame);
+
+        // Serverless (Vercel): there is no shared in-process EventEmitter across
+        // function invocations and streams are capped at maxDuration, so we send
+        // the snapshot and close. The browser's EventSource auto-reconnects
+        // (~3s), which degrades this endpoint to short-poll-over-SSE without any
+        // frontend change.
+        if (process.env.VERCEL) {
+            res.write('retry: 3000\n\n');
+            return res.end();
+        }
 
         // Register listener for this appointment's events
         const appointmentId = appointment._id.toString();
@@ -1278,30 +1290,4 @@ export const getTakenSlotsForDoctorDate = async (req, res, next) => {
     } catch (err) {
         next(err);
     }
-};
-
-export const initAppointmentEventConsumers = async () => {
-    await subscribeToEvent('payment.refunded', async (event) => {
-        if (!event.appointmentId) return;
-
-        const appointment = await Appointment.findById(event.appointmentId);
-        if (!appointment) return;
-
-        const deletedSnapshot = {
-            appointmentId: appointment._id.toString(),
-            patientId: appointment.patientId,
-            doctorId: appointment.doctorId,
-            patientFullName: appointment.patientFullName,
-            doctorFullName: appointment.doctorFullName,
-            appointmentDate: appointment.appointmentDate,
-            timeSlot: appointment.timeSlot,
-            rejectionReason: appointment.rejectionReason || null,
-            refundedAt: event.refundedAt || new Date().toISOString(),
-        };
-
-        await Appointment.findByIdAndDelete(appointment._id);
-
-        publishEvent('appointment.deleted_after_refund', deletedSnapshot);
-        logger.info('[AppointmentConsumer] Deleted appointment after refund: ' + deletedSnapshot.appointmentId);
-    });
 };

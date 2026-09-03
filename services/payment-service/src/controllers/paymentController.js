@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import Payment from '../models/Payment.js';
 import { logger } from '../utils/logger.js';
-import { publishEvent, subscribeToEvent } from '../utils/eventBus.js';
+import { publishEvent } from '../utils/eventBus.js';
 import { appointmentClient } from '../config/services.js';
 import { callService } from '../utils/callService.js';
 import { validateCreatePaymentIntent } from '../validators/paymentValidator.js';
@@ -79,7 +79,7 @@ export const createPaymentIntent = async (req, res, next) => {
         }
 
         const amount = appointment.consultationFee;
-        const currency = 'lkr'; 
+        const currency = 'usd'; 
         
         const existing = await Payment.findOne({ appointmentId });
 
@@ -244,7 +244,7 @@ const handlePaymentSuccess = async (intent) => {
 
         await confirmAppointmentWithRetry(appointmentId, payment._id.toString());
 
-        publishEvent('payment.completed', {
+        await publishEvent('payment.completed', {
             paymentId: payment._id,
             appointmentId,
             patientId,
@@ -270,7 +270,7 @@ const handlePaymentFailure = async (intent) => {
 
         const payment = await Payment.findOne({ stripePaymentIntentId: intent.id });
 
-        publishEvent('payment.failed', {
+        await publishEvent('payment.failed', {
             appointmentId: payment?.appointmentId,
             patientId: payment?.patientId,
             reason: intent.last_payment_error?.message || 'Payment failed',
@@ -313,7 +313,7 @@ export const refundPayment = async (req, res, next) => {
 
         const appointment = await Appointment.findById(payment.appointmentId);
 
-        publishEvent('payment.refunded', {
+        await publishEvent('payment.refunded', {
             paymentId: payment._id,
             appointmentId: payment.appointmentId,
             patientId: payment.patientId,
@@ -429,7 +429,7 @@ export const confirmPaymentFromFrontend = async (req, res, next) => {
         await confirmAppointmentWithRetry(payment.appointmentId, payment._id.toString());
 
         // Publish event
-        publishEvent('payment.completed', {
+        await publishEvent('payment.completed', {
             paymentId: payment._id,
             appointmentId: payment.appointmentId,
             patientId: payment.patientId,
@@ -491,63 +491,4 @@ export const getAllPayments = async (req, res, next) => {
     } catch (err) {
         next(err);
     }
-};
-
-export const initPaymentEventConsumers = async () => {
-    const processAutoRefund = async (event, reason) => {
-        const payment = event.paymentId
-            ? await Payment.findById(event.paymentId)
-            : await Payment.findOne({ appointmentId: event.appointmentId });
-
-        if (!payment) {
-            logger.warn('[RefundConsumer] No payment found for appointment ' + event.appointmentId);
-            return;
-        }
-
-        if (payment.status === 'refunded') {
-            logger.info('[RefundConsumer] Already refunded payment ' + payment._id);
-            return;
-        }
-
-        if (payment.status !== 'succeeded') {
-            logger.warn('[RefundConsumer] Skip refund. Payment status is ' + payment.status + ' for ' + payment._id);
-            return;
-        }
-
-        const refund = await stripe.refunds.create({
-            payment_intent: payment.stripePaymentIntentId,
-        });
-
-        payment.status = 'refunded';
-        payment.refundId = refund.id;
-        payment.refundedAt = new Date();
-        await payment.save();
-
-        publishEvent('payment.refunded', {
-            paymentId: payment._id.toString(),
-            appointmentId: payment.appointmentId,
-            patientId: payment.patientId,
-            doctorId: payment.doctorId,
-            amount: payment.amount,
-            refundedAt: payment.refundedAt,
-            reason,
-            patientEmail: event.patientEmail || null,
-            patientFullName: event.patientFullName || null,
-        });
-
-        logger.success('[RefundConsumer] Auto refund completed for payment ' + payment._id);
-    };
-
-    await subscribeToEvent('appointment.rejected_by_doctor', async (event) => {
-        await processAutoRefund(event, 'doctor_rejected_appointment');
-    });
-
-    await subscribeToEvent('appointment.cancelled', async (event) => {
-        if (!event.refundRequired) {
-            logger.info('[RefundConsumer] Cancellation without paid status. No refund required for appointment ' + event.appointmentId);
-            return;
-        }
-
-        await processAutoRefund(event, 'patient_cancelled_appointment');
-    });
 };

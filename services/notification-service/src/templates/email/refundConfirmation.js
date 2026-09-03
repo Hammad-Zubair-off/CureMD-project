@@ -14,7 +14,7 @@ export const refundConfirmationTemplate = ({
         day: 'numeric',
     });
 
-    const formattedAmount = `LKR ${Number(amount).toLocaleString('en-LK', {
+    const formattedAmount = `$${Number(amount).toLocaleString('en-US', {
         minimumFractionDigits: 2,
     })}`;
 

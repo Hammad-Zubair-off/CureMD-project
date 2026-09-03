@@ -510,7 +510,7 @@ export default function MedicalHistory() {
                                                                     </div>
                                                                     <div>
                                                                         <span className="text-[10px] text-slate-400 block mb-0.5 uppercase tracking-wide">Consultation Fee</span>
-                                                                        <p className="text-xs font-bold text-slate-700">LKR {snapshotAppointments[snap._id].consultationFee?.toLocaleString()}</p>
+                                                                        <p className="text-xs font-bold text-slate-700">${snapshotAppointments[snap._id].consultationFee?.toLocaleString()}</p>
                                                                         <span className={`text-[9px] font-bold uppercase ${snapshotAppointments[snap._id].paymentStatus === 'paid' ? 'text-green-500' : 'text-orange-500'}`}>
                                                                             {snapshotAppointments[snap._id].paymentStatus}
                                                                         </span>
