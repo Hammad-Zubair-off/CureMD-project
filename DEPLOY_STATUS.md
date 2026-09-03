@@ -41,10 +41,13 @@ All 8 projects created via Vercel CLI (`vercel link` + `vercel deploy --prod`) u
 - All 4 redeployed. Verified: `/api/*/events` endpoints return **401 for unsigned** requests (signature enforcement live).
 - Full delivery (booking → QStash → email/SMS) verifies on a real booking through the frontend.
 
-### Remaining (non-blocking for core use)
+### Appointment-expiry cron — DONE
+cron-job.org POSTs `https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry` with `x-internal-secret` every 10 min. Verified: `POST` + correct secret → `200 {"success":true}`; wrong secret → 401; browser GET → 404 (POST-only, expected).
+
+### Remaining
 1. **Real Stripe keys** — deferred by user. `curemd-payment` on placeholders; `SKIP_PAYMENT=true` bypasses payments.
-2. **Appointment-expiry cron** — external scheduler POSTing to `https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry` with header `x-internal-secret: <INTERNAL_SECRET>`, every ~10 min (cron-job.org).
-3. **Dashboard cleanup** — restore git push-to-deploy on the 7 CLI projects (rootDirectory + branch + reconnect).
+2. **Dashboard cleanup** — restore git push-to-deploy on the 7 CLI projects (rootDirectory + branch + reconnect). Optional.
+3. **End-to-end test** through the frontend (register → book → confirm → email arrives).
 4. **Merge `backend` → `main`**, retire Render.
 
 ## Live URLs
