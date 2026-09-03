@@ -3,7 +3,7 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ Migration complete — merged to `main`, deployed, tested · 🔧 regression fixes staged on `bugfixes` (not yet deployed)
+**Status:** ✅ Migration complete — merged to `main`, deployed, tested · 🔧 regression fixes merged to `main` (`c7b6eba`); 2/9 deployed, 7/9 pending Vercel daily-deploy-limit reset
 **Last updated:** 2026-09-04
 
 | | |
