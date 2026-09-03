@@ -17,7 +17,7 @@ export const paymentReceiptTemplate = ({
         day: 'numeric',
     });
 
-    const formattedAmount = `LKR ${Number(consultationFee).toLocaleString('en-LK', {
+    const formattedAmount = `$${Number(consultationFee).toLocaleString('en-US', {
         minimumFractionDigits: 2,
     })}`;
 

@@ -636,7 +636,7 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPay
                         {/* Consultation Fee */}
                         <div>
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Consultation Fee</p>
-                            <p className="text-sm text-slate-700">LKR {appointment.consultationFee?.toLocaleString()}</p>
+                            <p className="text-sm text-slate-700">${appointment.consultationFee?.toLocaleString()}</p>
                         </div>
 
                         {/* Sharing Mode */}
@@ -756,7 +756,7 @@ const RejectedAppointmentCard = ({ appointment }) => {
                 </div>
                 <div className="text-slate-600">
                     <span className="font-semibold">Consultation Fee: </span>
-                    LKR {Number(appointment.consultationFee || 0).toLocaleString('en-LK')}
+                    ${Number(appointment.consultationFee || 0).toLocaleString('en-US')}
                 </div>
                 <div className="text-slate-600">
                     <span className="font-semibold">Payment: </span>

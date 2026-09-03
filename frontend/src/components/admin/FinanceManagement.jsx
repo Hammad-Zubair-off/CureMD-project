@@ -134,7 +134,7 @@ export default function FinanceManagement({ showToast }) {
     };
 
     const formatCurrency = (amount) =>
-        `LKR ${(amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
+        `$${(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
     return (
         <div className="space-y-6">

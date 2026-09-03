@@ -542,7 +542,7 @@ export default function PatientInfoDrawer({ appt, onClose, onAppointmentRejected
                   <InfoRow
                     icon={<FileText className="w-4 h-4" />}
                     label="Consultation Fee"
-                    value={appt.consultationFee ? `LKR ${appt.consultationFee.toLocaleString()}` : '—'}
+                    value={appt.consultationFee ? `$${appt.consultationFee.toLocaleString()}` : '—'}
                   />
                 </div>
               </SectionCard>

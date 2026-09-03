@@ -79,7 +79,7 @@ export const createPaymentIntent = async (req, res, next) => {
         }
 
         const amount = appointment.consultationFee;
-        const currency = 'lkr'; 
+        const currency = 'usd'; 
         
         const existing = await Payment.findOne({ appointmentId });
 

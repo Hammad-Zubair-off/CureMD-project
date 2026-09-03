@@ -157,7 +157,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                                         <Banknote className="w-4 h-4" />
                                         <span className="text-sm">Consultation Fee</span>
                                     </div>
-                                    <p className="text-slate-900 font-medium">LKR {doctor.consultationFee.toLocaleString()}</p>
+                                    <p className="text-slate-900 font-medium">${doctor.consultationFee.toLocaleString()}</p>
                                 </div>
                             </div>
 

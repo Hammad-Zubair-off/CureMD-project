@@ -176,7 +176,7 @@ const Step1 = ({
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-slate-400">Fee</p>
-                    <p className="font-bold text-slate-900">LKR {doctor.consultationFee.toLocaleString()}</p>
+                    <p className="font-bold text-slate-900">${doctor.consultationFee.toLocaleString()}</p>
                 </div>
             </div>
 
@@ -482,7 +482,7 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack, fron
                     {/* Total */}
                     <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
                         <span className="font-semibold text-slate-700">Total Due</span>
-                        <span className="text-lg font-bold text-slate-900">LKR {doctor.consultationFee.toLocaleString()}</span>
+                        <span className="text-lg font-bold text-slate-900">${doctor.consultationFee.toLocaleString()}</span>
                     </div>
                 </div>
             </div>
@@ -583,7 +583,7 @@ const SkipPaymentConfirm = ({ doctor, formData, loading, error, onConfirm }) => 
                 </div>
                 <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
                     <span className="font-semibold text-slate-700">Total Due</span>
-                    <span className="text-lg font-bold text-slate-900">LKR {doctor.consultationFee.toLocaleString()}</span>
+                    <span className="text-lg font-bold text-slate-900">${doctor.consultationFee.toLocaleString()}</span>
                 </div>
             </div>
         </div>

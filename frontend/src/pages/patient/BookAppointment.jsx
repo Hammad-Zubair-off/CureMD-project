@@ -46,7 +46,7 @@ const DoctorCard = ({ doctor, onBookNow, onViewDetails, bookLoading }) => {
                 <div>
                     <p className="text-xs text-slate-400">Consultation Fee</p>
                     <p className="text-base font-bold text-slate-900">
-                        LKR {doctor.consultationFee.toLocaleString()}
+                        ${doctor.consultationFee.toLocaleString()}
                     </p>
                 </div>
                 <button
@@ -403,7 +403,7 @@ export default function BookAppointment() {
                     <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-4 items-end">
                         <div className="flex-1">
                             <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                                Max Consultation Fee (LKR)
+                                Max Consultation Fee (USD)
                             </label>
                             <input
                                 type="number"
