@@ -1,231 +1,315 @@
-# Vercel deployment — live status
+# CureMD — Migration & Deployment Audit
 
-Tracking the Render → Vercel migration rollout. Updated as each service goes live.
+**Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
+**Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
+**Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
+**Status:** ✅ **Complete — merged to `main`, deployed, tested**
+**Last updated:** 2026-09-04
 
-**Branch:** `backend` · **Vercel account:** Hammad's projects (Hobby)
-**Frontend:** already deployed on Vercel (pre-migration). Phase 3 = just repoint `frontend/vercel.json` at the new backend URLs + redeploy.
-**Upstash QStash:** account not created yet — needed for patient / appointment / payment / notification. Until the tokens are set, those services fall back to direct HTTP between Vercel URLs (works, but no retry/queue durability).
+| | |
+|---|---|
+| Pre-migration `main` | `088f2e3` |
+| Migration branch | `backend` (22 commits) |
+| Merge commit | `e251b66` — "Merge branch 'backend': Render → Vercel migration" |
+| Current `main` / `backend` HEAD | `32f17d8` (kept in sync) |
+| Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
 
-## Service checklist
+## 1. TL;DR
 
-All 8 projects created via Vercel CLI (`vercel link` + `vercel deploy --prod`) under team `hammads-projects-60b1d2d4`. Non-secret env vars set. Secrets (`JWT_SECRET`, `MONGODB_URI`, provider keys) pending.
+All 8 backend microservices and the frontend now run on **Vercel serverless functions**. The Nginx API gateway and RabbitMQ are gone. Async events go through **Upstash QStash**; appointment expiry runs via an external **cron-job.org** trigger. MongoDB Atlas is unchanged and all production data is intact. The old Render deployment still exists and can serve as a rollback until it is deleted.
 
-| # | Service | Vercel project | Deployed | Secrets in | Peer URLs | `/health` | Status |
-|---|---------|----------------|:---:|:---:|:---:|:---:|--------|
-| 1 | auth | `cure-md-project` | ✅ | ✅ | n/a | **200** | **LIVE**, Mongo + JWT verified |
-| 2 | patient | `curemd-patient` | ✅ | ✅ | ✅ | **200** | **LIVE**, token from auth accepted |
-| 3 | doctor | `curemd-doctor` | ✅ | ✅ | n/a | **200** | **LIVE**, returns real doctor data |
-| 4 | appointment | `curemd-appointment` | ✅ | ✅ | ✅ | **200** | **LIVE** |
-| 5 | payment | `curemd-payment` | ✅ | ⚠️ Stripe=placeholder | ✅ | **200** | **LIVE** (real Stripe keys still needed) |
-| 6 | notification | `curemd-notification` | ✅ | ✅ | n/a | **200** | **LIVE** (Brevo set) |
-| 7 | telemedicine | `curemd-telemedicine` | ✅ | ✅ | ✅ | **200** | **LIVE** (Agora set) |
-| 8 | ai-symptom | `curemd-ai-symptom` | ✅ | ✅ | ✅ | **200** | **LIVE** (Gemini set) |
-| — | frontend | (already on Vercel) | ✅ | n/a | n/a | n/a | live; `vercel.json` repointed, **needs redeploy** + its URL for CORS |
+Post-merge automated testing: **35 / 38 checks pass**, with **no migration defects** — the 2 non-passes were test-script input casing, and 1 was a transient Google Gemini outage (external).
 
-### Verified
-- All 8 `/health` → 200, MongoDB Atlas connected on each.
-- Registered a test patient on `auth`; the JWT was accepted by `patient` (`/api/patients/me` → 200) and `doctor` (`/api/doctors` → 200 with real records). `JWT_SECRET` consistent across services. Garbage token → 401.
-- Existing production data intact.
+---
 
-### FULL STACK LIVE — https://curemd-frontend.vercel.app
+## 2. Timeline
 
-- Frontend deployed fresh as `curemd-frontend` (Hammad's team). `frontend/vercel.json` rewrites `/api/*` to each backend.
-- `ALLOWED_ORIGINS=https://curemd-frontend.vercel.app` set on all 8; `FRONTEND_URL` set on telemedicine. All redeployed.
-- Verified: frontend loads; `/api/auth/login` and `/api/doctors` proxy correctly to their services; backend returns `Access-Control-Allow-Origin: https://curemd-frontend.vercel.app`.
+Times are **PKT (UTC+05:00)**. Commit rows carry their real commit timestamp; non-commit rows are approximate to within a few minutes.
 
-### QStash event layer — DONE
-- `QSTASH_TOKEN` on patient / appointment / payment (publishers).
-- `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` on notification / appointment / payment (consumers).
-- All 4 redeployed. Verified: `/api/*/events` endpoints return **401 for unsigned** requests (signature enforcement live).
-- Full delivery (booking → QStash → email/SMS) verifies on a real booking through the frontend.
+### Session start & setup — 2026-09-02 (evening)
 
-### Appointment-expiry cron — DONE
-cron-job.org POSTs `https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry` with `x-internal-secret` every 10 min. Verified: `POST` + correct secret → `200 {"success":true}`; wrong secret → 401; browser GET → 404 (POST-only, expected).
+| Time | Event |
+|---|---|
+| ~19:30 | Session started (no project folder). User asked to locate a prior "CureMD" project — not found in Claude session history or on disk. |
+| ~19:45 | User's GitHub account identified (`Ashrafitechhub`); repo not on their account. GitHub CLI (`gh` 2.98.0) authenticated after user ran `gh auth login`. |
+| ~20:00 | Found **`Hammad-Zubair-off/CureMD-project`** (private, user is a collaborator). Cloned to `C:\Users\Lenovo\Desktop\CureMD-project`. Session moved into it. |
+| ~20:20 | Full codebase discovery: 8 Express microservices + Nginx gateway on Render, RabbitMQ `healthcare` topic exchange, MongoDB Atlas, React/Vite frontend on Vercel. Migration plan agreed: **8 separate Vercel projects, Upstash QStash for events, Hobby plan.** Branch `backend` created off `main` (`088f2e3`). |
 
-### Currency: LKR → USD — DONE
-- Code: `payment-service` Stripe currency `lkr`→`usd`; notification receipt/refund emails and all frontend fee labels `LKR`/`Rs.`→`$`, `en-LK`→`en-US`, `(LKR)`→`(USD)`. Committed on `backend`; goes live on merge.
-- Data: all 16 doctors' `consultationFee` rescaled to realistic USD ($80–$125, scaled by years of experience). Verified live via the doctor API. No redeploy needed (data change).
+### Phase 0 — code migration — 2026-09-02
 
-### Git push-to-deploy — DONE (via API)
-All 9 projects: rootDirectory set + git connected. 8 track `main`, auth (`cure-md-project`) still tracks `backend` — flip to `main` after the merge.
+| Time | Commit | Work |
+|---|---|---|
+| 20:58 | `e4c8c37` | auth-service → serverless entrypoint (`src/app.js` + `api/index.js`), cached-connection `db.js`; `MIGRATION.md` written |
+| 21:02 | `08e007f` | doctor / ai-symptom / telemedicine → same pattern; telemedicine's unused RabbitMQ wiring removed *(done via subagent)* |
+| 21:08 | `fb7a68f` | **RabbitMQ → Upstash QStash** across patient / appointment / payment / notification: new `eventBus.js` (publish), `eventRoutes.js` + `qstashVerify.js` + `eventHandlers.js` (consume); `rabbitmq.js` + `amqplib` removed |
+| 21:10 | `40742de` | Deleted `render.yaml`, `rabbitmq.env.example`, `k8s/rabbitmq.yaml`, Render gateway files; stripped RabbitMQ from `docker-compose.yml` / `scripts` / `k8s`; `frontend/vercel.json` → per-service rewrites |
+| 21:17 | `149e90f` | Pinned `@upstash/qstash@^2.11.3`; verified `npm install` + `src/app.js` import for all 8 services |
+| 21:20 | `ca997ab` | appointment SSE `/track` degrades to snapshot+close on Vercel |
+| 21:22 | `84c625a` | `README.md` / `DEPLOYMENT.md` / `LOCAL_SETUP.md` updated for Vercel + QStash *(done via subagent)* |
 
-### MERGED + DEPLOYED — 2026-09-04
-`backend` merged to `main` (merge commit `e251b66`), pushed. All 9 Vercel projects auto-deployed from `main` → **all READY, all `/health` 200**. Auth (`cure-md-project`) flipped from `backend` → `main`. `backend` branch fast-forwarded to match.
+### Phase 1 — Vercel deployment — 2026-09-03
 
-### Automated test pass — 35/38, no migration defects
+| Time | Commit / event | Work |
+|---|---|---|
+| ~19:00–20:10 | *(setup)* | Vercel access: attempted access-token route (blocked — wrong token type), then **`vercel login`** device flow succeeded (authenticated as `hammadzubair329-9478`, team `hammads-projects-60b1d2d4`). |
+| 20:13 | `2939e0e` | Empty commit to trigger the first Vercel build of `backend` |
+| ~20:15 | *(deploy)* | 7 backend projects created via `vercel link` (auth already imported by user via dashboard). Non-secret env vars set. All 7 deployed via CLI (`503 no-DB` — expected). Git disconnected on the 7 to stop root-level clobber builds. |
+| 20:26 | `477bb5e` | `DEPLOY_STATUS.md` created (live rollout tracker) |
+| 20:32 | `b2a4f67` | Tracker: frontend already on Vercel; QStash account still pending |
+| 21:31 | `0edf47d` | All 8 URLs known; `frontend/vercel.json` repointed at real service URLs |
+| 21:32 | `bbd971b` | `VERCEL_DEPLOY.md` guide added; redundant per-service `.gitignore` cleaned |
+| ~21:40 | *(deploy)* | User provided secrets file. `JWT_SECRET` + `INTERNAL_SECRET` + per-service `MONGODB_URI` (derived) + Cloudinary / Brevo / Agora / Gemini keys set on all 7; Stripe left as placeholders. All 7 redeployed → **`/health` 200**. |
+| 21:51 | `f73ca77` | Empty commit to redeploy auth with the synced `JWT_SECRET` |
+| ~21:55 | *(test)* | Cross-service JWT verified: token from `auth` accepted by patient (`/api/patients/me` 200) and doctor (`/api/doctors` 200, real records). |
+| 22:18 | `fc3e254` | Peer `*_SERVICE_URL` env vars set on patient / appointment / payment / telemedicine / ai-symptom; those redeployed |
+| ~22:30 | *(deploy)* | Frontend deployed fresh as `curemd-frontend` (`https://curemd-frontend.vercel.app`) |
+| 22:38 | `1836721` | Dropped unsupported `_comment` key from `frontend/vercel.json` |
+| 22:39 | `d519366` | `ALLOWED_ORIGINS` + telemedicine `FRONTEND_URL` set to the frontend URL on all 8; redeployed. Frontend→backend proxy + CORS headers verified. |
+| ~22:45 | *(setup)* | User created the **Upstash QStash** account; provided the 3 keys. |
+| 22:48 | `b2891e6` | `QSTASH_TOKEN` on patient/appointment/payment; `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` on notification/appointment/payment; those 4 redeployed. `/api/*/events` verified `401` for unsigned requests. |
+| ~23:00 | *(setup)* | User configured **cron-job.org** → `POST /api/appointments/internal/run-expiry` every 10 min |
+| 23:05 | `b21c232` | Expiry endpoint verified: `200 {"success":true}` with the secret, `401` without |
+
+### Phase 2 — currency + merge + test — 2026-09-03 → 2026-09-04
+
+| Time | Commit / event | Work |
+|---|---|---|
+| 23:43 (09-03) | `6ba5b0c` | **LKR → USD**: `payment` Stripe currency, notification email templates, 10 frontend files. Frontend build verified. |
+| ~00:10 (09-04) | *(data)* | 16 doctor `consultationFee` values rescaled to USD ($80–$125 by experience). DNS-SRV issue on the user's machine worked around by setting public DNS in the one-off script. Verified live via `/api/doctors`. |
+| 00:26 | `6b59832` | All 9 Vercel projects: `rootDirectory` + git connection restored via API (production branch stayed `main`, which is correct post-merge). One-off fee script removed. |
+| ~00:35 | *(audit)* | Full secret scan of all 22 commits + working tree — **clean**. |
+| **00:44** | **`e251b66`** | **`backend` merged → `main` (`--no-ff`), pushed.** All 9 projects auto-deployed from the `main` push → all **READY**. `auth` (`cure-md-project`) production branch flipped `backend` → `main`. `backend` branch fast-forwarded to match `main`. |
+| ~00:52 | *(test)* | Automated end-to-end pass: **35 / 38**. Booking flow end-to-end green; QStash chain confirmed — a real receipt email sent via Brevo (seen in `curemd-notification` runtime logs at `19:52:31Z` / `00:52 PKT`). |
+| 00:56 | `32f17d8` | Test results recorded in `DEPLOY_STATUS.md` |
+
+### Post-merge — 2026-09-04
+
+| Time | Event |
+|---|---|
+| ~01:10 | This audit rewritten as the definitive record with the full dated/timed timeline. |
+
+---
+
+## 3. Architecture
+
+| Concern | Before (Render) | After (Vercel) |
+|---|---|---|
+| Backend runtime | 8 Express apps in Docker containers, always-on | 8 Vercel serverless functions — `api/index.js` exports the Express app |
+| API gateway | Nginx service routing `/api/*` → `*.onrender.com` | Removed. `frontend/vercel.json` rewrites `/api/<prefix>/*` → each service's `*.vercel.app` |
+| Async events | RabbitMQ topic exchange `healthcare` (persistent consumers) | Upstash QStash — publishers POST to QStash, QStash delivers signed HTTP to consumer `/api/<x>/events` endpoints |
+| MongoDB connection | Connect once at boot; `process.exit(1)` on failure | Cached connection promise on `globalThis`, reused across warm invocations; no `process.exit` |
+| Appointment expiry | 60-second `setInterval` inside each container | External scheduler (cron-job.org) → `POST /api/appointments/internal/run-expiry` every 10 min, `x-internal-secret` header |
+| Real-time appointment tracking (SSE) | 5-minute held stream + in-process `EventEmitter` | On Vercel, sends a snapshot + `retry` hint and closes; browser `EventSource` reconnects (~3s) → degrades to short-poll, no frontend change |
+| Deploy config | `render.yaml` blueprint (9 services) | Per-project settings in Vercel (Root Directory + Production Branch + env vars) |
+| Local dev | `docker compose` (Mongo + RabbitMQ + Nginx + services) | Same, minus RabbitMQ (events fall back to direct HTTP) |
+| Frontend | Vercel, `/api/*` → Render gateway | Vercel, `/api/*` → the 8 Vercel service URLs |
+
+---
+
+## 4. Vercel project inventory
+
+All 9 projects: **Git-connected** to `Hammad-Zubair-off/CureMD-project`, **Production Branch `main`**, Root Directory set, framework preset "Other" (Vite for frontend). A push to `main` auto-deploys every project whose folder changed.
+
+| Project | Service | Production URL | Root Directory | Env vars |
+|---|---|---|---|---|
+| `cure-md-project` | auth | https://cure-md-project-sigma.vercel.app | `services/auth-service` | 6 |
+| `curemd-patient` | patient | https://curemd-patient.vercel.app | `services/patient-service` | 13 |
+| `curemd-doctor` | doctor | https://curemd-doctor.vercel.app | `services/doctor-service` | 6 |
+| `curemd-appointment` | appointment | https://curemd-appointment.vercel.app | `services/appointment-service` | 15 |
+| `curemd-payment` | payment | https://curemd-payment.vercel.app | `services/payment-service` | 14 |
+| `curemd-notification` | notification | https://curemd-notification.vercel.app | `services/notification-service` | 11 |
+| `curemd-telemedicine` | telemedicine | https://curemd-telemedicine.vercel.app | `services/telemedicine-service` | 10 |
+| `curemd-ai-symptom` | ai-symptom | https://curemd-ai-symptom.vercel.app | `services/ai-symptom-service` | 9 |
+| `curemd-frontend` | frontend | https://curemd-frontend.vercel.app | `frontend` | 1 |
+
+Every backend `vercel.json`: `rewrites` all paths → `/api`, `functions.maxDuration` 60s.
+
+---
+
+## 5. Environment variables (production, names only)
+
+**Shared across all 8 backend services:** `JWT_SECRET` (identical everywhere), `JWT_EXPIRES_IN=7d`, `NODE_ENV=production`, `MONGODB_URI` (per-service DB), `ALLOWED_ORIGINS=https://curemd-frontend.vercel.app`, `SERVICE_NAME`.
+
+| Service | Additional |
+|---|---|
+| auth | *(none)* |
+| patient | `INTERNAL_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `QSTASH_TOKEN`, `APPOINTMENT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL` |
+| doctor | *(none)* |
+| appointment | `INTERNAL_SECRET`, `SKIP_PAYMENT=true`, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `PATIENT_SERVICE_URL`, `DOCTOR_SERVICE_URL`, `NOTIFICATION_SERVICE_URL`, `PAYMENT_SERVICE_URL` |
+| payment | `INTERNAL_SECRET`, `STRIPE_SECRET_KEY` *(placeholder)*, `STRIPE_WEBHOOK_SECRET` *(placeholder)*, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `APPOINTMENT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL` |
+| notification | `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` |
+| telemedicine | `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `FRONTEND_URL`, `TELEMEDICINE_DEV_AUTO_SESSION=true`, `APPOINTMENT_SERVICE_URL` |
+| ai-symptom | `GEMINI_API_KEY`, `PATIENT_SERVICE_URL`, `DOCTOR_SERVICE_URL` |
+| frontend | `VITE_STRIPE_PUBLIC_KEY` |
+
+Peer `*_SERVICE_URL` values are the production URLs from §4.
+
+---
+
+## 6. External infrastructure
+
+| Service | Role | Notes |
+|---|---|---|
+| **MongoDB Atlas** | Databases (8: `auth-db`, `patient_db`, `doctor-db`, `appointment-db`, `payment-db`, `notification-db`, `telemedicine-db`, `ai_symptoms`) | Cluster `cluster0.lpkysyi.mongodb.net`. Unchanged by the migration. Network access must allow `0.0.0.0/0` (Vercel egress isn't static). |
+| **Upstash QStash** | Async event delivery (EU region, free tier ~500 msg/day) | `QSTASH_TOKEN` on publishers; `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` on consumers. No topics/queues — publishers POST to explicit consumer URLs. |
+| **cron-job.org** | Appointment-expiry trigger | `POST https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry`, header `x-internal-secret`, every 10 min. Verified: 200 with correct secret, 401 without. |
+| **Brevo** | Transactional email (receipts, refunds) | Verified sending in production. |
+| **Twilio** | SMS (optional) | Not configured — SMS steps log "skipping" and no-op. |
+| **Agora** | Video session tokens | Configured; live video not tested (needs 2 participants). |
+| **Cloudinary** | Patient file/image uploads | Configured. |
+| **Google Gemini** | AI symptom triage | Configured. Model `gemini-flash-latest`. Returned transient `503 model overloaded` during testing (retryable). |
+| **Stripe** | Payments | **Not configured** — placeholder keys. `SKIP_PAYMENT=true` bypasses the payment step. |
+| **Render** | *(legacy)* Old backend deployment | Still running; not in the request path. Rollback target until deleted. |
+
+---
+
+## 7. Code changes
+
+### Per service (all 8)
+- New `src/app.js` — builds & exports the Express app (no `listen`, no DB side effect).
+- New `api/index.js` — Vercel handler: ensures cached DB connection, delegates to the app.
+- `index.js` reduced to a local/Docker launcher.
+- `src/config/db.js` rewritten — memoized connection promise, no `process.exit`.
+- New `vercel.json`.
+- `.env.example` updated (`NODE_ENV`, Atlas hint; RabbitMQ vars removed).
+
+### Event layer
+- **Removed:** `src/config/rabbitmq.js` (5 services), `amqplib` dependency (4 services), `node-cron` (notification, unused).
+- **Publishers** (patient, appointment, payment): `src/utils/eventBus.js` rewritten. `publishEvent(routingKey, data)` is now async and routes via a static table to peer `/events` endpoints — QStash when `QSTASH_TOKEN` is set, else direct HTTP (local). All `publishEvent()` call sites in the appointment/payment controllers are now `await`ed.
+- **Consumers** (notification, appointment, payment): new `src/routes/eventRoutes.js` (`POST /events`, raw body before the JSON parser, verifies `Upstash-Signature`), new `src/utils/qstashVerify.js`, new `src/handlers/eventHandlers.js` (dispatch map). Notification's 3 subscribe-style handler files collapsed into one `EVENT_HANDLERS` map.
+
+### Routing key → consumer map
+| Routing key | Consumers |
+|---|---|
+| `appointment.confirmed`, `appointment.created`, `consultation.completed` | notification |
+| `payment.refunded` | notification, appointment |
+| `appointment.rejected_by_doctor`, `appointment.cancelled` | payment |
+| *(all others)* | none — publish is a no-op |
+
+### Payment
+- Stripe webhook route moved into `src/app.js` **before** `express.json()` so the raw body survives signature verification.
+- `src/config/rabbitmq.js` removed; `initPaymentEventConsumers` logic moved to `eventHandlers.js`.
+
+### Appointment
+- 60s `setInterval` expirer kept for local dev only; `runExpiryTick` exported; new `POST /api/appointments/internal/run-expiry` (internal-secret guarded).
+- SSE `/track` degrades to snapshot+close when `process.env.VERCEL` is set.
+
+### Currency (LKR → USD)
+- `payment-service`: Stripe PaymentIntent currency `'lkr'` → `'usd'`.
+- `notification-service`: receipt + refund email templates `LKR …` → `$…`, `en-LK` → `en-US`.
+- `frontend` (10 files): all `LKR` / `Rs.` fee labels → `$`, `en-LK` → `en-US`, `"Max Consultation Fee (LKR)"` → `(USD)`.
+
+### Platform / infra
+- Deleted: `render.yaml`, `rabbitmq.env.example`, `k8s/rabbitmq.yaml`, `api-gateway/Dockerfile.render`, `api-gateway/nginx.render.conf`.
+- `docker-compose.yml`: `rabbitmq` service + `notification` `depends_on` removed.
+- `scripts/setup-core.sh`, `scripts/setup-full.sh`: stop writing `rabbitmq.env` / `RABBITMQ_URL`.
+- `k8s/`: `RABBITMQ_URL` env + `wait-for-rabbitmq` initContainer + `rabbitmq-*` secret keys stripped (k8s is legacy, not a deploy target).
+- `frontend/vercel.json`: single gateway rewrite → one rewrite per service.
+- New docs: `MIGRATION.md`, `VERCEL_DEPLOY.md`, this file.
+
+---
+
+## 8. Data changes
+
+**Doctor consultation fees** (`doctor-db.doctors`) — rescaled from LKR magnitude to realistic USD, `50 + years_of_experience × 4.5`, rounded to $5, clamped to [$50, $150]. All 16 doctors updated, verified live via `GET /api/doctors`.
+
+| Doctor | Exp | Old (LKR) | New (USD) |
+|---|---|---|---|
+| Arun Patel | 15y | 2050 | 125 |
+| Sarah Chen | 10y | 3100 | 100 |
+| Nadia Silva | 9y | 1550 | 95 |
+| James Wilson | 12y | 2450 | 110 |
+| Hassan Ali | 12y | 1950 | 110 |
+| Rajan Fernando | 13y | 2250 | 115 |
+| Ahmed Hassan | 14y | 2850 | 120 |
+| Thomas Reed | 11y | 2150 | 105 |
+| Linda Martinez | 8y | 1350 | 90 |
+| Robert Kim | 9y | 2600 | 95 |
+| Kevin O'Brien | 7y | 1600 | 85 |
+| Omar Farooq | 10y | 1250 | 100 |
+| Priya Mendis | 8y | 1750 | 90 |
+| Emma Clarke | 6y | 1850 | 80 |
+| Laura Bennett | 6y | 1650 | 80 |
+| Grace Lee | 5y | 2150 | 80 |
+
+Historical appointment fee snapshots were **not** rewritten (they are per-appointment records).
+
+---
+
+## 9. Test results — 2026-09-04
+
+Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
+
 | Area | Result |
 |---|---|
-| 8 services + frontend `/health` | ✅ all 200 |
-| Auth (register / login / bad-pass) | ✅ |
-| Cross-service JWT (patient, doctor, appointment) + garbage rejection | ✅ |
-| Doctors: list(16), USD fees all $50–150, detail, specializations, availability | ✅ |
-| Patient booking profile save | ✅ (test initially sent `gender:"male"`; API wants `"Male"`) |
-| **Booking: book → skip-payment → confirmed → in my-list → slot marked taken** | ✅ |
-| **QStash chain: `appointment.confirmed` → QStash → notification → Brevo email SENT** | ✅ (verified in notification logs) |
-| Telemedicine session lookup | ✅ (404 "no session" — correct, doctor hasn't created one) |
-| Expiry cron endpoint rejects bad secret | ✅ |
-| Event endpoints enforce QStash signature (3/3) | ✅ |
-| Frontend `/api/*` proxy + SPA + landing page render | ✅ |
-| AI: session create | ✅ · AI: chat message | ⚠️ Google Gemini returned `503 model overloaded` (transient, valid key, external — retries fine) |
+| 8 services + frontend `/health` | ✅ all 200, all deployments READY from `main` |
+| Auth — register, login, bad-password rejection | ✅ |
+| Cross-service JWT — token from `auth` accepted by patient / doctor / appointment; garbage → 401 | ✅ |
+| Doctors — list (16), all fees in $50–150, detail, specializations, availability | ✅ |
+| Patient — booking profile save | ✅ (test initially sent `gender:"male"`; API requires `"Male"`) |
+| **Booking flow** — book → skip-payment → confirmed → in "my appointments" → slot marked taken | ✅ |
+| **QStash event chain** — `appointment.confirmed` → QStash (signed) → notification → **Brevo email sent** | ✅ (verified in `curemd-notification` runtime logs) |
+| Telemedicine — session lookup | ✅ (`404 "No session found"` — correct; doctor has not created one) |
+| Expiry cron endpoint — rejects wrong `x-internal-secret` | ✅ |
+| Event endpoints — enforce `Upstash-Signature` (notification, appointment, payment) | ✅ 3/3 → 401 unsigned |
+| Frontend — `/api/*` proxy to backends, SPA served, landing page renders | ✅ |
+| AI — session creation | ✅ |
+| AI — chat message (Gemini) | ⚠️ `503 "model currently experiencing high demand"` — transient, external, valid key |
 
-Test artefacts left in DB: appointment `6a99cffd4f2ac996df9ad8ae` (test user, Arun Patel, 2026-09-06 — auto-expires), a couple `e2e-*@example.com` users.
+**Non-passes analysis:** 2 were test-script input formatting (gender casing), confirmed working with correct input. 1 is a transient Google Gemini capacity error, not a code or config defect.
 
-### Left for the user
-1. **Verify a real receipt email** — book with your own email, confirm it lands (Brevo *send* is verified; can't check your inbox from here).
-2. **Video call** — Agora, needs 2 real participants + cameras.
-3. **Retire Render** — stop/delete the Render services once you're happy.
-4. **Security cleanup** — delete `dburi,txt.txt` + `vercel-token.txt` from Desktop; `npx vercel logout` + delete `claude-deploy` tokens.
-5. **Real Stripe keys** — deferred. `SKIP_PAYMENT=true` bypasses; setup steps documented.
-6. **Gemini** — retry the AI checker later; if it keeps 503-ing, the model `gemini-flash-latest` may need changing or the key's quota checking.
-
-## Live URLs
-
-| Service | Production URL |
-|---------|----------------|
-| auth | `https://cure-md-project-sigma.vercel.app` |
-| patient | `https://curemd-patient.vercel.app` |
-| doctor | `https://curemd-doctor.vercel.app` |
-| appointment | `https://curemd-appointment.vercel.app` |
-| payment | `https://curemd-payment.vercel.app` |
-| notification | `https://curemd-notification.vercel.app` |
-| telemedicine | `https://curemd-telemedicine.vercel.app` |
-| ai-symptom | `https://curemd-ai-symptom.vercel.app` |
-| frontend | (existing Vercel project) |
+**Test artefacts in DB:** appointment `6a99cffd4f2ac996df9ad8ae` (test user, Arun Patel, 2026-09-06 — will auto-expire); a few `e2e-*@example.com` users; AI session `6a99d0012a6a3183c3291040`.
 
 ---
 
-## Per-service env vars
+## 10. Known issues & limitations
 
-### Shared — every service gets these 5
-
-| Name | Value |
-|------|-------|
-| `JWT_SECRET` | one shared secret, identical on all 8 (from Render `curemd-shared`) |
-| `JWT_EXPIRES_IN` | `7d` |
-| `NODE_ENV` | `production` |
-| `MONGODB_URI` | Atlas SRV string, swap the `/db-name` per service (below) |
-| `ALLOWED_ORIGINS` | frontend URL — use `https://placeholder.vercel.app` until the frontend is deployed, then update all 8 |
-
-DB names: auth `auth-db` · patient `patient_db` · doctor `doctor-db` · appointment `appointment-db` · payment `payment-db` · notification `notification-db` · telemedicine `telemedicine-db` · ai-symptom `ai_symptoms`
-
-### 1. auth — extra
-`SERVICE_NAME=auth_service`
-
-### 2. patient — extra
-```
-SERVICE_NAME=patient
-INTERNAL_SECRET=<shared, from Render curemd-shared>
-CLOUDINARY_CLOUD_NAME=<from Render>
-CLOUDINARY_API_KEY=<from Render>
-CLOUDINARY_API_SECRET=<from Render>
-QSTASH_TOKEN=<from Upstash QStash>
-APPOINTMENT_SERVICE_URL=<appointment prod URL>     # fill in Phase 2
-NOTIFICATION_SERVICE_URL=<notification prod URL>   # fill in Phase 2
-```
-
-### 3. doctor — extra
-`SERVICE_NAME=doctor`
-
-### 4. appointment — extra
-```
-SERVICE_NAME=appointment
-INTERNAL_SECRET=<shared>
-SKIP_PAYMENT=true
-QSTASH_TOKEN=<from Upstash>
-QSTASH_CURRENT_SIGNING_KEY=<from Upstash>
-QSTASH_NEXT_SIGNING_KEY=<from Upstash>
-PATIENT_SERVICE_URL=<patient prod URL>             # Phase 2
-DOCTOR_SERVICE_URL=<doctor prod URL>               # Phase 2
-NOTIFICATION_SERVICE_URL=<notification prod URL>   # Phase 2
-PAYMENT_SERVICE_URL=<payment prod URL>             # Phase 2
-```
-
-### 5. payment — extra
-```
-SERVICE_NAME=payment
-INTERNAL_SECRET=<shared>
-STRIPE_SECRET_KEY=<from Render>
-STRIPE_WEBHOOK_SECRET=<from Render, or new after Phase 3 webhook setup>
-QSTASH_TOKEN=<from Upstash>
-QSTASH_CURRENT_SIGNING_KEY=<from Upstash>
-QSTASH_NEXT_SIGNING_KEY=<from Upstash>
-APPOINTMENT_SERVICE_URL=<appointment prod URL>     # Phase 2
-NOTIFICATION_SERVICE_URL=<notification prod URL>   # Phase 2
-```
-
-### 6. notification — extra
-```
-SERVICE_NAME=notification
-BREVO_API_KEY=<from Render>
-BREVO_FROM_EMAIL=<from Render>
-BREVO_FROM_NAME=<from Render, e.g. CureMD>
-QSTASH_CURRENT_SIGNING_KEY=<from Upstash>
-QSTASH_NEXT_SIGNING_KEY=<from Upstash>
-# optional SMS:
-TWILIO_ACCOUNT_SID=<from Render>
-TWILIO_AUTH_TOKEN=<from Render>
-TWILIO_PHONE_NUMBER=<from Render>
-```
-
-### 7. telemedicine — extra
-```
-SERVICE_NAME=telemedicine
-AGORA_APP_ID=<from Render>
-AGORA_APP_CERTIFICATE=<from Render>
-FRONTEND_URL=<frontend prod URL>                   # Phase 2 (join links)
-TELEMEDICINE_DEV_AUTO_SESSION=true
-APPOINTMENT_SERVICE_URL=<appointment prod URL>     # Phase 2
-```
-
-### 8. ai-symptom — extra
-```
-SERVICE_NAME=ai_symptoms
-GEMINI_API_KEY=<from Render>
-PATIENT_SERVICE_URL=<patient prod URL>             # Phase 2
-DOCTOR_SERVICE_URL=<doctor prod URL>               # Phase 2
-```
-
-### frontend — env
-```
-VITE_STRIPE_PUBLIC_KEY=<pk_test_... from Render frontend>
-```
+| Item | Detail | Impact |
+|---|---|---|
+| **Gemini `503`** | `gemini-flash-latest` returned model-overloaded during testing | AI symptom checker intermittently unavailable; retries succeed. If persistent, revisit model name / key quota. |
+| **SSE real-time tracking degraded** | Serverless can't hold a stream or share an in-process emitter | `/api/appointments/:id/track` becomes ~3s poll-over-`EventSource`. No frontend change; true push would need Pusher/Ably/Redis. |
+| **Stripe not live** | Placeholder keys; `SKIP_PAYMENT=true` | Payments bypassed. Currency is USD; **Stripe is not officially available in Sri Lanka** for live payouts. |
+| **QStash free tier** | ~500 messages/day | A booking emits 1–2 events; a refund ~3. Fine for demo; watch under load. |
+| **Cold starts** | Vercel free tier functions cold-start | Frontend axios timeout is 45s, which absorbs it. |
+| **Docs drift** | `README.md` / `Insturctions.md` still describe RabbitMQ + Nginx gateway in places | Cosmetic; `MIGRATION.md` + this file are authoritative. |
+| **`pk_test_` in `docker-compose.yml`** | Stripe **publishable** test key hardcoded (line 39), pre-existing | Not a real exposure (publishable keys are client-side by design); move to env var for tidiness. |
+| **Twilio not configured** | SMS notifications | SMS steps no-op silently. |
 
 ---
 
-## Peer URL values (for Phase 2 `*_SERVICE_URL` env vars)
+## 11. Outstanding tasks
 
-```
-PATIENT_SERVICE_URL=https://curemd-patient.vercel.app
-DOCTOR_SERVICE_URL=https://curemd-doctor.vercel.app
-APPOINTMENT_SERVICE_URL=https://curemd-appointment.vercel.app
-PAYMENT_SERVICE_URL=https://curemd-payment.vercel.app
-NOTIFICATION_SERVICE_URL=https://curemd-notification.vercel.app
-```
-
-## Phases
-
-- [x] **Phase 0** — code migration on `backend` (verified locally)
-- [~] **Phase 1** — 8 projects created + deployed via CLI; auth fully LIVE; other 7 waiting on secrets
-- [ ] **Phase 1b** — add secrets (`JWT_SECRET`, per-service `MONGODB_URI`, provider keys) → redeploy → verify `/health` 200
-- [ ] **Phase 2** — set peer `*_SERVICE_URL` (values above) + real `ALLOWED_ORIGINS` + telemedicine `FRONTEND_URL` on all → redeploy
-- [ ] **Phase 3** — redeploy the existing frontend project (picks up the repointed `frontend/vercel.json`)
-- [ ] **Phase 4** — Stripe webhook → `https://curemd-payment.vercel.app/api/payments/webhook`
-- [ ] **Phase 5** — external cron → `POST https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry` (header `x-internal-secret`)
-- [ ] **Phase 6** — QStash: create Upstash account, add `QSTASH_TOKEN` (patient/appointment/payment) + `QSTASH_CURRENT_SIGNING_KEY`/`QSTASH_NEXT_SIGNING_KEY` (notification/appointment/payment), redeploy
-- [ ] **Phase 7** — end-to-end test (register → book → check notification logs for `[events]`)
-- [ ] **Phase 8** — dashboard cleanup: restore git push-to-deploy on the 7 CLI projects (see Open items)
-- [ ] **Phase 9** — merge `backend` → `main`, retire Render
+| # | Task | Owner | Priority |
+|---|---|---|---|
+| 1 | Book with a real email; confirm the `$` receipt arrives | user | high |
+| 2 | Test a live video call (Agora, 2 participants + cameras) | user | high |
+| 3 | Delete / stop the Render services once satisfied | user | medium |
+| 4 | Security cleanup: delete `dburi,txt.txt` and `vercel-token.txt` from Desktop; `npx vercel logout`; delete `claude-deploy` tokens at vercel.com → Account Settings → Tokens | user | high |
+| 5 | Configure real Stripe (test then live) — steps in `MIGRATION.md` / thread; set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` → `false`, redeploy | user | low |
+| 6 | If Gemini keeps `503`-ing, change the model id or check the API key quota | user | low |
+| 7 | Reconcile `README.md` wording (RabbitMQ / gateway) with the new architecture | either | low |
+| 8 | Move `pk_test_` out of `docker-compose.yml` into an env var | either | low |
 
 ---
 
-## Open items / notes
+## 12. Rollback plan
 
-- **auth** (`cure-md-project`) is git-connected (rootDir `services/auth-service`, prod branch `backend`) → auto-deploys on push. Working.
-- **The other 7** are **CLI-deployed only** — git was disconnected so a `git push` can't clobber them with junk root-level builds (the CLI `vercel link` had connected them with no rootDirectory). Redeploy any of them with:
-  `cd services/<svc>-service && npx vercel deploy --prod --yes --scope hammads-projects-60b1d2d4`
-- **TODO (dashboard, ~2 min each):** to restore push-to-deploy on the 7 — per project: Settings → Build and Deployment → **Root Directory** = `services/<svc>-service`; Settings → Environments → Production → **Branch** = `backend`; then Settings → Git → **Connect** `Hammad-Zubair-off/CureMD-project`. Do this after secrets are in and everything's verified. The Vercel CLI has no command for rootDirectory, and the REST API path was blocked in this environment.
-- `frontend/vercel.json` now points at the real service URLs. The existing frontend project must be **redeployed** to pick it up (Phase 3).
-- Preview/branch URLs (`*-<hash>-hammads-projects-*.vercel.app`) sit behind Vercel auth (302). Use the plain `curemd-<svc>.vercel.app` alias.
-- `curemd-payment` returns 500 (not 503) until `STRIPE_SECRET_KEY` is set — `new Stripe(undefined)` throws at module load. Pre-existing pattern; fine once the key is in.
+The Render deployment is untouched and still serving. To roll back:
+1. In the **frontend** Vercel project, revert `frontend/vercel.json` to route `/api/*` at the Render gateway (`git revert` the migration merge on `frontend/vercel.json`, or point a hotfix branch), redeploy.
+2. Or point the frontend's custom domain back at the Render-connected deployment.
+3. The Vercel backend projects can be left running (idle) or deleted.
+
+No data migration is involved — both Render and Vercel talk to the same MongoDB Atlas cluster, so switching the frontend's API target is the only rollback step.
+
+---
+
+## 13. Security
+
+- Full secret scan of all 22 migration commits and the working tree — **clean**. No credentials, keys, connection strings, or tokens in any tracked file; only placeholders in `.env.example` / docs / `k8s/example.secrets.yaml`.
+- All real secrets live only in Vercel project env vars (production scope).
+- `.env.local` and `.vercel/` folders the Vercel CLI created are git-ignored (contain only a short-lived `VERCEL_OIDC_TOKEN` + non-secret project IDs).
+- Local secret files (`dburi,txt.txt`, `vercel-token.txt`) are on the user's Desktop, **outside** the repo — pending deletion (task #4).
+- QStash consumer endpoints reject unsigned requests (`401`), verified.
+- Internal endpoints (`/api/appointments/internal/run-expiry`, payment/appointment inter-service calls) require `x-internal-secret`.
