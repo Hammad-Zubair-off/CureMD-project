@@ -2,7 +2,9 @@
 
 Tracking the Render → Vercel migration rollout. Updated as each service goes live.
 
-**Branch:** `backend` · **Vercel account:** Hammad's projects (Hobby) · **Frontend:** not yet deployed
+**Branch:** `backend` · **Vercel account:** Hammad's projects (Hobby)
+**Frontend:** already deployed on Vercel (pre-migration). Phase 3 = just repoint `frontend/vercel.json` at the new backend URLs + redeploy.
+**Upstash QStash:** account not created yet — needed for patient / appointment / payment / notification. Until the tokens are set, those services fall back to direct HTTP between Vercel URLs (works, but no retry/queue durability).
 
 ---
 
@@ -18,7 +20,7 @@ Tracking the Render → Vercel migration rollout. Updated as each service goes l
 | 6 | notification | — | `services/notification-service` | — | ☐ | ☐ | ☐ | not started |
 | 7 | telemedicine | — | `services/telemedicine-service` | — | ☐ | ☐ | ☐ | not started |
 | 8 | ai-symptom | — | `services/ai-symptom-service` | — | ☐ | ☐ | ☐ | not started |
-| — | frontend | — | `frontend` | — | ☐ | — | — | not started |
+| — | frontend | (already on Vercel) | `frontend` | n/a | n/a | n/a | n/a | **LIVE** (needs `vercel.json` repoint in Phase 3) |
 
 ## Live URLs
 
