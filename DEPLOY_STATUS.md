@@ -44,11 +44,18 @@ All 8 projects created via Vercel CLI (`vercel link` + `vercel deploy --prod`) u
 ### Appointment-expiry cron — DONE
 cron-job.org POSTs `https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry` with `x-internal-secret` every 10 min. Verified: `POST` + correct secret → `200 {"success":true}`; wrong secret → 401; browser GET → 404 (POST-only, expected).
 
+### Currency: LKR → USD — DONE
+- Code: `payment-service` Stripe currency `lkr`→`usd`; notification receipt/refund emails and all frontend fee labels `LKR`/`Rs.`→`$`, `en-LK`→`en-US`, `(LKR)`→`(USD)`. Committed on `backend`; goes live on merge.
+- Data: all 16 doctors' `consultationFee` rescaled to realistic USD ($80–$125, scaled by years of experience). Verified live via the doctor API. No redeploy needed (data change).
+
+### Git push-to-deploy — DONE (via API)
+All 9 projects: rootDirectory set + git connected. 8 track `main`, auth (`cure-md-project`) still tracks `backend` — flip to `main` after the merge.
+
 ### Remaining
-1. **Real Stripe keys** — deferred by user. `curemd-payment` on placeholders; `SKIP_PAYMENT=true` bypasses payments.
-2. **Dashboard cleanup** — restore git push-to-deploy on the 7 CLI projects (rootDirectory + branch + reconnect). Optional.
-3. **End-to-end test** through the frontend (register → book → confirm → email arrives).
-4. **Merge `backend` → `main`**, retire Render.
+1. **Merge `backend` → `main`** — then all 9 auto-deploy from the `main` push (brings the currency label change live on payment/notification/frontend). Then flip auth to `main`.
+2. **End-to-end test** through the frontend (register → book → confirm → email arrives).
+3. **Retire Render** once verified.
+4. **Real Stripe keys** — deferred by user. `curemd-payment` on placeholders; `SKIP_PAYMENT=true` bypasses payments.
 
 ## Live URLs
 
