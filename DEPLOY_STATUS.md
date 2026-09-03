@@ -10,31 +10,33 @@ Tracking the Render → Vercel migration rollout. Updated as each service goes l
 
 ## Service checklist
 
-| # | Service | Vercel project | Root Directory | Prod branch = `backend` | Env vars | `/health` 200 | DB verified | Status |
-|---|---------|----------------|----------------|:---:|:---:|:---:|:---:|--------|
-| 1 | auth | `cure-md-project` | `services/auth-service` | ⚠️ set it | ✅ 6/6 | ✅ | ✅ login hits Mongo | **LIVE** |
-| 2 | patient | — | `services/patient-service` | — | ☐ | ☐ | ☐ | not started |
-| 3 | doctor | — | `services/doctor-service` | — | ☐ | ☐ | ☐ | not started |
-| 4 | appointment | — | `services/appointment-service` | — | ☐ | ☐ | ☐ | not started |
-| 5 | payment | — | `services/payment-service` | — | ☐ | ☐ | ☐ | not started |
-| 6 | notification | — | `services/notification-service` | — | ☐ | ☐ | ☐ | not started |
-| 7 | telemedicine | — | `services/telemedicine-service` | — | ☐ | ☐ | ☐ | not started |
-| 8 | ai-symptom | — | `services/ai-symptom-service` | — | ☐ | ☐ | ☐ | not started |
-| — | frontend | (already on Vercel) | `frontend` | n/a | n/a | n/a | n/a | **LIVE** (needs `vercel.json` repoint in Phase 3) |
+All 8 projects created via Vercel CLI (`vercel link` + `vercel deploy --prod`) under team `hammads-projects-60b1d2d4`. Non-secret env vars set. Secrets (`JWT_SECRET`, `MONGODB_URI`, provider keys) pending.
+
+| # | Service | Vercel project | Deployed | Non-secret env | Secrets in | `/health` | Status |
+|---|---------|----------------|:---:|:---:|:---:|:---:|--------|
+| 1 | auth | `cure-md-project` | ✅ | ✅ | ✅ | **200** | **LIVE** (Mongo verified) |
+| 2 | patient | `curemd-patient` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
+| 3 | doctor | `curemd-doctor` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
+| 4 | appointment | `curemd-appointment` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
+| 5 | payment | `curemd-payment` | ✅ | ✅ | ☐ | 500 (Stripe ctor) | deployed, needs `STRIPE_SECRET_KEY` |
+| 6 | notification | `curemd-notification` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
+| 7 | telemedicine | `curemd-telemedicine` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
+| 8 | ai-symptom | `curemd-ai-symptom` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
+| — | frontend | (already on Vercel) | ✅ | n/a | n/a | n/a | **LIVE** — `vercel.json` now repointed to real URLs, needs redeploy |
 
 ## Live URLs
 
 | Service | Production URL |
 |---------|----------------|
 | auth | `https://cure-md-project-sigma.vercel.app` |
-| patient | _tbd_ |
-| doctor | _tbd_ |
-| appointment | _tbd_ |
-| payment | _tbd_ |
-| notification | _tbd_ |
-| telemedicine | _tbd_ |
-| ai-symptom | _tbd_ |
-| frontend | _tbd_ |
+| patient | `https://curemd-patient.vercel.app` |
+| doctor | `https://curemd-doctor.vercel.app` |
+| appointment | `https://curemd-appointment.vercel.app` |
+| payment | `https://curemd-payment.vercel.app` |
+| notification | `https://curemd-notification.vercel.app` |
+| telemedicine | `https://curemd-telemedicine.vercel.app` |
+| ai-symptom | `https://curemd-ai-symptom.vercel.app` |
+| frontend | (existing Vercel project) |
 
 ---
 
@@ -136,22 +138,38 @@ VITE_STRIPE_PUBLIC_KEY=<pk_test_... from Render frontend>
 
 ---
 
+## Peer URL values (for Phase 2 `*_SERVICE_URL` env vars)
+
+```
+PATIENT_SERVICE_URL=https://curemd-patient.vercel.app
+DOCTOR_SERVICE_URL=https://curemd-doctor.vercel.app
+APPOINTMENT_SERVICE_URL=https://curemd-appointment.vercel.app
+PAYMENT_SERVICE_URL=https://curemd-payment.vercel.app
+NOTIFICATION_SERVICE_URL=https://curemd-notification.vercel.app
+```
+
 ## Phases
 
-- [x] **Phase 0** — code migration on `backend` (8 commits, verified locally)
-- [ ] **Phase 1** — deploy 8 backend services (1/8 done: auth)
-- [ ] **Phase 2** — cross-wire: fill peer `*_SERVICE_URL`, set real `ALLOWED_ORIGINS`/`FRONTEND_URL` on all, redeploy
-- [ ] **Phase 3** — deploy frontend, put real service URLs into `frontend/vercel.json`, redeploy
-- [ ] **Phase 4** — Stripe webhook → `https://<payment>/api/payments/webhook`
-- [ ] **Phase 5** — external cron → `POST https://<appointment>/api/appointments/internal/run-expiry` (header `x-internal-secret`)
-- [ ] **Phase 6** — end-to-end test (register → book → event delivery in notification logs)
-- [ ] **Phase 7** — merge `backend` → `main`, retire Render
+- [x] **Phase 0** — code migration on `backend` (verified locally)
+- [~] **Phase 1** — 8 projects created + deployed via CLI; auth fully LIVE; other 7 waiting on secrets
+- [ ] **Phase 1b** — add secrets (`JWT_SECRET`, per-service `MONGODB_URI`, provider keys) → redeploy → verify `/health` 200
+- [ ] **Phase 2** — set peer `*_SERVICE_URL` (values above) + real `ALLOWED_ORIGINS` + telemedicine `FRONTEND_URL` on all → redeploy
+- [ ] **Phase 3** — redeploy the existing frontend project (picks up the repointed `frontend/vercel.json`)
+- [ ] **Phase 4** — Stripe webhook → `https://curemd-payment.vercel.app/api/payments/webhook`
+- [ ] **Phase 5** — external cron → `POST https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry` (header `x-internal-secret`)
+- [ ] **Phase 6** — QStash: create Upstash account, add `QSTASH_TOKEN` (patient/appointment/payment) + `QSTASH_CURRENT_SIGNING_KEY`/`QSTASH_NEXT_SIGNING_KEY` (notification/appointment/payment), redeploy
+- [ ] **Phase 7** — end-to-end test (register → book → check notification logs for `[events]`)
+- [ ] **Phase 8** — dashboard cleanup: restore git push-to-deploy on the 7 CLI projects (see Open items)
+- [ ] **Phase 9** — merge `backend` → `main`, retire Render
 
 ---
 
 ## Open items / notes
 
-- auth project got named `cure-md-project` (the whole-repo import). Cosmetic — leave it. Name the rest `curemd-<svc>` for clarity.
-- Every service needs its **Production Branch set to `backend`** in Settings → Environments → Production (needs a `backend` build to exist first — a push to `backend` creates one).
-- Preview/branch URLs (`*-git-backend-*.vercel.app`) sit behind Vercel auth (302). Test the plain production domain instead.
-- `frontend/vercel.json` still has placeholder hosts `curemd-<svc>-service.vercel.app` — replace with real URLs in Phase 3.
+- **auth** (`cure-md-project`) is git-connected (rootDir `services/auth-service`, prod branch `backend`) → auto-deploys on push. Working.
+- **The other 7** are **CLI-deployed only** — git was disconnected so a `git push` can't clobber them with junk root-level builds (the CLI `vercel link` had connected them with no rootDirectory). Redeploy any of them with:
+  `cd services/<svc>-service && npx vercel deploy --prod --yes --scope hammads-projects-60b1d2d4`
+- **TODO (dashboard, ~2 min each):** to restore push-to-deploy on the 7 — per project: Settings → Build and Deployment → **Root Directory** = `services/<svc>-service`; Settings → Environments → Production → **Branch** = `backend`; then Settings → Git → **Connect** `Hammad-Zubair-off/CureMD-project`. Do this after secrets are in and everything's verified. The Vercel CLI has no command for rootDirectory, and the REST API path was blocked in this environment.
+- `frontend/vercel.json` now points at the real service URLs. The existing frontend project must be **redeployed** to pick it up (Phase 3).
+- Preview/branch URLs (`*-<hash>-hammads-projects-*.vercel.app`) sit behind Vercel auth (302). Use the plain `curemd-<svc>.vercel.app` alias.
+- `curemd-payment` returns 500 (not 503) until `STRIPE_SECRET_KEY` is set — `new Stripe(undefined)` throws at module load. Pre-existing pattern; fine once the key is in.
