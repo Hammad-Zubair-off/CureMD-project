@@ -29,10 +29,18 @@ All 8 projects created via Vercel CLI (`vercel link` + `vercel deploy --prod`) u
 - Registered a test patient on `auth`; the JWT was accepted by `patient` (`/api/patients/me` → 200) and `doctor` (`/api/doctors` → 200 with real records). `JWT_SECRET` consistent across services. Garbage token → 401.
 - Existing production data intact.
 
-### Still needed from the user
-1. **Frontend URL** — to set `ALLOWED_ORIGINS` (all 8) + `FRONTEND_URL` (telemedicine). Until then the real frontend's API calls are CORS-blocked.
-2. **Real Stripe keys** — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` on `curemd-payment` (currently placeholders; payments won't process, but `SKIP_PAYMENT=true` bypasses the flow).
-3. **Upstash QStash account** — 3 keys for the event layer (Phase 6). Events currently fall back to direct HTTP.
+### FULL STACK LIVE — https://curemd-frontend.vercel.app
+
+- Frontend deployed fresh as `curemd-frontend` (Hammad's team). `frontend/vercel.json` rewrites `/api/*` to each backend.
+- `ALLOWED_ORIGINS=https://curemd-frontend.vercel.app` set on all 8; `FRONTEND_URL` set on telemedicine. All redeployed.
+- Verified: frontend loads; `/api/auth/login` and `/api/doctors` proxy correctly to their services; backend returns `Access-Control-Allow-Origin: https://curemd-frontend.vercel.app`.
+
+### Remaining (non-blocking for core use)
+1. **Upstash QStash** — 3 keys pending from user (`qstash-keys.txt`). Events fall back to direct HTTP until then.
+2. **Real Stripe keys** — deferred by user. `curemd-payment` on placeholders; `SKIP_PAYMENT=true` bypasses payments.
+3. **Appointment-expiry cron** — external scheduler POSTing to `/api/appointments/internal/run-expiry`.
+4. **Dashboard cleanup** — restore git push-to-deploy on the 7 CLI projects (rootDirectory + branch + reconnect).
+5. **Merge `backend` → `main`**, retire Render.
 
 ## Live URLs
 
