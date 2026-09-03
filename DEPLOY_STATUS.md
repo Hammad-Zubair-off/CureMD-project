@@ -35,12 +35,17 @@ All 8 projects created via Vercel CLI (`vercel link` + `vercel deploy --prod`) u
 - `ALLOWED_ORIGINS=https://curemd-frontend.vercel.app` set on all 8; `FRONTEND_URL` set on telemedicine. All redeployed.
 - Verified: frontend loads; `/api/auth/login` and `/api/doctors` proxy correctly to their services; backend returns `Access-Control-Allow-Origin: https://curemd-frontend.vercel.app`.
 
+### QStash event layer — DONE
+- `QSTASH_TOKEN` on patient / appointment / payment (publishers).
+- `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` on notification / appointment / payment (consumers).
+- All 4 redeployed. Verified: `/api/*/events` endpoints return **401 for unsigned** requests (signature enforcement live).
+- Full delivery (booking → QStash → email/SMS) verifies on a real booking through the frontend.
+
 ### Remaining (non-blocking for core use)
-1. **Upstash QStash** — 3 keys pending from user (`qstash-keys.txt`). Events fall back to direct HTTP until then.
-2. **Real Stripe keys** — deferred by user. `curemd-payment` on placeholders; `SKIP_PAYMENT=true` bypasses payments.
-3. **Appointment-expiry cron** — external scheduler POSTing to `/api/appointments/internal/run-expiry`.
-4. **Dashboard cleanup** — restore git push-to-deploy on the 7 CLI projects (rootDirectory + branch + reconnect).
-5. **Merge `backend` → `main`**, retire Render.
+1. **Real Stripe keys** — deferred by user. `curemd-payment` on placeholders; `SKIP_PAYMENT=true` bypasses payments.
+2. **Appointment-expiry cron** — external scheduler POSTing to `https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry` with header `x-internal-secret: <INTERNAL_SECRET>`, every ~10 min (cron-job.org).
+3. **Dashboard cleanup** — restore git push-to-deploy on the 7 CLI projects (rootDirectory + branch + reconnect).
+4. **Merge `backend` → `main`**, retire Render.
 
 ## Live URLs
 
