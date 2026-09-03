@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "_comment": "Backend services on Vercel (Hammad's projects). Update a host here if a service project is renamed or re-aliased.",
   "rewrites": [
     { "source": "/api/auth/:path*", "destination": "https://cure-md-project-sigma.vercel.app/api/auth/:path*" },
     { "source": "/api/patients/:path*", "destination": "https://curemd-patient.vercel.app/api/patients/:path*" },
