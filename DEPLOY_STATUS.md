@@ -12,17 +12,27 @@ Tracking the Render → Vercel migration rollout. Updated as each service goes l
 
 All 8 projects created via Vercel CLI (`vercel link` + `vercel deploy --prod`) under team `hammads-projects-60b1d2d4`. Non-secret env vars set. Secrets (`JWT_SECRET`, `MONGODB_URI`, provider keys) pending.
 
-| # | Service | Vercel project | Deployed | Non-secret env | Secrets in | `/health` | Status |
+| # | Service | Vercel project | Deployed | Secrets in | Peer URLs | `/health` | Status |
 |---|---------|----------------|:---:|:---:|:---:|:---:|--------|
-| 1 | auth | `cure-md-project` | ✅ | ✅ | ✅ | **200** | **LIVE** (Mongo verified) |
-| 2 | patient | `curemd-patient` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
-| 3 | doctor | `curemd-doctor` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
-| 4 | appointment | `curemd-appointment` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
-| 5 | payment | `curemd-payment` | ✅ | ✅ | ☐ | 500 (Stripe ctor) | deployed, needs `STRIPE_SECRET_KEY` |
-| 6 | notification | `curemd-notification` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
-| 7 | telemedicine | `curemd-telemedicine` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
-| 8 | ai-symptom | `curemd-ai-symptom` | ✅ | ✅ | ☐ | 503 no-DB | deployed, needs secrets |
-| — | frontend | (already on Vercel) | ✅ | n/a | n/a | n/a | **LIVE** — `vercel.json` now repointed to real URLs, needs redeploy |
+| 1 | auth | `cure-md-project` | ✅ | ✅ | n/a | **200** | **LIVE**, Mongo + JWT verified |
+| 2 | patient | `curemd-patient` | ✅ | ✅ | ✅ | **200** | **LIVE**, token from auth accepted |
+| 3 | doctor | `curemd-doctor` | ✅ | ✅ | n/a | **200** | **LIVE**, returns real doctor data |
+| 4 | appointment | `curemd-appointment` | ✅ | ✅ | ✅ | **200** | **LIVE** |
+| 5 | payment | `curemd-payment` | ✅ | ⚠️ Stripe=placeholder | ✅ | **200** | **LIVE** (real Stripe keys still needed) |
+| 6 | notification | `curemd-notification` | ✅ | ✅ | n/a | **200** | **LIVE** (Brevo set) |
+| 7 | telemedicine | `curemd-telemedicine` | ✅ | ✅ | ✅ | **200** | **LIVE** (Agora set) |
+| 8 | ai-symptom | `curemd-ai-symptom` | ✅ | ✅ | ✅ | **200** | **LIVE** (Gemini set) |
+| — | frontend | (already on Vercel) | ✅ | n/a | n/a | n/a | live; `vercel.json` repointed, **needs redeploy** + its URL for CORS |
+
+### Verified
+- All 8 `/health` → 200, MongoDB Atlas connected on each.
+- Registered a test patient on `auth`; the JWT was accepted by `patient` (`/api/patients/me` → 200) and `doctor` (`/api/doctors` → 200 with real records). `JWT_SECRET` consistent across services. Garbage token → 401.
+- Existing production data intact.
+
+### Still needed from the user
+1. **Frontend URL** — to set `ALLOWED_ORIGINS` (all 8) + `FRONTEND_URL` (telemedicine). Until then the real frontend's API calls are CORS-blocked.
+2. **Real Stripe keys** — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` on `curemd-payment` (currently placeholders; payments won't process, but `SKIP_PAYMENT=true` bypasses the flow).
+3. **Upstash QStash account** — 3 keys for the event layer (Phase 6). Events currently fall back to direct HTTP.
 
 ## Live URLs
 
