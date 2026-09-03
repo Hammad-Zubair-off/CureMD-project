@@ -51,11 +51,34 @@ cron-job.org POSTs `https://curemd-appointment.vercel.app/api/appointments/inter
 ### Git push-to-deploy — DONE (via API)
 All 9 projects: rootDirectory set + git connected. 8 track `main`, auth (`cure-md-project`) still tracks `backend` — flip to `main` after the merge.
 
-### Remaining
-1. **Merge `backend` → `main`** — then all 9 auto-deploy from the `main` push (brings the currency label change live on payment/notification/frontend). Then flip auth to `main`.
-2. **End-to-end test** through the frontend (register → book → confirm → email arrives).
-3. **Retire Render** once verified.
-4. **Real Stripe keys** — deferred by user. `curemd-payment` on placeholders; `SKIP_PAYMENT=true` bypasses payments.
+### MERGED + DEPLOYED — 2026-09-04
+`backend` merged to `main` (merge commit `e251b66`), pushed. All 9 Vercel projects auto-deployed from `main` → **all READY, all `/health` 200**. Auth (`cure-md-project`) flipped from `backend` → `main`. `backend` branch fast-forwarded to match.
+
+### Automated test pass — 35/38, no migration defects
+| Area | Result |
+|---|---|
+| 8 services + frontend `/health` | ✅ all 200 |
+| Auth (register / login / bad-pass) | ✅ |
+| Cross-service JWT (patient, doctor, appointment) + garbage rejection | ✅ |
+| Doctors: list(16), USD fees all $50–150, detail, specializations, availability | ✅ |
+| Patient booking profile save | ✅ (test initially sent `gender:"male"`; API wants `"Male"`) |
+| **Booking: book → skip-payment → confirmed → in my-list → slot marked taken** | ✅ |
+| **QStash chain: `appointment.confirmed` → QStash → notification → Brevo email SENT** | ✅ (verified in notification logs) |
+| Telemedicine session lookup | ✅ (404 "no session" — correct, doctor hasn't created one) |
+| Expiry cron endpoint rejects bad secret | ✅ |
+| Event endpoints enforce QStash signature (3/3) | ✅ |
+| Frontend `/api/*` proxy + SPA + landing page render | ✅ |
+| AI: session create | ✅ · AI: chat message | ⚠️ Google Gemini returned `503 model overloaded` (transient, valid key, external — retries fine) |
+
+Test artefacts left in DB: appointment `6a99cffd4f2ac996df9ad8ae` (test user, Arun Patel, 2026-09-06 — auto-expires), a couple `e2e-*@example.com` users.
+
+### Left for the user
+1. **Verify a real receipt email** — book with your own email, confirm it lands (Brevo *send* is verified; can't check your inbox from here).
+2. **Video call** — Agora, needs 2 real participants + cameras.
+3. **Retire Render** — stop/delete the Render services once you're happy.
+4. **Security cleanup** — delete `dburi,txt.txt` + `vercel-token.txt` from Desktop; `npx vercel logout` + delete `claude-deploy` tokens.
+5. **Real Stripe keys** — deferred. `SKIP_PAYMENT=true` bypasses; setup steps documented.
+6. **Gemini** — retry the AI checker later; if it keeps 503-ing, the model `gemini-flash-latest` may need changing or the key's quota checking.
 
 ## Live URLs
 
