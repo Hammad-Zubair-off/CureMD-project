@@ -18,6 +18,7 @@ import {
     deleteUser,
     createAdmin,
     deleteAdmin,
+    getUserStatus,
 } from '../controllers/authController.js';
 
 const router = Router();
@@ -26,6 +27,10 @@ const router = Router();
 // public endpoints
 router.post('/register', register);
 router.post('/login', login);
+
+// Internal — checked by other services' auth middleware on every request
+// No JWT — secured by x-internal-secret header
+router.get('/internal/users/:id/status', getUserStatus);
 
 
 // Authenticated endpoints (for any user)

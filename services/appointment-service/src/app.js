@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
@@ -33,7 +34,14 @@ app.get('/health', (req, res) => {
 // Serverless replacement for the 60s setInterval expirer: an external scheduler
 // (Vercel Cron / cron-job.org) POSTs here with the shared internal secret.
 app.post('/api/appointments/internal/run-expiry', async (req, res) => {
-    if (req.get('x-internal-secret') !== process.env.INTERNAL_SECRET) {
+    const provided = req.get('x-internal-secret');
+    const expected = process.env.INTERNAL_SECRET;
+    if (
+        !expected ||
+        typeof provided !== 'string' ||
+        provided.length !== expected.length ||
+        !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))
+    ) {
         return res.status(401).json({ success: false, error: 'unauthorized' });
     }
     try {

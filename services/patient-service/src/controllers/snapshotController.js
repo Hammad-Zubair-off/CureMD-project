@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import Patient from '../models/Patient.js';
 import MedicalReport from '../models/MedicalReport.js';
 import MedicalHistorySnapshot from '../models/MedicalHistorySnapshot.js';
@@ -115,7 +116,12 @@ export const confirmSnapshot = async (req, res, next) => {
         const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
         const internalSecret = req.headers['x-internal-secret'];
 
-        if (!INTERNAL_SECRET || internalSecret !== INTERNAL_SECRET) {
+        if (
+            !INTERNAL_SECRET ||
+            typeof internalSecret !== 'string' ||
+            internalSecret.length !== INTERNAL_SECRET.length ||
+            !crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(INTERNAL_SECRET))
+        ) {
             return res.status(403).json({ success: false, error: 'Unauthorized.' });
         }
 

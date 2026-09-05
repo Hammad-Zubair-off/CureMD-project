@@ -258,10 +258,17 @@ export const uploadProfilePicture = async (req, res, next) => {
  *          JWT_SECRET across all services handles verification.
  *
  * @route   GET /api/patients/:userId
- * @access  Private — any authenticated role
+ * @access  Private — own profile only for role 'patient'; doctor/admin can view any
  */
 export const getPatientByUserId = async (req, res, next) => {
     try {
+        if (req.user.role === 'patient' && req.params.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                error: 'You are not authorized to view this profile.',
+            });
+        }
+
         const profile = await Patient.findOne({ userId: req.params.userId });
 
         if (!profile) {

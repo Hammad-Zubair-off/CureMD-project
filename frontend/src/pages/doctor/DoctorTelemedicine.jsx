@@ -9,15 +9,6 @@ import {
     ChevronRight, Users, Activity,
 } from 'lucide-react';
 
-// line 13-19 for testing only
-const ALLOW_UPCOMING_TEST_START =
-  import.meta.env.VITE_TELEMEDICINE_ALLOW_UPCOMING_START === 'true';
-
-const canStartByDate = (dateStr) => {
-  if (ALLOW_UPCOMING_TEST_START) return true;
-  return new Date(dateStr).toDateString() === new Date().toDateString();
-};
-
 // Avatar component
 const Avatar = ({ firstName, lastName, size = 'md' }) => {
     const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-12 h-12 text-sm', lg: 'w-16 h-16 text-lg' };
@@ -92,11 +83,8 @@ const SessionModal = ({ appt, onClose, onStartSession, sessionLoading }) => {
     if (!appt) return null;
 
     const isConfirmed = appt.status === 'confirmed';
-    //const isToday = new Date(appt.appointmentDate).toDateString() === new Date().toDateString(); // production
-    //const canStart = isConfirmed && isToday; // production
-
-    const isToday = new Date(appt.appointmentDate).toDateString() === new Date().toDateString(); // for testing
-    const canStart = isConfirmed && canStartByDate(appt.appointmentDate); // for testing
+    const isToday = new Date(appt.appointmentDate).toDateString() === new Date().toDateString();
+    const canStart = isConfirmed && isToday;
 
 
     return (

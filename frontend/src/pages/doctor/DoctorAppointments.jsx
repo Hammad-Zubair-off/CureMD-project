@@ -155,7 +155,7 @@ export default function DoctorAppointments() {
     const fetchAppointments = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await appointmentService.getDoctorAppointments(page, LIMIT);
+            const data = await appointmentService.getDoctorAppointments(page, LIMIT, statusFilter);
             setAppointments(data.appointments || []);
             setTotal(data.total || 0);
             setPages(data.pages || 1);
@@ -164,14 +164,12 @@ export default function DoctorAppointments() {
         } finally {
             setLoading(false);
         }
-    }, [page]);
+    }, [page, statusFilter]);
 
     useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
     useEffect(() => { setPage(1); }, [statusFilter]);
 
-    const filtered = statusFilter
-        ? appointments.filter(a => a.status === statusFilter)
-        : appointments;
+    const filtered = appointments;
 
     const stats = {
         total,

@@ -93,9 +93,10 @@ const appointmentService = {
      * Get all appointments booked on the logged-in doctor
      * Called in DoctorAppointments
      */
-    getDoctorAppointments: async (page = 1, limit = 10) => {
+    getDoctorAppointments: async (page = 1, limit = 10, status = '') => {
         try {
-            const response = await api.get(`/appointments/doctor?page=${page}&limit=${limit}`);
+            const params = `page=${page}&limit=${limit}${status ? `&status=${status}` : ''}`;
+            const response = await api.get(`/appointments/doctor?${params}`);
             return response.data;
         } catch (error) {
             const errData = error.response?.data;

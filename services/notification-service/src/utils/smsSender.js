@@ -1,5 +1,5 @@
 import { getTwilioClient } from '../config/twilio.js';
-import { normalizeSriLankanPhone } from './phone.js';
+import { normalizeInternationalPhone } from './phone.js';
 import { logger } from './logger.js';
 
 export const sendSMS = async (to, body) => {
@@ -10,7 +10,7 @@ export const sendSMS = async (to, body) => {
         return { sent: false, reason: 'twilio_not_initialized' };
     }
 
-    const normalizedTo = normalizeSriLankanPhone(to);
+    const normalizedTo = normalizeInternationalPhone(to);
     if (!normalizedTo) {
         logger.warn(`[SmsSender] Invalid phone format: ${to}`);
         return { sent: false, reason: 'invalid_phone' };
@@ -34,7 +34,7 @@ export const sendSMS = async (to, body) => {
     } catch (error) {
         const msg = String(error?.message || '').toLowerCase();
 
-        // Permanent failures should not be retried forever by RabbitMQ consumers.
+        // Permanent failures should not be retried forever by QStash.
         const isPermanent =
             msg.includes('exceeded the 50 daily messages limit') ||
             msg.includes('is not a valid phone number') ||

@@ -79,7 +79,15 @@ export const createPaymentIntent = async (req, res, next) => {
         }
 
         const amount = appointment.consultationFee;
-        const currency = 'usd'; 
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid consultation fee for this appointment.',
+            });
+        }
+
+        const currency = 'usd';
         
         const existing = await Payment.findOne({ appointmentId });
 
@@ -311,7 +319,16 @@ export const refundPayment = async (req, res, next) => {
         payment.refundedAt = new Date();
         await payment.save();
 
-        const appointment = await Appointment.findById(payment.appointmentId);
+        let appointment = null;
+        try {
+            const appointmentResponse = await appointmentClient.get(
+                `/api/appointments/${payment.appointmentId}`,
+                { headers: { Authorization: req.headers.authorization } }
+            );
+            appointment = appointmentResponse.data.appointment;
+        } catch (err) {
+            logger.warn(`Failed to fetch appointment ${payment.appointmentId} for refund event: ${err.message}`);
+        }
 
         await publishEvent('payment.refunded', {
             paymentId: payment._id,
@@ -411,12 +428,12 @@ export const confirmPaymentFromFrontend = async (req, res, next) => {
 
         // Idempotency guard
         if (payment.status === 'succeeded') {
-            res.status(200).json({
-            success: true,
-            message: 'Already confirmed.',
-            paymentId: payment._id,
-            status: payment.status,
-        });
+            return res.status(200).json({
+                success: true,
+                message: 'Already confirmed.',
+                paymentId: payment._id,
+                status: payment.status,
+            });
         }
 
         // Update payment

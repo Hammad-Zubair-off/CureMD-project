@@ -1,10 +1,37 @@
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
+
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3001';
+const STATUS_CACHE_TTL = 60_000; // 1 minute
+const statusCache = new Map();
+
+// Asks auth-service whether the account is still active/approved.
+// Cached briefly so a deactivation/rejection takes effect quickly without
+// hitting auth-service on every single request.
+const fetchUserStatus = async (userId) => {
+    const cached = statusCache.get(userId);
+    if (cached && Date.now() - cached.fetchedAt < STATUS_CACHE_TTL) {
+        return cached.data;
+    }
+
+    const response = await axios.get(
+        `${AUTH_SERVICE_URL}/api/auth/internal/users/${userId}/status`,
+        {
+            headers: { 'x-internal-secret': process.env.INTERNAL_SECRET },
+            timeout: 3000,
+        }
+    );
+
+    statusCache.set(userId, { data: response.data, fetchedAt: Date.now() });
+    return response.data;
+};
 
 /**
  * Verifies JWT token and attaches decoded payload to req.user
- * No DB lookup — we trust the signed payload from auth-service
+ * Re-checks account status against auth-service so a deactivated/rejected
+ * account can't keep using an already-issued token
  */
-export const protect = (req, res, next) => {
+export const protect = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
 
@@ -31,6 +58,26 @@ export const protect = (req, res, next) => {
                 success: false,
                 error: 'Invalid token.',
             });
+        }
+
+        try {
+            const status = await fetchUserStatus(decoded.id);
+            if (!status.isActive) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Your account has been deactivated. Contact support.',
+                });
+            }
+            decoded.isApproved = status.isApproved;
+        } catch (err) {
+            if (err.response?.status === 404) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'User account no longer exists.',
+                });
+            }
+            // auth-service unreachable — fail open on the signed token so a
+            // transient outage there doesn't take this service down too
         }
 
         // Attach decoded payload to req.user

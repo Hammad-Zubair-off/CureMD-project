@@ -1,6 +1,8 @@
 import {Prescription} from '../models/Prescription.js';
 import {logger} from '../utils/logger.js';
 
+const APPOINTMENT_SERVICE_URL = process.env.APPOINTMENT_SERVICE_URL || 'http://appointment-service:3004';
+
 // POST /api/doctors/prescriptions
 
 export const savePrescription = async (req, res) => {
@@ -10,6 +12,15 @@ export const savePrescription = async (req, res) => {
 
         if (!medications?.length) {
             return res.status(400).json({ success: false, message: 'At least one medication is required.' });
+        }
+
+        const apptRes = await fetch(`${APPOINTMENT_SERVICE_URL}/api/appointments/${appointmentId}`, {
+            headers: { Authorization: req.headers.authorization },
+        });
+        const apptData = await apptRes.json().catch(() => ({}));
+
+        if (!apptRes.ok || String(apptData.appointment?.doctorId) !== String(doctorId)) {
+            return res.status(403).json({ success: false, message: 'You are not assigned to this appointment.' });
         }
 
         const prescription = await Prescription.findOneAndUpdate(
@@ -86,6 +97,10 @@ export const getPrescriptionsByPatient = async (req, res) => {
     try {
         const { patientId } = req.params;
         const { appointmentId } = req.query;
+
+        if (req.user.role === 'patient' && req.user.id !== patientId) {
+            return res.status(403).json({ success: false, message: 'You are not authorized to view these prescriptions.' });
+        }
 
         const query = { patientId, status: 'issued' };
         if (appointmentId) {

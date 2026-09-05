@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { EventEmitter } from 'events';
 import Appointment from '../models/Appointment.js';
 import { logger } from '../utils/logger.js';
@@ -294,7 +295,12 @@ export const confirmAppointment = async (req, res, next) => {
         // Read fresh from env — ensures dotenv has loaded before this is evaluated
         const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
         const internalSecret = req.headers['x-internal-secret'];
-        if (!INTERNAL_SECRET || internalSecret !== INTERNAL_SECRET) {
+        if (
+            !INTERNAL_SECRET ||
+            typeof internalSecret !== 'string' ||
+            internalSecret.length !== INTERNAL_SECRET.length ||
+            !crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(INTERNAL_SECRET))
+        ) {
             return res.status(403).json({
                 success: false,
                 error: 'Unauthorized.',
@@ -1068,11 +1074,19 @@ export const getMyAppointments = async (req, res, next) => {
  */
 export const getDoctorAppointments = async (req, res, next) => {
     try {
+        const { status } = req.query;
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
         const skip = (page - 1) * limit;
 
+        // Validate status query param if provided
+        const { valid: statusValid, error: statusError } = validateStatusQuery(status);
+        if (!statusValid) {
+            return res.status(400).json({ success: false, error: statusError });
+        }
+
         const filter = { doctorId: req.user.id };
+        if (status) filter.status = status;
 
         const [appointments, total] = await Promise.all([
             Appointment.find(filter).sort({ appointmentDate: -1 }).skip(skip).limit(limit),

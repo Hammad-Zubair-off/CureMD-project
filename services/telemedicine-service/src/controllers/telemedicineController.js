@@ -114,6 +114,18 @@ export const createSession = async (req, res, next) => {
       });
     }
 
+    const apptRes = await appointmentClient.get(`/api/appointments/${appointmentId}`, {
+      headers: { Authorization: req.headers.authorization },
+    });
+
+    const appointment = apptRes.data?.appointment;
+    if (!appointment || String(appointment.doctorId) !== String(doctorId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You are not assigned to this appointment.',
+      });
+    }
+
     // Check if session already exists (doctor re-clicking start)
     let session = await Session.findOne({ appointmentId });
 

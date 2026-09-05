@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { logger } from '../utils/logger.js';
@@ -324,6 +325,43 @@ export const verifyToken = (req, res) => {
             isActive: req.user.isActive,
         },
     });
+};
+
+/**
+ * @desc    Get a user's current active/approval status.
+ *          Called by the other services' auth middleware on every request
+ *          so a token issued before a deactivation/rejection stops working.
+ *          Secured by x-internal-secret header.
+ * @route   GET /api/auth/internal/users/:id/status
+ * @access  Internal — other services only
+ */
+export const getUserStatus = async (req, res, next) => {
+    try {
+        const internalSecret = req.headers['x-internal-secret'];
+        const expected = process.env.INTERNAL_SECRET;
+        if (
+            !expected ||
+            typeof internalSecret !== 'string' ||
+            internalSecret.length !== expected.length ||
+            !crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(expected))
+        ) {
+            return res.status(403).json({ success: false, error: 'Unauthorized.' });
+        }
+
+        const user = await User.findById(req.params.id).select('isActive isApproved role');
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+
+        res.status(200).json({
+            success: true,
+            isActive: user.isActive,
+            isApproved: user.isApproved,
+            role: user.role,
+        });
+    } catch (err) {
+        next(err);
+    }
 };
 
 // Admin + Super Admin controllers

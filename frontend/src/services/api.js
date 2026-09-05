@@ -31,8 +31,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
+    const hadToken = Boolean(error.config?.headers?.Authorization);
+    if (error.response?.status === 401 && hadToken) {
+      // A request that WAS carrying a token got rejected -> the session
+      // itself is invalid/expired. A 401 with no token attached (e.g. a
+      // failed login attempt) is just a normal auth failure and must be
+      // left to the caller to handle/display, not treated as a logout.
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       window.location.href = '/login';

@@ -18,21 +18,8 @@ const isToday = (dateStr) => {
     return d.toDateString() === n.toDateString();
 };
 
-// line 22 - 28 for testing
-const ALLOW_UPCOMING_TEST_JOIN =
-    import.meta.env.VITE_TELEMEDICINE_ALLOW_UPCOMING_JOIN === 'true';
-
-const canJoinByDate = (dateStr) => {
-    if (ALLOW_UPCOMING_TEST_JOIN) return true;
-    return isToday(dateStr);
-};
-
-const ENABLE_CAMERA_TEST_MODE =
-    import.meta.env.VITE_TELEMEDICINE_CAMERA_TEST_MODE === 'true';
-
-function SessionCard({ appt, onJoin, joining, canJoin }) {
+function SessionCard({ appt, onJoin, joining }) {
     const today = isToday(appt.appointmentDate);
-    const joinAllowed = canJoin ?? canJoinByDate(appt.appointmentDate);
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -60,19 +47,14 @@ function SessionCard({ appt, onJoin, joining, canJoin }) {
             </div>
 
             <div className="flex items-center gap-2">
-                {/* {!today && (
-          <span className="text-[11px] text-slate-500 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-            Join available on appointment day
-          </span>
-        )} */}
-                {!today && !ALLOW_UPCOMING_TEST_JOIN && (
+                {!today && (
                     <span className="text-[11px] text-slate-500 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
                         Join available on appointment day
                     </span>
                 )}
                 <button
                     onClick={() => onJoin(appt)}
-                    disabled={!joinAllowed || joining}
+                    disabled={!today || joining}
                     className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
                     {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
@@ -127,8 +109,7 @@ export default function Telemedicine() {
     }, [appointments]);
 
     const handleJoin = async (appt) => {
-        //if (!isToday(appt.appointmentDate)) return; // production
-        if (!canJoinByDate(appt.appointmentDate)) return; // testing
+        if (!isToday(appt.appointmentDate)) return;
 
         setJoinLoadingId(appt._id);
         try {
@@ -157,26 +138,7 @@ export default function Telemedicine() {
             });
         } catch (err) {
             const status = err?.response?.status;
-            // production code
-            //   if (status === 404) {
-            //     alert('Doctor has not started this session yet.');
-            //   } else if (status === 403) {
-            //     alert('You are not allowed to join this session.');
-            //   } else {
-            //     alert('Failed to join session. Please try again.');
-            //   }
-
             if (status === 404) {
-                if (ENABLE_CAMERA_TEST_MODE) {
-                    navigate('/patient/video-room', {
-                        state: {
-                            sessionData: null,
-                            doctorName: appt.doctorFullName,
-                            cameraTestMode: true,
-                        },
-                    });
-                    return;
-                }
                 alert('Doctor has not started this session yet.');
             } else if (status === 403) {
                 alert('You are not allowed to join this session.');
@@ -203,12 +165,6 @@ export default function Telemedicine() {
                     Refresh
                 </button>
             </div>
-
-            {ALLOW_UPCOMING_TEST_JOIN && (
-                <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                    Dev mode: you can join upcoming appointments immediately for testing.
-                </div>
-            )}
 
             {loading ? (
                 <div className="h-40 rounded-xl border border-slate-200 bg-white flex items-center justify-center">
@@ -252,7 +208,6 @@ export default function Telemedicine() {
                                         appt={appt}
                                         onJoin={handleJoin}
                                         joining={joinLoadingId === appt._id}
-                                        canJoin={canJoinByDate(appt.appointmentDate)} // for testing only
                                     />
                                 ))}
                             </div>
