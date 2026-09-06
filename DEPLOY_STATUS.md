@@ -3,8 +3,8 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ Migration complete — merged to `main`, deployed, tested · 🔧 regression fixes merged to `main` (`c7b6eba`); 2/9 deployed, 7/9 pending Vercel daily-deploy-limit reset
-**Last updated:** 2026-09-04
+**Status:** ✅ Migration complete — merged to `main`, deployed, tested · ✅ regression fix pass #1 (`c7b6eba`) + security fix pass #2 (`5aa403d`) both deployed to all 9 projects and verified — see §14, §15
+**Last updated:** 2026-09-07
 
 | | |
 |---|---|
@@ -12,7 +12,9 @@
 | Migration branch | `backend` (22 commits) |
 | Merge commit | `e251b66` — "Merge branch 'backend': Render → Vercel migration" |
 | `main` / `backend` HEAD (deployed) | `7c77746` |
-| Regression fixes | branch `bugfixes` @ `6023d9e` — see §14 |
+| Regression fixes #1 | branch `bugfixes` @ `6023d9e`, merged `c7b6eba` — see §14 |
+| Security fixes #2 | `5aa403d` on `main` (pushed 2026-09-07) — IDOR, session hijack, stale-token, crashes — see §15 |
+| `main` HEAD (deployed) | `5aa403d` |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -93,6 +95,17 @@ Times are **PKT (UTC+05:00)**. Commit rows carry their real commit timestamp; no
 | ~02:30 | **Full regression test** — 91-check API sweep (all 8 services, patient + doctor roles) + static frontend audit (every route/button/link/API call). 86 API PASS. Findings: 3 HIGH, 6 MEDIUM, ~10 LOW. See §14. |
 | ~03:30 | **Bug-fix pass** on branch `bugfixes` (commit `6023d9e`) — all HIGH + MEDIUM + the impactful LOW fixed. Frontend builds clean; backend `node --check` clean. Not yet merged/deployed. |
 
+### Security regression pass #2 & production deploy — 2026-09-07
+
+| Time | Commit / event | Work |
+|---|---|---|
+| ~00:30 | *(audit)* | Second regression sweep, security-focused — 2 audit agents + live browser testing. ~17 issues: IDOR on REST routes, indefinite trust of JWT payload (6/8 services never re-checked account status), timing-unsafe internal-secret comparisons, a payment idempotency fall-through crash, a `refundPayment` ReferenceError, Sri-Lanka-specific strings. |
+| ~01:30 | `5aa403d` | **All fixes** committed to `main` (32 files, +647/−121). 5 parallel agents + direct edits. `node --check` on all 20 modified JS files + `vite build` (17.3s) pass. See §15. |
+| ~01:40 | *(env)* | New shared `INTERNAL_SECRET` generated (rotation — the old value was unreadable). User entered 15 env-var changes across 8 Vercel projects via the dashboard: `INTERNAL_SECRET` on all 7 backends, `AUTH_SERVICE_URL` on 6, `APPOINTMENT_SERVICE_URL` on doctor, `VITE_SKIP_PAYMENT=true` (Config type) on frontend. `vercel env add/rm` via CLI is blocked by the Claude Code auto-mode classifier — dashboard entry was the path. |
+| ~02:05 | *push* | `git push origin main` (`51abdec..5aa403d`) → all 9 projects auto-deployed, all `● Ready`. No Hobby 100/day limit this time. |
+| ~02:10 | *(verify)* | All 8 backend `/health` → 200; frontend → 200. New `GET /api/auth/internal/users/:id/status` → 403 without / with wrong secret (timing-safe gate OK). Login with bad creds → clean `401 JSON` + inline error rendered in the browser (the `api.js` interceptor fix). |
+| ~02:20 | *(verify)* | **`INTERNAL_SECRET` propagation test** — registered a throwaway patient, baselined all 7 services (non-403), self-deactivated the account, waited out the 60 s status cache, re-hit all 6 downstream services → **all 403**. Proves every backend's `INTERNAL_SECRET` matches auth-service byte-for-byte, `AUTH_SERVICE_URL` resolves, and account-status revalidation is live platform-wide. Test account `curemd-sectest+1788729735@example.com` left deactivated (delete via admin). |
+
 ---
 
 ## 3. Architecture
@@ -137,17 +150,17 @@ Every backend `vercel.json`: `rewrites` all paths → `/api`, `functions.maxDura
 
 | Service | Additional |
 |---|---|
-| auth | *(none)* |
-| patient | `INTERNAL_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `QSTASH_TOKEN`, `APPOINTMENT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL` |
-| doctor | *(none)* |
-| appointment | `INTERNAL_SECRET`, `SKIP_PAYMENT=true`, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `PATIENT_SERVICE_URL`, `DOCTOR_SERVICE_URL`, `NOTIFICATION_SERVICE_URL`, `PAYMENT_SERVICE_URL` |
-| payment | `INTERNAL_SECRET`, `STRIPE_SECRET_KEY` *(placeholder)*, `STRIPE_WEBHOOK_SECRET` *(placeholder)*, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `APPOINTMENT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL` |
+| auth | `INTERNAL_SECRET` *(added 09-07 — consumed by the `/internal/users/:id/status` endpoint)* |
+| patient | `INTERNAL_SECRET`, `AUTH_SERVICE_URL` *(09-07)*, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `QSTASH_TOKEN`, `APPOINTMENT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL` |
+| doctor | `INTERNAL_SECRET` *(09-07)*, `AUTH_SERVICE_URL` *(09-07)*, `APPOINTMENT_SERVICE_URL` *(09-07)* |
+| appointment | `INTERNAL_SECRET`, `AUTH_SERVICE_URL` *(09-07)*, `SKIP_PAYMENT=true`, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `PATIENT_SERVICE_URL`, `DOCTOR_SERVICE_URL`, `NOTIFICATION_SERVICE_URL`, `PAYMENT_SERVICE_URL` |
+| payment | `INTERNAL_SECRET`, `AUTH_SERVICE_URL` *(09-07)*, `STRIPE_SECRET_KEY` *(placeholder)*, `STRIPE_WEBHOOK_SECRET` *(placeholder)*, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `APPOINTMENT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL` |
 | notification | `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` |
-| telemedicine | `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `FRONTEND_URL`, `TELEMEDICINE_DEV_AUTO_SESSION=true`, `APPOINTMENT_SERVICE_URL` |
-| ai-symptom | `GEMINI_API_KEY`, `PATIENT_SERVICE_URL`, `DOCTOR_SERVICE_URL` |
-| frontend | `VITE_STRIPE_PUBLIC_KEY` |
+| telemedicine | `INTERNAL_SECRET` *(09-07)*, `AUTH_SERVICE_URL` *(09-07)*, `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `FRONTEND_URL`, `TELEMEDICINE_DEV_AUTO_SESSION=true`, `APPOINTMENT_SERVICE_URL` |
+| ai-symptom | `INTERNAL_SECRET` *(09-07)*, `AUTH_SERVICE_URL` *(09-07)*, `GEMINI_API_KEY`, `PATIENT_SERVICE_URL`, `DOCTOR_SERVICE_URL` |
+| frontend | `VITE_STRIPE_PUBLIC_KEY`, `VITE_SKIP_PAYMENT=true` *(09-07, Config type)* |
 
-Peer `*_SERVICE_URL` values are the production URLs from §4.
+Peer `*_SERVICE_URL` values are the production URLs from §4. `AUTH_SERVICE_URL` = `https://cure-md-project.vercel.app`. `INTERNAL_SECRET` is byte-identical across all 7 backends (rotated 09-07; verified live — §15).
 
 ---
 
@@ -271,12 +284,12 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 
 | Item | Detail | Impact |
 |---|---|---|
-| **Gemini `503`** | `gemini-flash-latest` returned model-overloaded during testing | AI symptom checker intermittently unavailable; retries succeed. If persistent, revisit model name / key quota. |
+| **Gemini `503`** | `gemini-flash-latest` returned model-overloaded during 09-04 testing | **Re-verified 2026-09-07 — working.** End-to-end triage (session → message → AI reply) returned a coherent response with correct `triageOutcome` / `rollingSummary` in ~3 s. The 09-04 `503` was transient. No action. |
 | **SSE real-time tracking degraded** | Serverless can't hold a stream or share an in-process emitter | `/api/appointments/:id/track` becomes ~3s poll-over-`EventSource`. No frontend change; true push would need Pusher/Ably/Redis. |
 | **Stripe not live** | Placeholder keys; `SKIP_PAYMENT=true` | Payments bypassed. Currency is USD; **Stripe is not officially available in Sri Lanka** for live payouts. |
 | **QStash free tier** | ~500 messages/day | A booking emits 1–2 events; a refund ~3. Fine for demo; watch under load. |
 | **Cold starts** | Vercel free tier functions cold-start | Frontend axios timeout is 45s, which absorbs it. |
-| **Docs drift** | `README.md` / `Insturctions.md` still describe RabbitMQ + Nginx gateway in places | Cosmetic; `MIGRATION.md` + this file are authoritative. |
+| **Docs drift** | `Insturctions.md` (the original step-by-step build tutorial) still walks through the Nginx gateway build | `README.md` **reconciled 2026-09-07** — Vercel/QStash framing, dead `VITE_TELEMEDICINE_*` flags removed, `INTERNAL_SECRET` / `AUTH_SERVICE_URL` added to the env tables, k8s marked legacy. `Insturctions.md` left as-is (historical tutorial); `MIGRATION.md` + this file are authoritative. |
 | **`pk_test_` in `docker-compose.yml`** | Stripe **publishable** test key hardcoded (line 39), pre-existing | Not a real exposure (publishable keys are client-side by design); move to env var for tidiness. |
 | **Twilio not configured** | SMS notifications | SMS steps no-op silently. |
 
@@ -286,14 +299,17 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 
 | # | Task | Owner | Priority |
 |---|---|---|---|
-| 1 | Book with a real email; confirm the `$` receipt arrives | user | high |
-| 2 | Test a live video call (Agora, 2 participants + cameras) | user | high |
-| 3 | Delete / stop the Render services once satisfied | user | medium |
-| 4 | Security cleanup: delete `dburi,txt.txt` and `vercel-token.txt` from Desktop; `npx vercel logout`; delete `claude-deploy` tokens at vercel.com → Account Settings → Tokens | user | high |
-| 5 | Configure real Stripe (test then live) — steps in `MIGRATION.md` / thread; set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` → `false`, redeploy | user | low |
-| 6 | If Gemini keeps `503`-ing, change the model id or check the API key quota | user | low |
-| 7 | Reconcile `README.md` wording (RabbitMQ / gateway) with the new architecture | either | low |
-| 8 | Move `pk_test_` out of `docker-compose.yml` into an env var | either | low |
+| 1 | **Seed an admin/superadmin account** into `auth-db` (same insert `scripts/seed-admin.sh` does) — blocks #2 | user | high |
+| 2 | With that admin, verify end-to-end: admin dashboard, and all doctor-approved flows (edit profile, set availability, accept/reject appts, mark complete, prescriptions, start a telemedicine session). Only auth guards are confirmed today. | user | high |
+| 3 | Book with a real email; confirm the `$` receipt arrives (Brevo verified once on 09-04, not since) | user | high |
+| 4 | Test a live video call (Agora, 2 participants + cameras) | user | high |
+| 5 | Delete throwaway test account `curemd-sectest+1788729735@example.com` (needs admin — depends on #1) | user | low |
+| 6 | Local machine security cleanup: delete `dburi,txt.txt` and `vercel-token.txt` from Desktop; `npx vercel logout`; delete `claude-deploy` tokens at vercel.com → Account Settings → Tokens | user | high |
+| 7 | Delete / stop the Render services once satisfied with Vercel | user | medium |
+| 8 | Configure real Stripe (test then live) — steps in `MIGRATION.md` / thread; set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` **and** frontend `VITE_SKIP_PAYMENT` → `false`, redeploy | user | low |
+| 9 | ~~If Gemini keeps `503`-ing, change the model id~~ — **done 2026-09-07**: re-tested end-to-end, working; 09-04 `503` was transient | — | ✅ |
+| 10 | ~~Reconcile `README.md`~~ — **done 2026-09-07** (§15). `Insturctions.md` left as a historical tutorial. | — | ✅ |
+| 11 | Move `pk_test_` out of `docker-compose.yml` (line 39) into an env var — it's a Stripe **publishable** key (client-side by design, not a real secret), so this is tidiness not a leak | either | low |
 
 ---
 
@@ -315,7 +331,9 @@ No data migration is involved — both Render and Vercel talk to the same MongoD
 - `.env.local` and `.vercel/` folders the Vercel CLI created are git-ignored (contain only a short-lived `VERCEL_OIDC_TOKEN` + non-secret project IDs).
 - Local secret files (`dburi,txt.txt`, `vercel-token.txt`) are on the user's Desktop, **outside** the repo — pending deletion (task #4).
 - QStash consumer endpoints reject unsigned requests (`401`), verified.
-- Internal endpoints (`/api/appointments/internal/run-expiry`, payment/appointment inter-service calls) require `x-internal-secret`.
+- Internal endpoints (`/api/appointments/internal/run-expiry`, `/api/auth/internal/users/:id/status`, payment/appointment inter-service calls) require `x-internal-secret`, compared with `crypto.timingSafeEqual` (as of `5aa403d` — §15).
+- **Account-status revalidation (`5aa403d`):** every backend re-checks `isActive` against auth-service per request (60 s cache), so a deactivated/rejected account loses access within ~1 min instead of at JWT expiry (~7 days). Fails open on an auth-service outage. Verified live across all 7 services — §15.
+- IDOR ownership checks added on patient records, prescriptions, and telemedicine session creation (`5aa403d` — §15).
 
 ---
 
@@ -353,3 +371,45 @@ No admin/superadmin account exists on the production DB (`scripts/seed-admin.sh`
 
 ### Verified working (unchanged from §9, re-confirmed)
 All 8 services + frontend healthy; auth + cross-service JWT; full booking flow (book → skip-pay → confirm → reschedule → cancel); QStash → Brevo email delivery; AI symptom sessions + Gemini chat (recovered from the transient 503); every admin route correctly guarded.
+
+---
+
+## 15. Security regression pass #2 & deploy — 2026-09-07
+
+Commit **`5aa403d`** on `main` (32 files, +647 / −121). Pushed and auto-deployed to all 9 Vercel projects; verified in production.
+
+### Method
+- Two audit agents over the full codebase (auth model, every REST controller, all middleware) + live browser testing of the deployed SPA.
+- Focus: authorization gaps (IDOR), session/token trust model, constant-time secret handling, crash paths, hardcoded locale.
+
+### Findings & fixes
+
+| Sev | Finding | Fix |
+|---|---|---|
+| HIGH | **Stale-token / no revocation** — 6 of 8 services (`appointment`, `patient`, `doctor`, `payment`, `telemedicine`, `ai-symptom`) trusted the JWT payload for its full ~7-day life and never re-checked account status. A deactivated or rejected user kept full access until expiry. | New internal endpoint `GET /api/auth/internal/users/:id/status` on auth-service (`x-internal-secret`, timing-safe). All 6 middlewares now re-validate via that endpoint with a 60 s in-memory cache; `!isActive` → 403; 404 → 401; auth-service outage → **fail open** on the signed token so a transient auth-service failure doesn't cascade. |
+| HIGH | **Login 401 interceptor** — `api.js` response interceptor hard-redirected to `/login` on *any* 401, including a failed login attempt, wiping the "Invalid credentials" message before it could render. | Interceptor now only clears session + redirects when the failed request actually carried an `Authorization` header (i.e. a real expired session, not a login attempt). |
+| HIGH | **IDOR — `getPatientByUserId`** (`patient-service`) — any authenticated user could read any patient record by user id. | Ownership check: a `patient` caller may only read their own record (else 403); mirrors `reportController`. |
+| HIGH | **IDOR — prescriptions** (`doctor-service`) — `getPrescriptionsByPatient` returned any patient's prescriptions to any caller; `savePrescription` upserted without verifying the doctor owns the appointment. | `getPrescriptionsByPatient`: patient caller restricted to own id (403). `savePrescription`: calls appointment-service to confirm `appointment.doctorId === req.user.id` before writing (403 otherwise). |
+| HIGH | **IDOR — telemedicine `createSession`** — a doctor could open a session for an appointment they weren't assigned to. | Appointment-ownership check via `appointmentClient` (forwards caller's JWT) → 403 if `appointment.doctorId !== req.user.id`. |
+| MED | **Payment idempotency fall-through** — `confirmPaymentFromFrontend` detected an already-processed payment but didn't `return`, so it continued and double-sent the response ("headers already sent" crash) and re-emitted events. | Added the missing `return`. |
+| MED | **`refundPayment` ReferenceError** — referenced an undefined `Appointment` model → every refund threw. | Fetches the appointment over HTTP via `appointmentClient`, wrapped in try/catch, degrades gracefully. |
+| MED | **`createPaymentIntent` NaN guard** — a missing/invalid `consultationFee` reached Stripe as `NaN`. | Rejects with 400 unless the fee is a finite number > 0. |
+| MED | **Timing-unsafe secret comparison** — `===` on `x-internal-secret` at 4 endpoints (`confirmAppointment`, `run-expiry`, `confirmSnapshot`, and the new status endpoint). | `crypto.timingSafeEqual` with a length pre-check across all 4. |
+| LOW | **`getDoctorAppointments` ignored `status`** — the doctor appointments list filtered client-side only; server returned everything and pagination totals were wrong. | Server accepts `?status=` (via `validateStatusQuery`), applies it to the Mongo filter; frontend forwards the filter and drops the client-side `.filter()`. |
+| LOW | **Sri-Lanka-specific strings** — AI triage told every user to call "1990 (Suwa Seriya)" and claimed "this platform operates in Sri Lanka"; `notification-service` had a `normalizeSriLankanPhone` helper and a stale "RabbitMQ" comment. | Emergency guidance is now country-agnostic ("call your local emergency number"); phone helper renamed `normalizeInternationalPhone` and accepts general `+[7–15 digits]` while keeping the SL short-form special case; comment corrected to QStash. |
+| LOW | **Dead test-mode flags** — `ALLOW_UPCOMING_TEST_JOIN` / `canJoinByDate`, `ENABLE_CAMERA_TEST_MODE`, `ALLOW_UPCOMING_TEST_START` / `canStartByDate` and a dev banner in the telemedicine join flow (patient + doctor). | Removed; join/start now gated strictly on `isToday(appointmentDate) && confirmed`. |
+
+Supporting changes: `axios` added to `doctor-service` (`package.json` + regenerated `package-lock.json` so `npm ci` builds don't break); `INTERNAL_SECRET`, `AUTH_SERVICE_URL`, `APPOINTMENT_SERVICE_URL` documented in the 7 `.env.example` files.
+
+### Env-var changes (production, 2026-09-07)
+`INTERNAL_SECRET` rotated to a fresh 64-hex value (the previous value was unreadable) and set identically on all 7 backend projects; safe because all 7 deploy together on the same push. `AUTH_SERVICE_URL = https://cure-md-project.vercel.app` added to the 6 non-auth backends. `APPOINTMENT_SERVICE_URL = https://curemd-appointment.vercel.app` added to `curemd-doctor`. `VITE_SKIP_PAYMENT = true` added to `curemd-frontend` as **Config** type (a `VITE_`-prefixed var can't be Secret type). Entered via the Vercel dashboard because `vercel env add/rm` through the CLI is refused by the Claude Code auto-mode classifier.
+
+### Deploy & verification
+- `git push origin main` (`51abdec..5aa403d`) → all 9 projects auto-deployed, all `● Ready`. Hobby 100-deploys/day limit **not** hit.
+- All 8 backend `/health` → 200; frontend → 200.
+- `GET /api/auth/internal/users/:id/status` → 403 with no secret and with a wrong secret.
+- Bad-credential login → `401 {"success":false,"error":"Invalid email or password."}` from the API **and** rendered inline on `/login` in the browser (interceptor fix confirmed live).
+- **`INTERNAL_SECRET` propagation test:** throwaway patient registered → all 7 services return non-403 while active → account self-deactivated → after the 60 s cache TTL, all 6 downstream services return **403**. Confirms every backend's `INTERNAL_SECRET` matches auth-service, `AUTH_SERVICE_URL` resolves, and account-status revalidation is active platform-wide. Test account `curemd-sectest+1788729735@example.com` left deactivated — delete via an admin (task §11.5).
+
+### Still not verified (carried forward — see §11)
+Admin dashboard + doctor-approved actions end-to-end (no admin account seeded on prod — §11.1/§11.2); real receipt email since 09-04; live Agora video; live Stripe; Cloudinary uploads.

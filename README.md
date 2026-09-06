@@ -1,6 +1,6 @@
 # CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 
-Distributed, cloud-native healthcare platform for doctor appointments, video consultations, payments, notifications, and AI-based symptom triage. Built as **microservices**, containerized with Docker, and ready for local or cloud deployment.
+Distributed, cloud-native healthcare platform for doctor appointments, video consultations, payments, notifications, and AI-based symptom triage. Built as **microservices** — run locally with Docker Compose, deployed to **Vercel serverless** (8 backend services + frontend) with **Upstash QStash** for async events.
 
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
 
@@ -29,9 +29,9 @@ Distributed, cloud-native healthcare platform for doctor appointments, video con
 - **Payments:** Stripe
 - **Video:** Agora RTC
 - **AI:** Google Gemini
-- **Hosting:** Vercel serverless (backend + frontend)
-- **Containers:** Docker & Docker Compose
-- **Orchestration:** Kubernetes manifests under `k8s/`
+- **Hosting:** Vercel serverless (backend + frontend) — production. Nginx gateway + RabbitMQ existed only in the pre-migration Render/Docker setup and are gone; see `MIGRATION.md`.
+- **Containers:** Docker & Docker Compose — local development only
+- **Orchestration:** Kubernetes manifests under `k8s/` — legacy, not a deploy target and unmaintained
 
 ---
 
@@ -101,14 +101,13 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_STRIPE_PUBLIC_KEY` | Yes* | Stripe **publishable** key (`pk_test_...`) |
-| `VITE_SKIP_PAYMENT` | No | `true` skips Stripe UI during booking (local/dev) |
-| `VITE_TELEMEDICINE_ALLOW_UPCOMING_JOIN` | No | `true` lets patients join before appointment day |
-| `VITE_TELEMEDICINE_ALLOW_UPCOMING_START` | No | `true` lets doctors start sessions early |
-| `VITE_TELEMEDICINE_CAMERA_TEST_MODE` | No | `true` forces camera test UI |
-| `VITE_API_URL` | No | Override API base (default: Vite proxy → gateway) |
+| `VITE_STRIPE_PUBLIC_KEY` | Yes* | Stripe **publishable** key (`pk_test_...`) — safe to expose to the browser by design |
+| `VITE_SKIP_PAYMENT` | No | `true` skips the Stripe step during booking. Set to `true` in production today (Stripe is on placeholder keys). |
+| `VITE_API_URL` | No | Override the API base (default: Vite dev proxy locally; same-origin `/api/*` rewrites in production) |
 
-\*Required only if you are not using `VITE_SKIP_PAYMENT=true`.
+\*Required only if `VITE_SKIP_PAYMENT` is not `true`.
+
+> The telemedicine "join/start early" and "camera test" behaviour was controlled by `VITE_TELEMEDICINE_ALLOW_UPCOMING_JOIN` / `_ALLOW_UPCOMING_START` / `_CAMERA_TEST_MODE`. Those flags were **removed** (commit `5aa403d`); join/start is now gated strictly on the appointment being confirmed and dated today.
 
 ### Auth service — `services/auth-service/.env`
 
@@ -121,6 +120,7 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_SECRET` | Yes | Shared signing secret (must match all services) |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins, comma-separated |
+| `INTERNAL_SECRET` | Yes | Guards `GET /api/auth/internal/users/:id/status`; must match all backends |
 
 ### Patient service — `services/patient-service/.env`
 
@@ -134,6 +134,8 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
 | `QSTASH_TOKEN` | No | Empty locally; Upstash token in prod |
+| `INTERNAL_SECRET` | Yes | Account-status re-check against auth-service; must match all backends |
+| `AUTH_SERVICE_URL` | No | Default `http://auth-service:3001` |
 | `CLOUDINARY_CLOUD_NAME` | Yes* | Cloudinary cloud name (file uploads) |
 | `CLOUDINARY_API_KEY` | Yes* | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Yes* | Cloudinary API secret |
@@ -153,6 +155,9 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
+| `INTERNAL_SECRET` | Yes | Account-status re-check against auth-service; must match all backends |
+| `AUTH_SERVICE_URL` | No | Default `http://auth-service:3001` |
+| `APPOINTMENT_SERVICE_URL` | No | Default `http://appointment-service:3004` — used to verify appointment ownership before saving a prescription |
 
 ### Appointment service — `services/appointment-service/.env`
 
@@ -166,7 +171,8 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
 | `QSTASH_TOKEN` | No | Empty locally; Upstash token in prod |
-| `INTERNAL_SECRET` | Yes | Shared secret for service-to-service calls |
+| `INTERNAL_SECRET` | Yes | Shared secret for service-to-service calls; must match all backends |
+| `AUTH_SERVICE_URL` | No | Default `http://auth-service:3001` |
 | `SKIP_PAYMENT` | No | `true` skips payment confirmation in local/dev |
 | `PATIENT_SERVICE_URL` | No | Default `http://patient-service:3002` |
 | `DOCTOR_SERVICE_URL` | No | Default `http://doctor-service:3003` |
@@ -185,7 +191,8 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
 | `QSTASH_TOKEN` | No | Empty locally; Upstash token in prod |
-| `INTERNAL_SECRET` | Yes | Must match appointment service |
+| `INTERNAL_SECRET` | Yes | Must match all backends |
+| `AUTH_SERVICE_URL` | No | Default `http://auth-service:3001` |
 | `STRIPE_SECRET_KEY` | Yes | Stripe secret key (`sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Yes* | Stripe webhook signing secret |
 | `APPOINTMENT_SERVICE_URL` | No | Default `http://appointment-service:3004` |
@@ -226,6 +233,8 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
+| `INTERNAL_SECRET` | Yes | Account-status re-check against auth-service; must match all backends |
+| `AUTH_SERVICE_URL` | No | Default `http://auth-service:3001` |
 | `AGORA_APP_ID` | Yes | Agora App ID |
 | `AGORA_APP_CERTIFICATE` | Yes | Agora App Certificate |
 | `FRONTEND_URL` | Yes | e.g. `http://localhost:5173` (join links) |
@@ -243,7 +252,9 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | `JWT_SECRET` | Yes | Same as auth |
 | `JWT_EXPIRES_IN` | No | Default `7d` |
 | `ALLOWED_ORIGINS` | Yes | CORS origins |
-| `GEMINI_API_KEY` | Yes | Google Gemini API key |
+| `INTERNAL_SECRET` | Yes | Account-status re-check against auth-service; must match all backends |
+| `AUTH_SERVICE_URL` | No | Default `http://auth-service:3001` |
+| `GEMINI_API_KEY` | Yes | Google Gemini API key (model `gemini-flash-latest`) |
 | `PATIENT_SERVICE_URL` | No | Default `http://patient-service:3002` |
 | `DOCTOR_SERVICE_URL` | No | Default `http://doctor-service:3003` |
 
@@ -252,7 +263,8 @@ Real `.env` files are **gitignored**. Copy each `*.example` file and fill in val
 | Secret | Used by | Notes |
 |--------|---------|-------|
 | `JWT_SECRET` | **All** services | Must be identical everywhere |
-| `INTERNAL_SECRET` | appointment, payment, patient (internal routes) | Must match between callers |
+| `INTERNAL_SECRET` | **All 8 backend** services | `auth-service` exposes `GET /api/auth/internal/users/:id/status`; the other 7 call it on every request to re-check account status. Also guards the appointment expiry + inter-service payment/appointment calls. Must be byte-identical across all 8. |
+| `AUTH_SERVICE_URL` | patient, doctor, appointment, payment, telemedicine, ai-symptom | Base URL of `auth-service` for the status check. Default `http://auth-service:3001` locally; the deployed auth URL in prod. |
 | `QSTASH_TOKEN` | patient, appointment, payment (publishers) | Empty locally; Upstash token in prod |
 | `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` | notification, appointment, payment (consumers) | Empty locally; from Upstash in prod |
 | `MONGODB_URI` | Each service | Local Docker: `mongodb://mongo:27017/<db>` or Atlas SRV URIs |
