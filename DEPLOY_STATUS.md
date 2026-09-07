@@ -16,7 +16,7 @@
 | Security fixes #2 | `5aa403d` on `main` (pushed 2026-09-07) — IDOR, session hijack, stale-token, crashes — see §15 |
 | Regression fixes #3 | `9b99947` on `main` (pushed 2026-09-07) — full app regression test, 7 HIGH + 13 MEDIUM + LOW — see §16 |
 | Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
-| `main` HEAD (deployed) | `537af3f` |
+| `main` HEAD (deployed) | `537af3f` (code) · `b116d06` (incl. doc updates §15–§17 + Cloudinary verified) |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
