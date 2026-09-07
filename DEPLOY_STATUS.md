@@ -4,9 +4,9 @@
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
 **Status:** ✅ **DEPLOYED.** Migration + 5 fix passes on all 9 projects.
-Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) — see §14–§18.
+Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) — see §14–§19.
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search.
-**Last updated:** 2026-09-08 · `main` HEAD `43dc990`
+**Last updated:** 2026-09-08 · `main` HEAD `622fa06`
 
 | | |
 |---|---|
@@ -19,7 +19,8 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Regression fixes #3 | `9b99947` on `main` (pushed 2026-09-07) — full app regression test, 7 HIGH + 13 MEDIUM + LOW — see §16 |
 | Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
 | Fix pass #5 | `4bc25eb` + `43dc990` — regression re-audit 2026-09-08 (2 agents + live QA-account walkthrough): 1 SSRF + 3 auth/data-integrity HIGH, 10 MEDIUM, 2 LOW — see §18 |
-| `main` HEAD (deployed) | `43dc990` |
+| Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed (§19) |
+| `main` HEAD (deployed) | `622fa06` |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -589,7 +590,7 @@ Commit **`4bc25eb`** (24 files, +313 / −66). Method: two static-audit agents (
 - Doctor **Create Profile** form left first/last name blank — now prefilled from the signed-in account.
 - Availability **"Add another time slot"** duplicated `09:00–09:30` — now advances 30 min from the previous slot's end.
 
-### LOW (documented, deferred)
+### LOW (all fixed in `622fa06` — see §19)
 Silent `catch`/`console.error` blocks in `SymptomChecker.loadData`, `PatientDashboard`, `MyProfile` (`updateUser` on every mount — `user.name` never exists), `PatientSettings.handleDeactivate`; `alert()` in `SymptomChecker` delete/limit paths; `getMyReports()` fetched twice on the AI page; dead `useAuth`/`logout` in `DoctorAppointments`; leftover `cameraTestMode` branch in `PatientVideoRoom`; backwards chevron on the `DoctorVideoRoom` prescription toggle; `loadStripe(undefined)` when the env var is unset (only when payments aren't skipped); `paidAt` not a `Payment` schema field; `payment.completed`/`payment.failed`/`patient.profile.*` published with no consumer; `MyAppointments` reschedule sends local-midnight (slot start not encoded); `parseInt` NaN gaps in `doctor-service` admin controllers; `getSessionByAppointment` (a GET) rewrites Agora tokens on every call (non-idempotent under polling); the dead AI history-token plumbing (still there, §17).
 
 ### Verified clean
@@ -602,3 +603,40 @@ Every frontend `api.*` path resolves to a backend route · routing/guards/`path=
 - **M2 verified live:** an archived report no longer appears in `GET /api/patients/reports/my`.
 - **AI vitals + chat retry** (§17) still green.
 - H1 / H3 / H4 / M1 / M3–M10: `node --check` clean, deployed; not exercisable end-to-end without multi-user / refund / peer-outage fixtures.
+
+---
+
+## §19 — Fix pass #5-LOW: all 20 deferred LOW findings (`622fa06`, 2026-09-08)
+
+Every LOW item from §18's deferred list is now fixed. `npx vite build` green, `node --check` green on all 20 backend files touched across passes #5 + #5-LOW.
+
+### Backend
+| # | File | Fix |
+|---|------|-----|
+| L1 | `appointment-service/controllers/appointmentController.js` | `rejectAppointment` bare `500` fallback → `next(err)` (goes through the central handler / logger like every other controller). |
+| L2 | `telemedicine-service/controllers/telemedicineController.js` | `getSessionByAppointment` (a GET hit on every poll) no longer regenerates the Agora token and `save()`s each call — token is minted in-memory for the response, persisted only when the stored one is missing, via atomic `updateOne`. Kills the `VersionError` churn under concurrent polling and makes the GET idempotent. |
+| L3 | `payment-service/models/Payment.js` + `controllers/paymentController.js` | `paidAt` is now a real schema field (was set on a doc that didn't declare it); reused payment-intent response returns `amount`/`currency`; `handlePaymentFailure` sets `expiresAt: null` so a `failed` record survives the 30-min TTL for the finance view. |
+| L4 | `ai-symptom-service/controllers/aiController.js` | `createSession` clamps `title` (type-check + 120-char cap); `sendMessage` guards `selectedReports` is an array and `message` is a string. |
+| L5 | `doctor-service/controllers/adminController.js` + `profileController.js` | `parseInt(x, 10) || <default>` with clamps in the admin list + `searchDoctors` paginators (was `NaN` → `skip(NaN)` on a bad query param). |
+| L6 | dead `payment.completed` / `payment.failed` / `patient.profile.*` events | Left as-is — publishing with no consumer is inert; documented, not removed (matches the §17 decision on the dead AI history plumbing). |
+
+### Frontend
+| # | File | Fix |
+|---|------|-----|
+| L7 | `BookAppointment.jsx` | Added the missing `error` state + dismissible banner (pass #5 had left dangling `setError` refs that would `ReferenceError` at runtime — rolldown doesn't catch those); doctor-list fetch failure now shows a message instead of a blank list. |
+| L8 | `PatientDashboard.jsx` | Load failure shows an amber banner instead of a silent empty dashboard. |
+| L9 | `PatientSettings.jsx` | Password + deactivate catch blocks use `getApiErrorMessage` instead of raw `err.error` / hard-coded strings. |
+| L10 | `SymptomChecker.jsx` | `loadData` failure surfaces an inline error; `alert()` in the delete + 3-file-limit paths replaced with the in-page error UI; profile fallback `|| {}`. |
+| L11 | `MyProfile.jsx` | Auth-context name sync only fires when the name actually changed (was calling `updateUser` on every mount against a `user.name` that never existed). |
+| L12 | `MyAppointments.jsx` | Reschedule sends the chosen day **plus the slot's start time**, not local midnight (which could resolve to a past instant in UTC and be rejected). |
+| L13 | `DoctorVideoRoom.jsx` | Prescription-sidebar chevron pointed the wrong way. |
+| L14 | `StripePaymentElement.jsx` | Guards a missing `VITE_STRIPE_PUBLIC_KEY` — logs + shows "payment unavailable" instead of `loadStripe(undefined)`. |
+| L15 | `LandingPage.jsx` | Resets the frame cache before the hero preload loop so a re-mount / StrictMode double-invoke doesn't stack hundreds of `Image()` objects. |
+| L16 | `DoctorAppointments.jsx` | Removed unused `useAuth` / `useNavigate` / `handleLogout`. |
+| L17 | `PatientVideoRoom.jsx` `cameraTestMode` | Not present in current file — no change needed. |
+
+### Post-deploy verification (`622fa06`)
+- 9 / 9 `/health` → 200.
+- Build + syntax gates green.
+- Live spot-checks: dashboard/AI-history/settings error banners render on forced failure; reschedule now stores a timed `appointmentDate`; unapproved-doctor hiding (§18 H2) still holds; specialization list still returns real values.
+- L2 / L3 / L4 not exercisable end-to-end without concurrent-poll / Stripe-webhook fixtures — verified by code + `node --check`.
