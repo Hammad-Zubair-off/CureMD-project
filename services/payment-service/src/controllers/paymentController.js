@@ -193,11 +193,17 @@ export const stripeWebhook = async (req, res, next) => {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     let event;
-    
-    if (!webhookSecret || process.env.NODE_ENV === 'development') {
+
+    if (!webhookSecret) {
+        // No secret configured. Fail closed in production; only skip verification
+        // for local development.
+        if (process.env.NODE_ENV === 'production') {
+            logger.error('[Stripe] STRIPE_WEBHOOK_SECRET missing in production — rejecting webhook');
+            return res.status(500).json({ error: 'Webhook not configured' });
+        }
         try {
             event = JSON.parse(req.body.toString());
-            logger.warn('[Stripe] Webhook signature verification SKIPPED - dev mode');
+            logger.warn('[Stripe] Webhook signature verification SKIPPED - no secret (non-production)');
         } catch (error) {
             return res.status(400).json({ error: 'Invalid JSON body' });
         }
@@ -468,14 +474,20 @@ export const confirmPaymentFromFrontend = async (req, res, next) => {
 
 export const getAllPayments = async (req, res, next) => {
     try {
-        const { status, page = 1, limit = 10 } = req.query;
+        const { status, search } = req.query;
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
         const filter = {};
         if (status) filter.status = status;
+        if (search && search.trim()) {
+            const rx = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+            filter.$or = [{ appointmentId: rx }, { patientId: rx }];
+        }
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const skip = (page - 1) * limit;
 
         const [payments, total] = await Promise.all([
-            Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
+            Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
             Payment.countDocuments(filter),
         ]);
 
@@ -497,8 +509,8 @@ export const getAllPayments = async (req, res, next) => {
         res.status(200).json({
             success: true,
             total,
-            page: parseInt(page),
-            pages: Math.ceil(total / parseInt(limit)),
+            page,
+            pages: Math.ceil(total / limit),
             payments,
             stats: revenueAgg || {
                 totalRevenue: 0, refundedAmount: 0, pendingAmount: 0,

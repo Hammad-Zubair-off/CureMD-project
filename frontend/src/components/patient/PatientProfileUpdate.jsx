@@ -78,7 +78,8 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
         let { name, value } = e.target;
 
         if (name === 'contactNumber' || name === 'emergency.phone') {
-            value = value.replace(/[^0-9]/g, '').slice(0, 10);
+            const hasPlus = value.trim().startsWith('+');
+            value = (hasPlus ? '+' : '') + value.replace(/[^0-9]/g, '').slice(0, 15);
         }
 
         if (name.startsWith('emergency.')) {
@@ -203,9 +204,9 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                                 name="contactNumber"
                                 value={formData.contactNumber}
                                 onChange={handleChange}
-                                maxLength="10"
+                                maxLength="16"
                                 required
-                                placeholder="077 123 4567"
+                                placeholder="+1 202 555 0142"
                                 className={commonInputClass}
                             />
                         </InputWrapper>
@@ -236,13 +237,13 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
             {/* Medical Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {[
-                    { label: "Height", icon: Ruler, name: "height", unit: "cm", color: "blue", placeholder: "182" },
-                    { label: "Weight", icon: Weight, name: "weight", unit: "kg", color: "blue", placeholder: "78.5" },
-                    { label: "Blood", icon: Droplets, name: "bloodType", unit: "", color: "red", isSelect: true }
+                    { label: "Height", icon: Ruler, name: "height", unit: "cm", accent: "bg-blue-50 text-blue-600", placeholder: "182" },
+                    { label: "Weight", icon: Weight, name: "weight", unit: "kg", accent: "bg-blue-50 text-blue-600", placeholder: "78.5" },
+                    { label: "Blood", icon: Droplets, name: "bloodType", unit: "", accent: "bg-red-50 text-red-600", isSelect: true }
                 ].map((stat, i) => (
                     <div key={i} className={`bg-white rounded-xl border ${errors[stat.name] ? 'border-red-300' : 'border-slate-100'} p-8 shadow-sm hover:shadow-xl transition-all duration-300 group`}>
                         <div className="flex flex-col items-center text-center space-y-4">
-                            <div className={`p-4 rounded-xl bg-${stat.color}-50 text-${stat.color}-600 group-hover:scale-110 transition-transform`}>
+                            <div className={`p-4 rounded-xl ${stat.accent} group-hover:scale-110 transition-transform`}>
                                 <stat.icon className="w-6 h-6" />
                             </div>
                             <label className={`text-[10px] font-black uppercase tracking-widest ${errors[stat.name] ? 'text-red-500' : 'text-slate-400'}`}>{stat.label}</label>
@@ -346,7 +347,7 @@ export default function PatientProfileUpdate({ initialData, onSave, saving = fal
                             name="emergency.phone"
                             value={formData.emergencyContact.phone}
                             onChange={handleChange}
-                            maxLength="10"
+                            maxLength="16"
                             required
                             placeholder="Contact Number"
                             className={commonInputClass}

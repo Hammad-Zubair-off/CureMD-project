@@ -275,19 +275,15 @@ export default function DoctorTelemedicine() {
     };
 
     const FILTERS = [
-        { key: 'all',      label: 'All' },
-        { key: 'today',    label: 'Today' },
-        { key: 'upcoming', label: 'Upcoming' },
-        { key: 'past',     label: 'Past' },
+        { key: 'all',   label: 'All' },
+        { key: 'today', label: 'Today' },
     ];
 
     const filtered = appointments.filter(a => {
         const apptDate = new Date(a.appointmentDate);
         const now = new Date();
         const isToday = apptDate.toDateString() === now.toDateString();
-        if (filter === 'today')    return isToday;
-        if (filter === 'upcoming') return apptDate > now && !isToday;
-        if (filter === 'past')     return apptDate < now && !isToday;
+        if (filter === 'today') return isToday;
         return true;
     });
 

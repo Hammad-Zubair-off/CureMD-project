@@ -3,8 +3,9 @@ import { logger } from './logger.js';
 /**
  * Verifies the `Upstash-Signature` header on an incoming QStash delivery.
  *
- * If no signing keys are configured (local / dev), verification is skipped
- * and the request is accepted.
+ * Signing keys are REQUIRED in production — if they are missing there, every
+ * delivery is rejected (fail closed). Keyless acceptance is only allowed
+ * outside production (local dev / tests).
  */
 
 let receiver;
@@ -23,7 +24,13 @@ const getReceiver = async () => {
 
 export const verifyQstash = async (signature, rawBody) => {
     const r = await getReceiver();
-    if (!r) return true; // no keys -> local/dev, accept
+    if (!r) {
+        if (process.env.NODE_ENV === 'production') {
+            logger.error('[qstash] signing keys missing in production — rejecting delivery');
+            return false;
+        }
+        return true; // no keys -> local/dev, accept
+    }
     if (!signature) return false;
     try {
         return await r.verify({ signature, body: rawBody });

@@ -1,6 +1,6 @@
 const formatAppointmentDate = (appointmentDate) => {
     try {
-        return new Date(appointmentDate).toLocaleDateString('en-LK', {
+        return new Date(appointmentDate).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -17,7 +17,7 @@ export const appointmentCreatedPatientSms = ({
     timeSlot,
 }) => {
     const date = formatAppointmentDate(appointmentDate);
-    return `MediCare: Appointment booked with ${doctorFullName} on ${date} at ${timeSlot}. Ref: ${appointmentId}.`;
+    return `CureMD: Appointment booked with ${doctorFullName} on ${date} at ${timeSlot}. Ref: ${appointmentId}.`;
 };
 
 export const appointmentConfirmedPatientSms = ({
@@ -27,7 +27,7 @@ export const appointmentConfirmedPatientSms = ({
     timeSlot,
 }) => {
     const date = formatAppointmentDate(appointmentDate);
-    return `MediCare: Payment confirmed. Your appointment with ${doctorFullName} is confirmed for ${date} at ${timeSlot}. Ref: ${appointmentId}.`;
+    return `CureMD: Payment confirmed. Your appointment with ${doctorFullName} is confirmed for ${date} at ${timeSlot}. Ref: ${appointmentId}.`;
 };
 
 export const consultationCompletedPatientSms = ({
@@ -37,5 +37,15 @@ export const consultationCompletedPatientSms = ({
     timeSlot,
 }) => {
     const date = formatAppointmentDate(appointmentDate);
-    return `MediCare: Consultation completed with ${doctorFullName} (${date} ${timeSlot}). Thank you. Ref: ${appointmentId}.`;
+    return `CureMD: Consultation completed with ${doctorFullName} (${date} ${timeSlot}). Thank you. Ref: ${appointmentId}.`;
+};
+
+export const appointmentRescheduledPatientSms = ({
+    appointmentId,
+    doctorFullName,
+    appointmentDate,
+    timeSlot,
+}) => {
+    const date = formatAppointmentDate(appointmentDate);
+    return `CureMD: Your appointment with ${doctorFullName} has been rescheduled to ${date} at ${timeSlot}. Ref: ${appointmentId}.`;
 };

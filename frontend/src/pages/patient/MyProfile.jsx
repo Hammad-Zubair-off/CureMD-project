@@ -63,7 +63,7 @@ export default function MyProfile() {
 
                 setBookingProfileComplete(Boolean(profileRes.bookingProfileComplete));
 
-                const p = profileRes.profile || {};
+                const p = profileRes.profile || profileRes || {};
                 const u = userRes.user || userRes;
 
                 setProfileData({

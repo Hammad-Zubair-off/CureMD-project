@@ -6,6 +6,7 @@ import {
     appointmentCreatedPatientSms,
     appointmentConfirmedPatientSms,
     consultationCompletedPatientSms,
+    appointmentRescheduledPatientSms,
 } from '../templates/sms/patientSmsTemplates.js';
 import { logger } from '../utils/logger.js';
 
@@ -83,6 +84,9 @@ export const EVENT_HANDLERS = {
     },
     'consultation.completed': async (data) => {
         await sendPatientSms('consultation.completed', data, consultationCompletedPatientSms);
+    },
+    'appointment.rescheduled': async (data) => {
+        await sendPatientSms('appointment.rescheduled', data, appointmentRescheduledPatientSms);
     },
     'payment.refunded': handleRefundEmail,
 };

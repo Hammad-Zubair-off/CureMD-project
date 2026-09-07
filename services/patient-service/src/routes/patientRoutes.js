@@ -73,9 +73,8 @@ router.post('/snapshot', authorize('patient'), createSnapshot);
 // Get single snapshot — patient (own), doctor (appointment-verified), admin
 router.get('/snapshot/:snapshotId', authorize('patient', 'doctor', 'admin'), getSnapshot);
 
-// Internal
-
-// Must be LAST — catches /:userId after all static routes above
-router.get('/:userId', getPatientByUserId);
+// Must be LAST — catches /:userId after all static routes above.
+// Patient: own profile only. Doctor: only with a live DoctorHistoryAccess grant.
+router.get('/:userId', authorize('patient', 'doctor', 'admin'), getPatientByUserId);
 
 export default router;

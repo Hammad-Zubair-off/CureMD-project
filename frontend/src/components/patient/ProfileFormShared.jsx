@@ -77,9 +77,19 @@ export const BloodTypePicker = ({ value, onChange }) => {
     );
 };
 
+// Static class map — Tailwind cannot see class names built by string interpolation,
+// so `text-${colorClass}-500` etc. silently render unstyled.
+const TAG_COLORS = {
+    blue:   { icon: 'text-blue-500',   border: 'border-blue-100',   text: 'text-blue-700',   hover: 'hover:border-blue-200' },
+    orange: { icon: 'text-orange-500', border: 'border-orange-100', text: 'text-orange-700', hover: 'hover:border-orange-200' },
+    rose:   { icon: 'text-rose-500',   border: 'border-rose-100',   text: 'text-rose-700',   hover: 'hover:border-rose-200' },
+    amber:  { icon: 'text-amber-500',  border: 'border-amber-100',  text: 'text-amber-700',  hover: 'hover:border-amber-200' },
+};
+
 export const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder, colorClass = "blue" }) => {
     const [input, setInput] = useState('');
     const [confirmDelete, setConfirmDelete] = useState(null);
+    const c = TAG_COLORS[colorClass] || TAG_COLORS.blue;
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter') {
@@ -94,7 +104,7 @@ export const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder
     return (
         <div className="space-y-3">
             <div className="flex items-center space-x-2 px-1">
-                {Icon && <Icon className={`w-4 h-4 text-${colorClass}-500`} />}
+                {Icon && <Icon className={`w-4 h-4 ${c.icon}`} />}
                 <h3 className="text-sm font-bold text-slate-800">{label}</h3>
             </div>
             <div className="bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-4">
@@ -102,7 +112,7 @@ export const TagInput = ({ label, icon: Icon, tags, onAdd, onRemove, placeholder
                     {tags.map((tag, i) => (
                         <span 
                             key={i} 
-                            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-${colorClass}-100 text-${colorClass}-700 shadow-sm transition-all hover:border-${colorClass}-200`}
+                            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border ${c.border} ${c.text} shadow-sm transition-all ${c.hover}`}
                         >
                             <span>{tag}</span>
                             <button 

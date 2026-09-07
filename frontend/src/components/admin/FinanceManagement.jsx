@@ -78,10 +78,6 @@ export default function FinanceManagement({ showToast }) {
     const fetchPayments = useCallback(async () => {
         setLoading(true);
         try {
-            const params = new URLSearchParams({ page, limit: LIMIT });
-            if (statusFilter) params.append('status', statusFilter);
-            if (search) params.append('search', search);
-
             const data = await adminService.getAllPayments({
                 page,
                 limit: LIMIT,
@@ -100,12 +96,13 @@ export default function FinanceManagement({ showToast }) {
             } else {
                 // Compute from current page — approximation
                 const all = data.payments || [];
+                const sum = (list) => list.reduce((s, p) => s + (Number(p.amount) || 0), 0);
                 setStats({
-                    totalRevenue: all.filter(p => p.status === 'succeeded').reduce((s, p) => s + p.amount, 0),
+                    totalRevenue: sum(all.filter(p => p.status === 'succeeded')),
                     totalTransactions: data.total || all.length,
                     successfulPayments: all.filter(p => p.status === 'succeeded').length,
-                    refundedAmount: all.filter(p => p.status === 'refunded').reduce((s, p) => s + p.amount, 0),
-                    pendingAmount: all.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0),
+                    refundedAmount: sum(all.filter(p => p.status === 'refunded')),
+                    pendingAmount: sum(all.filter(p => p.status === 'pending')),
                     failedCount: all.filter(p => p.status === 'failed').length,
                 });
             }

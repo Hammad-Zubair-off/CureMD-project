@@ -23,6 +23,7 @@ const SERVICE_URLS = {
 const EVENT_ROUTES = {
     'appointment.confirmed': [{ service: 'notification', path: '/api/notifications/events' }],
     'appointment.created': [{ service: 'notification', path: '/api/notifications/events' }],
+    'appointment.rescheduled': [{ service: 'notification', path: '/api/notifications/events' }],
     'consultation.completed': [{ service: 'notification', path: '/api/notifications/events' }],
     'payment.refunded': [
         { service: 'notification', path: '/api/notifications/events' },

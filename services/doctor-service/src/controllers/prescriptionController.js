@@ -5,7 +5,7 @@ const APPOINTMENT_SERVICE_URL = process.env.APPOINTMENT_SERVICE_URL || 'http://a
 
 // POST /api/doctors/prescriptions
 
-export const savePrescription = async (req, res) => {
+export const savePrescription = async (req, res, next) => {
     try {
         const doctorId = req.user.id;
         const { appointmentId, patientId, sessionId, medications, diagnosis, instructions } = req.body;
@@ -42,14 +42,14 @@ export const savePrescription = async (req, res) => {
         return res.status(200).json({ success: true, data: prescription });
     } catch (err) {
         logger.error('savePrescription error:', err);
-        return res.status(500).json({ success: false, message: 'Failed to save prescription.' });
+        return next(err);
     }
 };
 
 
 // POST /api/doctors/prescriptions/:id/issue
 
-export const issuePrescription = async (req, res) => {
+export const issuePrescription = async (req, res, next) => {
     try {
         const doctorId = req.user.id;
         const { id } = req.params;
@@ -69,13 +69,13 @@ export const issuePrescription = async (req, res) => {
         return res.status(200).json({ success: true, data: prescription });
     } catch (err) {
         logger.error('issuePrescription error:', err);
-        return res.status(500).json({ success: false, message: 'Failed to issue prescription.' });
+        return next(err);
     }
 };
 
 // GET /api/doctors/prescriptions/appointment/:appointmentId
 
-export const getPrescriptionByAppointment = async (req, res) => {
+export const getPrescriptionByAppointment = async (req, res, next) => {
     try {
         const doctorId = req.user.id;
         const { appointmentId } = req.params;
@@ -87,13 +87,13 @@ export const getPrescriptionByAppointment = async (req, res) => {
         return res.status(200).json({ success: true, data: prescription });
     } catch (err) {
         logger.error('getPrescriptionByAppointment error:', err);
-        return res.status(500).json({ success: false, message: 'Failed to fetch prescription.' });
+        return next(err);
     }
 };
 
 // GET /api/doctors/prescriptions/patient/:patientId
 
-export const getPrescriptionsByPatient = async (req, res) => {
+export const getPrescriptionsByPatient = async (req, res, next) => {
     try {
         const { patientId } = req.params;
         const { appointmentId } = req.query;
@@ -106,11 +106,15 @@ export const getPrescriptionsByPatient = async (req, res) => {
         if (appointmentId) {
             query.appointmentId = appointmentId;
         }
+        // A doctor may only see prescriptions they themselves issued.
+        if (req.user.role === 'doctor') {
+            query.doctorId = req.user.id;
+        }
 
         const prescriptions = await Prescription.find(query).sort({ issuedAt: -1 });
         return res.status(200).json({ success: true, data: prescriptions });
     } catch (err) {
         logger.error('getPrescriptionsByPatient error:', err);
-        return res.status(500).json({ success: false, message: 'Failed to fetch prescriptions.' });
+        return next(err);
     }
 };

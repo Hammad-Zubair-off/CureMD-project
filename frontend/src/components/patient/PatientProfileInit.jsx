@@ -144,7 +144,7 @@ export default function PatientProfileInit({ onSave, saving = false }) {
                         value={formData.contactNumber}
                         onChange={handleChange}
                         required
-                        placeholder="0771234567 or +94771234567"
+                        placeholder="e.g. +1 202 555 0142"
                         inputMode="tel"
                         className={commonInputClass}
                     />

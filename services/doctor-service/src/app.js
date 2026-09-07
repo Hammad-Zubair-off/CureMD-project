@@ -23,11 +23,6 @@ app.get('/health', (req, res) => {
     });
 });
 
-app.use((req, res, next) => {
-    console.log(`[DEBUG] ${req.method} ${req.originalUrl}`);
-    next();
-});
-
 // Routes
 app.use('/api/doctors', doctorRoutes);
 

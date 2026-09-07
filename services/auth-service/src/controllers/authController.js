@@ -378,9 +378,9 @@ export const getAllUsers = async (req, res, next) => {
             isActive,
             isApproved,
             search,
-            page = 1,
-            limit = 20,
         } = req.query;
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
         const filter = {};
         if (role) filter.role = role;
@@ -396,12 +396,12 @@ export const getAllUsers = async (req, res, next) => {
             ];
         }
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const skip = (page - 1) * limit;
 
         const [users, total, activeCount, inactiveCount, approvedCount, pendingCount] = await Promise.all([
             User.find(filter)
                 .skip(skip)
-                .limit(parseInt(limit))
+                .limit(limit)
                 .sort({ lastName: 1, firstName: 1 }),
             User.countDocuments(filter),
             User.countDocuments({ ...filter, isActive: true }),
@@ -417,8 +417,8 @@ export const getAllUsers = async (req, res, next) => {
             pendingCount,
             activeCount,
             inactiveCount,
-            page: parseInt(page),
-            pages: Math.ceil(total / parseInt(limit)),
+            page,
+            pages: Math.ceil(total / limit),
             users: users.map(safeUser),
         });
     } catch (err) {

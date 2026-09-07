@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import appointmentService from '../../services/appointmentService';
 import PatientInfoDrawer from '../../components/doctor/PatientInfoDrawer';
 import {
-    Activity, LogOut, Calendar, Clock, User, Phone,
+    Calendar, Clock, Phone,
     Mail, ChevronLeft, ChevronRight, RefreshCw,
     CheckCircle, XCircle, AlertCircle, Loader2,
-    Stethoscope, CreditCard, FileText, Filter, Info,
+    CreditCard, FileText, Filter, Info,
 } from 'lucide-react';
 import Dropdown from '../../components/common/Dropdown';
 

@@ -3,12 +3,12 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import ErrorBoundary from './components/common/ErrorBoundary'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsAndConditions from './pages/TermsAndConditions'
 
 // Admin
 import AdminDashboard from './pages/AdminDashboard'
-import PaymentPage from './pages/PaymentPage'
 import PaymentSuccess from './pages/PaymentSuccess'
 import NotFound from './pages/NotFound'
 
@@ -37,6 +37,7 @@ import DoctorVideoRoom from './pages/doctor/DoctorVideoRoom'
 
 function App() {
   return (
+    <ErrorBoundary>
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
@@ -46,14 +47,6 @@ function App() {
       <Route path="/terms-conditions" element={<TermsAndConditions />} />
 
       {/* Admin Routes */}
-      <Route
-        path='/payment'
-        element={
-          <ProtectedRoute requiredRole="patient">
-            <PaymentPage />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path='/payment-success'
         element={
@@ -108,6 +101,7 @@ function App() {
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </ErrorBoundary>
   )
 }
 

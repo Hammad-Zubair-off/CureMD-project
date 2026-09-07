@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import appointmentService from '../../services/appointmentService';
 import doctorService from '../../services/doctorService';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 // Helpers
 const formatDate = (dateStr) => {
@@ -459,8 +460,9 @@ const PrescriptionPanel = ({ prescription }) => (
 // Horizontal Appointment Card
 const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPayNow, paymentTimeLeftLabel }) => {
     const { status } = appointment;
-    const isPaid = status === 'confirmed' || status === 'completed';
-    const isPending = status === 'pending';
+    const isPaid = appointment.paymentStatus === 'paid';
+    const isRefunded = appointment.paymentStatus === 'refunded';
+    const isPending = status === 'pending' && appointment.paymentStatus !== 'paid';
     const [expanded, setExpanded] = useState(false);
     const [prescription, setPrescription] = useState(null);
     const [prescriptionLoading, setPrescriptionLoading] = useState(false);
@@ -558,6 +560,11 @@ const AppointmentCard = ({ appointment, onCancel, onReschedule, onPayNow, canPay
                     {isPaid && (
                         <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold uppercase tracking-wider">
                             Paid
+                        </span>
+                    )}
+                    {isRefunded && (
+                        <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold uppercase tracking-wider">
+                            Refunded
                         </span>
                     )}
                     {isPending && (
@@ -834,7 +841,7 @@ export default function MyAppointments() {
                 unpaid: unpaidData.total ?? null,
             });
         } catch (err) {
-            setError(err.error || 'Failed to load appointments. Please try again.');
+            setError(getApiErrorMessage(err, 'Failed to load appointments. Please try again.'));
         } finally {
             setLoading(false);
         }
@@ -877,7 +884,7 @@ export default function MyAppointments() {
             setCancelTarget(null);
             fetchAppointments();
         } catch (err) {
-            showToast(err.error || 'Failed to cancel appointment', 'error');
+            showToast(getApiErrorMessage(err, 'Failed to cancel appointment'), 'error');
         } finally {
             setActionLoading(false);
         }
@@ -899,7 +906,7 @@ export default function MyAppointments() {
                 showToast('Appointment confirmed successfully');
                 fetchAppointments();
             } catch (err) {
-                showToast(err.error || 'Failed to confirm appointment', 'error');
+                showToast(getApiErrorMessage(err, 'Failed to confirm appointment'), 'error');
             } finally {
                 setActionLoading(false);
             }
@@ -961,7 +968,7 @@ export default function MyAppointments() {
             setRescheduleAvailability([]);
             fetchAppointments();
         } catch (err) {
-            showToast(err.error || 'Failed to reschedule appointment', 'error');
+            showToast(getApiErrorMessage(err, 'Failed to reschedule appointment'), 'error');
         } finally {
             setActionLoading(false);
         }

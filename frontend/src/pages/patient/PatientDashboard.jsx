@@ -92,9 +92,13 @@ export default function PatientDashboard() {
                 let nextSessionStr = '---';
                 if (upcomingApps.length > 0) {
                     const next = upcomingApps[0];
-                    const appointmentMs = new Date(next.appointmentDate).getTime();
-                    const diffDays = Math.ceil((appointmentMs - Date.now()) / (1000 * 60 * 60 * 24));
-                    nextSessionStr = diffDays <= 0 ? 'Today' : `In ${diffDays} Day${diffDays > 1 ? 's' : ''}`;
+                    const apptDate = new Date(next.appointmentDate);
+                    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+                    const startOfAppt = new Date(apptDate); startOfAppt.setHours(0, 0, 0, 0);
+                    const diffDays = Math.round((startOfAppt - startOfToday) / (1000 * 60 * 60 * 24));
+                    nextSessionStr = diffDays <= 0
+                        ? 'Today'
+                        : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} Days`;
                 }
 
                 setStats({
@@ -219,7 +223,7 @@ export default function PatientDashboard() {
                                             </span>
                                         </div>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            {app.specialty} • {app.clinicName || 'Clinical Sanctuary'}
+                                            {app.specialty}{app.clinicName ? ` • ${app.clinicName}` : ''}
                                         </p>
                                         <div className="flex items-center space-x-4 mt-2">
                                             <div className="flex items-center space-x-1.5 text-slate-500">

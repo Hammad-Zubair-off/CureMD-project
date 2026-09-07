@@ -582,7 +582,7 @@ export const rejectAppointment = async (req, res, next) => {
             appointment,
         });
     } catch (err) {
-        console.error('Reject Appointment Error:', err); // 🔍 always log
+        logger.error(`Reject Appointment Error: ${err.message}`);
 
         // Handle Mongoose version conflict
         if (err.name === 'VersionError') {

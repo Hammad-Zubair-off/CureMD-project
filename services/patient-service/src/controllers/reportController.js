@@ -1,6 +1,8 @@
 import streamifier from 'streamifier';
 import cloudinary from '../config/cloudinary.js';
 import MedicalReport from '../models/MedicalReport.js';
+import MedicalHistorySnapshot from '../models/MedicalHistorySnapshot.js';
+import DoctorHistoryAccess from '../models/DoctorHistoryAccess.js';
 import { logger } from '../utils/logger.js';
 
 // Helpers
@@ -117,13 +119,14 @@ export const getMyReports = async (req, res, next) => {
 
 /**
  * @desc    Get a single report by ID.
- *          Patient can only access their own reports.
- *          Doctor can access reports that are referenced in a snapshot
- *          linked to their appointment (enforced at the snapshot level —
- *          this endpoint trusts that the doctor already passed snapshot access).
+ *          - Patient: own reports only.
+ *          - Doctor: only if the report is part of a FULL snapshot for this
+ *            patient AND the doctor holds a live DoctorHistoryAccess grant
+ *            (which is issued only after appointment ownership is verified).
+ *          - Admin: allowed.
  *
  * @route   GET /api/patients/reports/:reportId
- * @access  Private — patient (own), doctor, admin
+ * @access  Private — patient (own), doctor (granted), admin
  */
 export const getReportById = async (req, res, next) => {
     try {
@@ -136,13 +139,35 @@ export const getReportById = async (req, res, next) => {
             });
         }
 
-        // Patient can only access their own reports
-        if (req.user.role === 'patient' && report.userId.toString() !== req.user.id) {
-            return res.status(403).json({
-                success: false,
-                error: 'You are not authorized to view this report.',
-            });
+        const ownerId = report.userId.toString();
+
+        if (req.user.role === 'patient') {
+            if (ownerId !== req.user.id) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'You are not authorized to view this report.',
+                });
+            }
+        } else if (req.user.role === 'doctor') {
+            const [inSnapshot, grant] = await Promise.all([
+                MedicalHistorySnapshot.exists({
+                    userId: report.userId,
+                    medicalReports: report._id,
+                }),
+                DoctorHistoryAccess.findOne({
+                    doctorId: req.user.id,
+                    patientId: ownerId,
+                    expiresAt: { $gt: new Date() },
+                }),
+            ]);
+            if (!inSnapshot || !grant) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'You do not have access to this report.',
+                });
+            }
         }
+        // admin/superadmin: allowed through
 
         res.status(200).json({ success: true, report });
     } catch (err) {

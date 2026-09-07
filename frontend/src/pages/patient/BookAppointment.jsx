@@ -11,7 +11,7 @@ import Dropdown from '../../components/common/Dropdown';
 import doctorService from '../../services/doctorService';
 
 const DoctorCard = ({ doctor, onBookNow, onViewDetails, bookLoading }) => {
-    const initials = `${doctor.firstName[0]}${doctor.lastName[0]}`;
+    const initials = `${doctor.firstName?.[0] ?? ''}${doctor.lastName?.[0] ?? ''}`;
 
     return (
         <div
@@ -46,7 +46,7 @@ const DoctorCard = ({ doctor, onBookNow, onViewDetails, bookLoading }) => {
                 <div>
                     <p className="text-xs text-slate-400">Consultation Fee</p>
                     <p className="text-base font-bold text-slate-900">
-                        ${doctor.consultationFee.toLocaleString()}
+                        ${(doctor.consultationFee ?? 0).toLocaleString()}
                     </p>
                 </div>
                 <button

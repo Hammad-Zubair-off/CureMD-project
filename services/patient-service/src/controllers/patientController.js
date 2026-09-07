@@ -1,4 +1,5 @@
 import Patient from '../models/Patient.js';
+import DoctorHistoryAccess from '../models/DoctorHistoryAccess.js';
 import { logger } from '../utils/logger.js';
 import { validateBookingProfile, validateProfileUpdate } from '../validators/patientValidator.js';
 import { publishEvent } from '../utils/eventBus.js';
@@ -121,9 +122,9 @@ export const saveBookingProfile = async (req, res, next) => {
  *          Patient must have completed onboarding first.
  *
  *  COMMUNICATION:
- *          → Method 2 (RabbitMQ): publishes 'patient.profile.updated'
- *            so any service caching patient contact data can refresh its snapshot.
- *            Fire and forget — profile update succeeds regardless.
+ *          → publishes 'patient.profile.updated' (fire and forget) so any
+ *            service caching patient contact data can refresh its snapshot.
+ *            Profile update succeeds regardless.
  *
  * @route   PUT /api/patients/me
  * @access  Private — patient
@@ -267,6 +268,22 @@ export const getPatientByUserId = async (req, res, next) => {
                 success: false,
                 error: 'You are not authorized to view this profile.',
             });
+        }
+
+        // Doctors may only read a patient profile they have been granted access
+        // to (grant issued after appointment ownership is verified elsewhere).
+        if (req.user.role === 'doctor') {
+            const grant = await DoctorHistoryAccess.findOne({
+                doctorId: req.user.id,
+                patientId: req.params.userId,
+                expiresAt: { $gt: new Date() },
+            });
+            if (!grant) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'You do not have access to this patient profile.',
+                });
+            }
         }
 
         const profile = await Patient.findOne({ userId: req.params.userId });

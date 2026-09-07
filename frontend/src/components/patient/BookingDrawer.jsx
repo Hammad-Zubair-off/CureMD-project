@@ -85,7 +85,8 @@ const formatDateDisplay = (date) =>
         year: "numeric",
     });
 
-const PHONE_REGEX = /^(?:0?7\d{8}|\+947\d{8})$/;
+const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
+const normalizePhone = (v) => String(v || '').replace(/[\s()-]/g, '');
 const SKIP_PAYMENT = import.meta.env.VITE_SKIP_PAYMENT === 'true';
 
 // Step Indicator component
@@ -155,11 +156,11 @@ const Step1 = ({
         formData.selectedDate &&
         formData.timeSlot &&
         formData.reason.trim().length >= 10 &&
-        PHONE_REGEX.test(formData.patientPhone.trim()) &&
+        PHONE_REGEX.test(normalizePhone(formData.patientPhone)) &&
         formData.sharingMode;
 
-    const phoneError = formData.patientPhone.trim().length > 0 && !PHONE_REGEX.test(formData.patientPhone.trim())
-        ? 'Enter a valid phone number (07XXXXXXXX or +947XXXXXXXX).'
+    const phoneError = formData.patientPhone.trim().length > 0 && !PHONE_REGEX.test(normalizePhone(formData.patientPhone))
+        ? 'Enter a valid phone number (7-15 digits, optionally starting with +).'
         : '';
 
     return (
@@ -168,7 +169,7 @@ const Step1 = ({
             {/* Doctor Summary */}
             <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                    {doctor.firstName[0]}{doctor.lastName[0]}
+                    {doctor.firstName?.[0]}{doctor.lastName?.[0]}
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900">{doctor.fullName}</p>
@@ -176,7 +177,7 @@ const Step1 = ({
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-slate-400">Fee</p>
-                    <p className="font-bold text-slate-900">${doctor.consultationFee.toLocaleString()}</p>
+                    <p className="font-bold text-slate-900">${(doctor.consultationFee ?? 0).toLocaleString()}</p>
                 </div>
             </div>
 
@@ -319,21 +320,15 @@ const Step1 = ({
                     <input
                         type="tel"
                         inputMode="tel"
-                        pattern="^(?:0?7\d{8}|\+947\d{8})$"
+                        pattern="^\+?[0-9]{7,15}$"
                         maxLength={16}
-                        placeholder="e.g. 0771234567 or +94771234567"
+                        placeholder="e.g. +1 202 555 0142"
                         value={formData.patientPhone}
                         onChange={(e) => {
                             let v = e.target.value.replace(/[^\d+]/g, '');
-                            if (v.includes('+')) {
-                                v = '+' + v.replace(/\+/g, '');
-                            }
-                            if (v.startsWith('+94')) {
-                                v = v.slice(0, 12);
-                            } else {
-                                v = v.replace(/\+/g, '').slice(0, 10);
-                            }
-
+                            // keep at most one leading '+', digits after
+                            const hasPlus = v.startsWith('+');
+                            v = (hasPlus ? '+' : '') + v.replace(/\+/g, '').slice(0, 15);
                             setFormData((f) => ({ ...f, patientPhone: v }))
                         }}
                         className={`w-full pl-9 pr-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all
@@ -451,7 +446,7 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack, fron
                     {/* Doctor Info (Matched to Step 1) */}
                     <div className="flex items-center space-x-3 pb-4 border-b border-slate-200">
                         <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                            {doctor.firstName[0]}{doctor.lastName[0]}
+                            {doctor.firstName?.[0]}{doctor.lastName?.[0]}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="font-semibold text-slate-900">{doctor.fullName}</p>
@@ -482,7 +477,7 @@ const Step2 = ({ doctor, formData, appointmentId, onPaymentSuccess, onBack, fron
                     {/* Total */}
                     <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
                         <span className="font-semibold text-slate-700">Total Due</span>
-                        <span className="text-lg font-bold text-slate-900">${doctor.consultationFee.toLocaleString()}</span>
+                        <span className="text-lg font-bold text-slate-900">${(doctor.consultationFee ?? 0).toLocaleString()}</span>
                     </div>
                 </div>
             </div>
@@ -556,7 +551,7 @@ const SkipPaymentConfirm = ({ doctor, formData, loading, error, onConfirm }) => 
             <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 space-y-4">
                 <div className="flex items-center space-x-3 pb-4 border-b border-slate-200">
                     <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                        {doctor.firstName[0]}{doctor.lastName[0]}
+                        {doctor.firstName?.[0]}{doctor.lastName?.[0]}
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="font-semibold text-slate-900">{doctor.fullName}</p>
@@ -583,7 +578,7 @@ const SkipPaymentConfirm = ({ doctor, formData, loading, error, onConfirm }) => 
                 </div>
                 <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
                     <span className="font-semibold text-slate-700">Total Due</span>
-                    <span className="text-lg font-bold text-slate-900">${doctor.consultationFee.toLocaleString()}</span>
+                    <span className="text-lg font-bold text-slate-900">${(doctor.consultationFee ?? 0).toLocaleString()}</span>
                 </div>
             </div>
         </div>

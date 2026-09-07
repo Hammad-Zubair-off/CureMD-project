@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import {
     Activity, LogOut, Users, Stethoscope, CreditCard,
-    CheckCircle, XCircle, X, ShieldCheck, Crown, Plus,
+    CheckCircle, XCircle, ShieldCheck, Crown, Plus,
     ChevronDown, Menu, X as CloseIcon, Clock,
     RefreshCw, AlertTriangle
 } from 'lucide-react';
@@ -14,6 +14,7 @@ import DoctorManagement from '../components/admin/DoctorManagement';
 import FinanceManagement from '../components/admin/FinanceManagement';
 import Toast from '../components/common/Toast';
 import adminService from '../services/adminService';
+import { getApiErrorMessage } from '../utils/apiError';
 
 // Simplified Navigation Structure
 const navItems = [
@@ -94,7 +95,7 @@ export default function AdminDashboard() {
             setShowCreateAdmin(false);
             setCreateAdminForm({ firstName: '', lastName: '', email: '', password: '' });
         } catch (err) {
-            setCreateAdminError(err.error || err.message || 'Failed to create admin');
+            setCreateAdminError(getApiErrorMessage(err, 'Failed to create admin'));
         } finally {
             setCreateAdminLoading(false);
         }
@@ -323,7 +324,7 @@ export default function AdminDashboard() {
                                             <input
                                                 type="password"
                                                 required
-                                                placeholder="Min 8 characters"
+                                                placeholder="8+ chars, upper, lower, number, symbol"
                                                 value={createAdminForm.password}
                                                 onChange={e => setCreateAdminForm(f => ({ ...f, password: e.target.value }))}
                                                 className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"

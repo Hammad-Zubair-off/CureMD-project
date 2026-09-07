@@ -1,11 +1,11 @@
 // ─ Shared constants ─
-const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'expired'];
+const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'expired', 'past'];
 const VALID_SHARING_MODES = ['none', 'MINIMAL', 'FULL'];
 // ─ Regex patterns ─
 // Time slot format: HH:MM - HH:MM (e.g. "09:00 - 09:30")
 const TIME_SLOT_REGEX = /^([01]\d|2[0-3]):[0-5]\d - ([01]\d|2[0-3]):[0-5]\d$/;
-// Phone format: 7-15 chars, allows digits, +, -, spaces, parentheses
-const PHONE_REGEX = /^(?:0?7\d{8}|\+947\d{8})$/;
+// Phone format: optional leading +, then 7-15 digits (matches patient/doctor service validators)
+const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
 
 // ─ Helpers ─
 
@@ -58,9 +58,9 @@ export const validateBookAppointment = ({
     if (!TIME_SLOT_REGEX.test(timeSlot))
         errors.push('Invalid timeSlot format. Expected HH:MM - HH:MM (e.g. "09:00 - 09:30").');
 
-    // patientPhone — basic format validation
-    if (!PHONE_REGEX.test(patientPhone))
-        errors.push('Invalid phone number. Must be Sri Lankan mobile format: 07XXXXXXXX or +947XXXXXXXX.');
+    // patientPhone — basic format validation (international: optional +, 7-15 digits)
+    if (!PHONE_REGEX.test(String(patientPhone).replace(/[\s()-]/g, '')))
+        errors.push('Invalid phone number. Use 7-15 digits, optionally starting with "+".');
 
     // appointmentDate — must be in the future
     if (toUTC(appointmentDate) <= new Date())

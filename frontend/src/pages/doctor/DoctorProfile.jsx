@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import doctorService from '../../services/doctorService';
+import { getApiErrorMessage } from '../../utils/apiError';
 import {
     UserCircle, Plus, Trash2, Save, RefreshCw,
     CheckCircle2, AlertCircle, GraduationCap, Briefcase,
@@ -193,7 +194,7 @@ export default function DoctorProfile() {
             }
             setTimeout(() => setSuccess(''), 4000);
         } catch (err) {
-            setError(err.response?.data?.message || err.response?.data?.error || 'Failed to save profile.');
+            setError(getApiErrorMessage(err.response?.data || err, 'Failed to save profile.'));
         } finally {
             setSaving(false);
         }
@@ -296,7 +297,7 @@ export default function DoctorProfile() {
                             <Input
                                 value={phoneInput}
                                 onChange={e => setPhoneInput(e.target.value)}
-                                placeholder="+94771234567"
+                                placeholder="+1 202 555 0142"
                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPhone(); } }}
                                 disabled={form.phoneNumbers.length >= 5}
                                 className={form.phoneNumbers.length >= 5 ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}

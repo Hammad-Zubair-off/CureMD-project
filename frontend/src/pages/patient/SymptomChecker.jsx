@@ -130,7 +130,8 @@ export default function SymptomChecker() {
 
       if (!targetSessionId) {
         const newSessionRes = await aiService.createSession({ vitals: patientVitals });
-        targetSessionId = newSessionRes.session._id;
+        targetSessionId = (newSessionRes.session || newSessionRes.data)?._id;
+        if (!targetSessionId) throw new Error('Could not start a new consultation. Please try again.');
       }
 
       const response = await aiService.sendMessage(targetSessionId, {
@@ -369,7 +370,7 @@ export default function SymptomChecker() {
               </div>
               <div className="flex-1">
                 <h3 className="font-black text-sm uppercase tracking-wider leading-none">Emergency Detected</h3>
-                <p className="text-xs font-bold text-red-50 mt-1 opacity-90">Please call 1990 immediately. Chat restricted for safety.</p>
+                <p className="text-xs font-bold text-red-50 mt-1 opacity-90">Call your local emergency number (e.g. 911) immediately. Chat restricted for safety.</p>
               </div>
             </div>
           )}
@@ -558,7 +559,7 @@ export default function SymptomChecker() {
                 <div className="grid grid-cols-1 gap-4">
                   {vaultReports.map(report => {
                     const isSelected = !!selectedReports.find(r => r._id === report._id);
-                    const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(report.fileUrl?.split('.').pop().toLowerCase());
+                    const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(report.fileUrl?.split('.').pop()?.toLowerCase());
 
                     return (
                       <button

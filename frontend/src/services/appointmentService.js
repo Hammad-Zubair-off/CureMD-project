@@ -17,21 +17,7 @@ const appointmentService = {
     },
 
     /**
-     * Confirm appointment after payment
-     * Called in BookingDrawer — Step 2 (simulated payment)
-     */
-    confirmAppointment: async (appointmentId, paymentId) => {
-        try {
-            const response = await api.patch(`/appointments/${appointmentId}/confirm`, { paymentId });
-            return response.data;
-        } catch (error) {
-            const errData = error.response?.data;
-            throw errData || { error: error.message || 'Something went wrong.' };
-        }
-    },
-
-    /**
-     * Confirm appointment without payment (local dev only)
+     * Confirm appointment without payment (used when payment is skipped)
      */
     skipPayment: async (appointmentId) => {
         try {

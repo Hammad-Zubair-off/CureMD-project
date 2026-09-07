@@ -112,21 +112,22 @@ export default function Telemedicine() {
         if (!isToday(appt.appointmentDate)) return;
 
         setJoinLoadingId(appt._id);
+        setError('');
         try {
             const sessionData = await telemedicineService.getSessionJoinDataByAppointment(appt._id);
 
             if (!sessionData) {
-                alert('Session is not available yet.');
+                setError('Session is not available yet.');
                 return;
             }
 
             if (sessionData.status === 'ended') {
-                alert('This session has already ended.');
+                setError('This session has already ended.');
                 return;
             }
 
             if (!sessionData.token || !sessionData.agoraAppId) {
-                alert('Session is not ready yet. Please try again in a moment.');
+                setError('Session is not ready yet. Please try again in a moment.');
                 return;
             }
 
@@ -139,11 +140,11 @@ export default function Telemedicine() {
         } catch (err) {
             const status = err?.response?.status;
             if (status === 404) {
-                alert('Doctor has not started this session yet.');
+                setError('Doctor has not started this session yet.');
             } else if (status === 403) {
-                alert('You are not allowed to join this session.');
+                setError('You are not allowed to join this session.');
             } else {
-                alert('Failed to join session. Please try again.');
+                setError('Failed to join session. Please try again.');
             }
         } finally {
             setJoinLoadingId(null);

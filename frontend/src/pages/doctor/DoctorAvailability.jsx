@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import doctorService from '../../services/doctorService';
+import { getApiErrorMessage } from '../../utils/apiError';
 import {
     CalendarDays, Plus, Trash2, Save, RefreshCw,
     CheckCircle2, AlertCircle, Clock, Info, ChevronDown, ChevronUp
@@ -187,7 +188,7 @@ export default function DoctorAvailability() {
             await doctorService.setAvailability({ availability });
             setSuccess('Availability saved successfully!');
         } catch (err) {
-            setError(err.response?.data?.message || err.response?.data?.error || 'Failed to save availability.');
+            setError(getApiErrorMessage(err.response?.data || err, 'Failed to save availability.'));
         } finally {
             setSaving(false);
         }

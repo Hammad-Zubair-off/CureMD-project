@@ -71,9 +71,15 @@ const ensureSessionForAppointment = async (appointmentId, req) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return null;
 
-  const apptRes = await appointmentClient.get(`/api/appointments/${appointmentId}`, {
-    headers: { Authorization: authHeader },
-  });
+  let apptRes;
+  try {
+    apptRes = await appointmentClient.get(`/api/appointments/${appointmentId}`, {
+      headers: { Authorization: authHeader },
+    });
+  } catch (err) {
+    logger.error(`ensureSessionForAppointment: appointment lookup failed: ${err.message}`);
+    return null;
+  }
 
   const appointment = apptRes.data?.appointment;
   if (!appointment) return null;
@@ -114,9 +120,18 @@ export const createSession = async (req, res, next) => {
       });
     }
 
-    const apptRes = await appointmentClient.get(`/api/appointments/${appointmentId}`, {
-      headers: { Authorization: req.headers.authorization },
-    });
+    let apptRes;
+    try {
+      apptRes = await appointmentClient.get(`/api/appointments/${appointmentId}`, {
+        headers: { Authorization: req.headers.authorization },
+      });
+    } catch (err) {
+      logger.error(`createSession: appointment lookup failed: ${err.message}`);
+      return res.status(503).json({
+        success: false,
+        error: 'Could not verify the appointment right now. Please try again in a moment.',
+      });
+    }
 
     const appointment = apptRes.data?.appointment;
     if (!appointment || String(appointment.doctorId) !== String(doctorId)) {
