@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import authService from '../../services/authService';
+import { getApiErrorMessage } from '../../utils/apiError';
 import {
     KeyRound, ShieldAlert, Eye, EyeOff,
     CheckCircle2, XCircle, Loader2, AlertTriangle,
@@ -106,7 +107,9 @@ export default function PatientSettings() {
             showToast('Password updated successfully!');
             setPwForm({ current: '', next: '', confirm: '' });
         } catch (err) {
-            const errs = err?.errors || (err?.error ? [err.error] : ['Failed to update password.']);
+            const errs = Array.isArray(err?.errors) && err.errors.length
+                ? err.errors
+                : [getApiErrorMessage(err, 'Failed to update password.')];
             setPwErrors(errs);
         } finally {
             setPwLoading(false);
@@ -130,7 +133,7 @@ export default function PatientSettings() {
             await logout();
             navigate('/login', { replace: true });
         } catch (err) {
-            setDeactivateError(err?.error || 'Failed to deactivate account. Check your password.');
+            setDeactivateError(getApiErrorMessage(err, 'Failed to deactivate account. Check your password.'));
         } finally {
             setDeactivateLoading(false);
         }

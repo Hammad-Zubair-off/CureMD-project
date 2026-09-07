@@ -42,6 +42,7 @@ export default function PatientDashboard() {
     });
     const [upcomingAppointments, setUpcomingAppointments] = useState([]);
     const [dailyQuote, setDailyQuote] = useState({ text: "", author: "" });
+    const [loadError, setLoadError] = useState(false);
 
     const fallbackQuotes = [
         { text: "Every step toward health is a victory. Keep going!", author: "Care Team" },
@@ -108,6 +109,7 @@ export default function PatientDashboard() {
                 });
             } catch (err) {
                 console.error('Failed to fetch dashboard data:', err);
+                setLoadError(true);
             } finally {
                 setLoading(false);
             }
@@ -136,6 +138,11 @@ export default function PatientDashboard() {
 
     return (
         <div className="p-4 md:p-8 lg:p-12 max-w-[1400px] mx-auto space-y-8 md:space-y-10">
+            {loadError && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-sm px-4 py-3">
+                    Some of your dashboard data couldn't be loaded. Refresh to try again.
+                </div>
+            )}
             {/* Header Banner */}
             <div className="bg-blue-600 rounded-2xl p-6 md:p-8 lg:p-10 relative overflow-hidden text-white flex flex-col md:flex-row md:items-center justify-between shadow-2xl shadow-blue-600/20">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/20 -mr-24 -mt-24 rounded-full blur-3xl"></div>

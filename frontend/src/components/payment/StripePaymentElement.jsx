@@ -4,7 +4,12 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { Lock, AlertCircle } from 'lucide-react';
 import paymentService from '../../services/paymentService';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+if (!STRIPE_KEY) {
+    // eslint-disable-next-line no-console
+    console.error('VITE_STRIPE_PUBLIC_KEY is not set — the payment form will not load.');
+}
+const stripePromise = STRIPE_KEY ? loadStripe(STRIPE_KEY) : Promise.resolve(null);
 
 const PaymentForm = ({ paymentIntentId, onSuccess, onError }) => {
     const stripe = useStripe();
@@ -132,6 +137,15 @@ export const StripePaymentWrapper = ({ clientSecret, paymentIntentId, onSuccess,
             labels: 'floating',
         },
         };
+
+    if (!STRIPE_KEY) {
+        return (
+            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>Online payment isn't available right now. Please contact support.</span>
+            </div>
+        );
+    }
 
     return (
         <Elements stripe={stripePromise} options={options}>

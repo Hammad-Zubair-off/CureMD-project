@@ -60,7 +60,7 @@ export default function SymptomChecker() {
 
       // Fetch profile vitals to hold in state for new sessions
       const profileRes = await patientService.getMyProfile();
-      const p = profileRes.profile || profileRes;
+      const p = profileRes.profile || profileRes || {};
       setPatientVitals({
         age: p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 'Unknown',
         gender: p.gender,
@@ -76,6 +76,7 @@ export default function SymptomChecker() {
       setVaultReports(rawReports.filter(r => !r.isDeleted));
     } catch (error) {
       console.error("Failed to initialize AI Chat:", error);
+      setChatError("Couldn't load your consultation history — refresh to try again.");
     }
   };
 
@@ -206,7 +207,7 @@ export default function SymptomChecker() {
       }
     } catch (error) {
       console.error("Failed to delete session:", error);
-      alert("Failed to delete consultation history. Please try again.");
+      setChatError("Couldn't delete that consultation — please try again.");
     }
   };
 
@@ -214,7 +215,10 @@ export default function SymptomChecker() {
     if (selectedReports.find(r => r._id === report._id)) {
       setSelectedReports(selectedReports.filter(r => r._id !== report._id));
     } else {
-      if (selectedReports.length >= 3) return alert("You can only attach up to 3 files.");
+      if (selectedReports.length >= 3) {
+        setChatError("You can attach at most 3 files to a message.");
+        return;
+      }
       setSelectedReports([...selectedReports, report]);
     }
   };

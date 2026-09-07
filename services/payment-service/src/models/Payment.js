@@ -36,7 +36,8 @@ const paymentSchema = new mongoose.Schema(
         },
         refundId: { type: String, default: null },
         refundedAt: { type: Date, default: null },
- 
+        paidAt: { type: Date, default: null },
+
         metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
         expiresAt: {
             type: Date,

@@ -604,11 +604,8 @@ export const rejectAppointment = async (req, res, next) => {
             });
         }
 
-        // Fallback — controlled error response
-        return res.status(500).json({
-            success: false,
-            error: 'Something went wrong while rejecting the appointment.',
-        });
+        // Delegate anything else to the central error handler
+        return next(err);
     }
 };
 

@@ -277,20 +277,28 @@ export const getSessionByAppointment = async (req, res, next) => {
       });
     }
 
-    // Refresh role token each request for resilience against expiry.
+    // Mint a fresh role token for the response each request (resilient against
+    // expiry). This is a plain GET/poll target, so do NOT rewrite the stored
+    // token on every call — that made the endpoint non-idempotent and caused
+    // VersionError churn under concurrent polling. Persist only when the stored
+    // token is missing, and via an atomic updateOne so no version conflict.
     let token = null;
     let uid = null;
 
     if (isDoctorOwner) {
       token = generateRtcToken(session.channelName, 1, 'publisher');
       uid = 1;
-      session.doctorToken = token;
-      await session.save();
+      if (!session.doctorToken) {
+        session.doctorToken = token;
+        await Session.updateOne({ _id: session._id }, { $set: { doctorToken: token } });
+      }
     } else if (isPatientOwner) {
       token = generateRtcToken(session.channelName, 2, 'publisher');
       uid = 2;
-      session.patientToken = token;
-      await session.save();
+      if (!session.patientToken) {
+        session.patientToken = token;
+        await Session.updateOne({ _id: session._id }, { $set: { patientToken: token } });
+      }
     }
 
     return res.status(200).json({

@@ -174,7 +174,9 @@ export const getSessionById = async (req, res, next) => {
  */
 export const createSession = async (req, res, next) => {
     try {
-        const { title = null, vitals = null } = req.body;
+        const { vitals = null } = req.body;
+        const rawTitle = req.body.title;
+        const title = typeof rawTitle === 'string' ? rawTitle.trim().slice(0, 120) || null : null;
 
         const session = new AITriageSession({
             patientId: req.user.id,
@@ -213,9 +215,10 @@ export const createSession = async (req, res, next) => {
  */
 export const sendMessage = async (req, res, next) => {
     try {
-        const { message, selectedReports = [] } = req.body;
+        const { message } = req.body;
+        const selectedReports = Array.isArray(req.body.selectedReports) ? req.body.selectedReports : [];
 
-        if (!message || !message.trim()) {
+        if (!message || typeof message !== 'string' || !message.trim()) {
             return res.status(400).json({ success: false, error: 'message is required.' });
         }
 

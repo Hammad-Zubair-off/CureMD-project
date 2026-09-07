@@ -474,8 +474,8 @@ export default function DoctorVideoRoom() {
                         <FileText className="w-4 h-4" />
                         Prescription
                         {sidebarOpen
-                            ? <ChevronRight className="w-3.5 h-3.5" />
-                            : <ChevronLeft className="w-3.5 h-3.5" />
+                            ? <ChevronLeft className="w-3.5 h-3.5" />
+                            : <ChevronRight className="w-3.5 h-3.5" />
                         }
                     </button>
                 </div>

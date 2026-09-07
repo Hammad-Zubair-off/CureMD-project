@@ -100,6 +100,9 @@ export default function LandingPage() {
     const currentFrame = (index) =>
       `/hero/ezgif-frame-${(index + 1).toString().padStart(3, '0')}.jpg`;
 
+    // Reset first so a re-mount (or React StrictMode's double-invoke in dev)
+    // doesn't stack up hundreds of Image() objects.
+    imagesRef.current = [];
     for (let i = 0; i < frameCount; i++) {
       const img = new Image();
       img.src = currentFrame(i);

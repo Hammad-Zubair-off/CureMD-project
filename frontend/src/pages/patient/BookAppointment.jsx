@@ -149,6 +149,7 @@ export default function BookAppointment() {
     const [checkingProfile, setCheckingProfile] = useState(false);
     const [showIncompleteModal, setShowIncompleteModal] = useState(false);
     const [pendingBookingAction, setPendingBookingAction] = useState(null);
+    const [error, setError] = useState('');
 
     // Drawer / modal state
     const [bookingDoctor, setBookingDoctor] = useState(null);
@@ -179,6 +180,7 @@ export default function BookAppointment() {
             } catch (err) {
                 console.error('Failed to fetch doctors:', err);
                 setDoctors([]);
+                setError(getApiErrorMessage(err, "Couldn't load the doctor list. Refresh to try again."));
             } finally {
                 setDoctorsLoading(false);
             }
@@ -324,6 +326,15 @@ export default function BookAppointment() {
 
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto relative">
+            {error && (
+                <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="flex-1">{error}</span>
+                    <button type="button" onClick={() => setError('')} className="text-red-400 hover:text-red-600">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
             {/* Global Loader for Profile Check */}
             {checkingProfile && (
                 <div className="fixed inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center">

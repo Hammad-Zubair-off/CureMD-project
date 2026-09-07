@@ -110,6 +110,8 @@ export const createPaymentIntent = async (req, res, next) => {
                     clientSecret: intent.client_secret,
                     paymentId: existing._id,
                     paymentIntentId: intent.id,
+                    amount: existing.amount,
+                    currency: existing.currency,
                 });
             }
         }
@@ -277,9 +279,11 @@ const handlePaymentSuccess = async (intent) => {
 //  Private: handle failed payment 
 const handlePaymentFailure = async (intent) => {
     try {
+        // Clear the TTL so a `failed` record isn't auto-deleted after 30 min —
+        // the admin finance view needs the history.
         await Payment.findOneAndUpdate(
             { stripePaymentIntentId: intent.id },
-            { status: 'failed' }
+            { status: 'failed', expiresAt: null }
         );
 
         const payment = await Payment.findOne({ stripePaymentIntentId: intent.id });

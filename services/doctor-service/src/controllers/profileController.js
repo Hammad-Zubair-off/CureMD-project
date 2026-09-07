@@ -136,8 +136,8 @@ export const searchDoctors = async (req, res, next) => {
             if (maxFee !== undefined) filter.consultationFee.$lte = Number(maxFee);
         }
 
-        const pageNum = Math.max(1, parseInt(page));
-        const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 12));
         const skip = (pageNum - 1) * limitNum;
 
         const [doctors, total] = await Promise.all([

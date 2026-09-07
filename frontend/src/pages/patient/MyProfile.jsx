@@ -72,10 +72,11 @@ export default function MyProfile() {
                     fullName: u.fullName || u.displayName || u.name || p.fullName
                 });
                 
-                // Sync auth context if needed
+                // Sync auth context only when the name actually changed
                 const freshName = u.fullName || u.displayName || u.name;
-                if (freshName && freshName !== user?.name) {
-                    updateUser({ name: freshName });
+                const currentName = user?.fullName || user?.displayName || user?.name;
+                if (freshName && freshName !== currentName) {
+                    updateUser({ name: freshName, fullName: freshName });
                 }
             } catch (err) {
                 setMessage({ type: 'error', text: 'Failed to load profile data.' });

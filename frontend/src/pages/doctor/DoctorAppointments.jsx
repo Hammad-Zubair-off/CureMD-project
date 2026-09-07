@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import appointmentService from '../../services/appointmentService';
 import PatientInfoDrawer from '../../components/doctor/PatientInfoDrawer';
 import {
@@ -140,9 +138,6 @@ const AppointmentCard = ({ appt, onMoreInfo }) => (
 );
 
 export default function DoctorAppointments() {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-
     const [appointments, setAppointments] = useState([]);
     const [total, setTotal] = useState(0);
     const [pages, setPages] = useState(1);
@@ -182,8 +177,6 @@ export default function DoctorAppointments() {
         .filter(a => ['confirmed', 'pending'].includes(a.status) && new Date(a.appointmentDate) >= new Date())
         .sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate))
         .slice(0, 3);
-
-    const handleLogout = async () => { await logout(); navigate('/'); };
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans">

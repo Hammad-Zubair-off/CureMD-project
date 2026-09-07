@@ -954,13 +954,26 @@ export default function MyAppointments() {
         }
     };
 
+    // Combine the chosen day with the slot's start time before sending, so the
+    // stored appointmentDate carries the real time (matches the booking flow)
+    // and isn't a local-midnight timestamp that can land in the past in UTC.
+    const combineDateAndSlotStart = (date, slot) => {
+        const start = slot?.split(' - ')[0];
+        const d = new Date(date);
+        if (start) {
+            const [h, m] = start.split(':').map(Number);
+            d.setHours(h, m, 0, 0);
+        }
+        return d.toISOString();
+    };
+
     // Reschedule confirm
     const handleRescheduleConfirm = async (newDate, newSlot) => {
         setActionLoading(true);
         try {
             await appointmentService.rescheduleAppointment(
                 rescheduleTarget._id,
-                newDate.toISOString(),
+                combineDateAndSlotStart(newDate, newSlot),
                 newSlot
             );
             showToast('Appointment rescheduled successfully');

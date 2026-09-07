@@ -5,8 +5,8 @@ import { Doctor } from '../models/Doctor.js';
 export const getPendingDoctors = async (req, res, next) => {
     try {
         const { page = 1, limit = 20 } = req.query;
-        const pageNum = Math.max(1, parseInt(page));
-        const limitNum = Math.min(50, parseInt(limit));
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
         const skip = (pageNum - 1) * limitNum;
 
         const [doctors, total] = await Promise.all([
@@ -34,8 +34,8 @@ export const getPendingDoctors = async (req, res, next) => {
 export const getAllDoctors = async (req, res, next) => {
     try {
         const { isApproved, isActive, page = 1, limit = 20 } = req.query;
-        const pageNum = Math.max(1, parseInt(page));
-        const limitNum = Math.min(50, parseInt(limit));
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
         const skip = (pageNum - 1) * limitNum;
 
         const filter = {};
