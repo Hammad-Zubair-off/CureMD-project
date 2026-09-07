@@ -3,8 +3,8 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ Migration complete — merged to `main`, deployed, tested · ✅ fix passes #1 (`c7b6eba`), #2 security (`5aa403d`), #3 full regression (`9b99947`) all deployed to 9 projects and verified — see §14, §15, §16 · ✅ live 2-person Agora video call verified 2026-09-07
-**Last updated:** 2026-09-07
+**Status:** ✅ Migration complete — merged to `main`, deployed, tested · ✅ fix passes #1 (`c7b6eba`), #2 security (`5aa403d`), #3 full regression (`9b99947`), #4 AI-chat reliability + vitals (`73bbe8f`, `537af3f`) all deployed to 9 projects and verified — see §14–§17 · ✅ live 2-person Agora video call verified 2026-09-07
+**Last updated:** 2026-09-08
 
 | | |
 |---|---|
@@ -15,7 +15,8 @@
 | Regression fixes #1 | branch `bugfixes` @ `6023d9e`, merged `c7b6eba` — see §14 |
 | Security fixes #2 | `5aa403d` on `main` (pushed 2026-09-07) — IDOR, session hijack, stale-token, crashes — see §15 |
 | Regression fixes #3 | `9b99947` on `main` (pushed 2026-09-07) — full app regression test, 7 HIGH + 13 MEDIUM + LOW — see §16 |
-| `main` HEAD (deployed) | `9b99947` |
+| Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
+| `main` HEAD (deployed) | `537af3f` |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -308,11 +309,12 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 | 6 | Local machine security cleanup: delete `dburi,txt.txt` and `vercel-token.txt` from Desktop (user reports done); **revoke the `curemd-db-fix` Vercel token** used 2026-09-07; delete `claude-deploy` tokens at vercel.com → Account Settings → Tokens | user | high |
 | 7 | Render services — **skipped by user** (already suspended) | — | ✅ |
 | 8 | Configure real Stripe (test then live) — set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` **and** frontend `VITE_SKIP_PAYMENT` → `false`, redeploy | user | low |
-| 9 | ~~Gemini `503`~~ — **done 2026-09-07**: re-tested end-to-end, working. | — | ✅ |
+| 9 | ~~Gemini `503`~~ — **done 2026-09-07 / hardened 2026-09-08** (§17): `callGemini` now retries with backoff + falls back across models; verified 5/5 → 8/8. | — | ✅ |
 | 10 | ~~Reconcile `README.md`~~ — **done 2026-09-07** (§15). | — | ✅ |
 | 11 | Move `pk_test_` out of `docker-compose.yml` line 39 into an env var — publishable key, tidiness not a leak | either | low |
 | 12 | Rotate the MongoDB user password (`komotech329_db_user`) to something stronger than `komotechpass123` — update all 8 `MONGODB_URI` + redeploy (`scripts/fix-mongo-uris.mjs` automates the Vercel side) | user | medium |
-| 13 | `ai-symptom-service`: decide whether the orphaned history-token chain (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI` + unused `patientClient`/`doctorClient`) should be wired up or deleted — currently the AI only sees vitals the frontend passes | either | low |
+| 13 | `ai-symptom-service` orphaned history-token chain (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI` + unused `patientClient`/`doctorClient`) — **investigated 2026-09-08** (§17): confirmed fully dead (zero callers). Leaving it has **no runtime impact**; the only note is `POST /api/patients/history-token` is a live JWT-minting endpoint with no consumer (returns only the caller's own sanitised data). User chose to keep it for now and instead extend the live path (blood type + meds — done, `537af3f`). Delete later if desired. | either | low |
+| 14 | Branding: "MediCare" strings vs "CureMD" project name across frontend + emails — **skipped by user** | — | ✅ |
 
 ---
 
@@ -480,3 +482,65 @@ Commit **`9b99947`** on `main` (40 files, +321 / −997). Deployed to all 9 proj
 - **M3 / phone placeholders:** deployed bundle has zero `1990` / `Suwa Seriya` / `+94771234567` / `07XXXXXXXX` strings.
 - **Live 2-participant Agora video call** — confirmed working by the user.
 - Backend IDOR / webhook / QStash / notification / `next(err)` fixes: `node --check` clean, logic mirrors existing patterns; not exercisable live without multi-user fixtures.
+
+---
+
+## 17. AI chat reliability + patient-vitals context — 2026-09-08
+
+### Problem (from user video)
+The AI symptom checker answered the first message but "sometimes" ignored follow-ups.
+Reproduced by hammering `POST /api/ai/sessions/:id/message`: **3 of 5 messages failed**.
+
+Root cause: `gemini-flash-latest` returns `503 "This model is currently experiencing
+high demand"` intermittently. Two compounding bugs made it invisible:
+
+1. **Backend (`ai-symptom-service`) had no retry** — a single `generateContent` call;
+   a transient 503 fell through to `next(err)` → generic **500** with the raw
+   `GoogleGenerativeAI Error` string.
+2. **Frontend (`SymptomChecker`) swallowed the error** — the `catch` block deleted
+   the optimistic user bubble and showed **nothing**: no toast, no retry prompt.
+   The question just vanished.
+
+### Fix — `73bbe8f`
+- `callGemini` wrapper: retry **3×** with exponential backoff (400 / 800 / 1600 ms)
+  on 429 / 5xx, then fall back across models
+  (`gemini-flash-latest` → `gemini-flash-lite-latest` → `gemini-2.0-flash`).
+- `sendMessage`: user + AI messages are now persisted **together, only after a
+  successful reply** — a failed attempt leaves no orphaned user message in the
+  transcript (previously the user message was saved before the Gemini call).
+- 503 / 5xx / "high demand" → clean **503** "The AI is temporarily overloaded —
+  your message was not sent, please try again", instead of a raw 500.
+- Frontend: on error, keeps the message visible, shows a dismissible red banner,
+  and restores the text + attachments so the user can resend in one tap.
+
+**Verified:** immediately after deploy **8/8** messages succeeded; re-checked
+2026-09-08 **5/5**. (Was ~40% before the fix.)
+
+### Enhancement — `537af3f` (blood type + current medications)
+The AI seeded new sessions from a `patientVitals` object the frontend builds from
+the live profile — but only forwarded `age, gender, chronicConditions, allergies`.
+
+- `SymptomChecker.jsx`: `patientVitals` now also includes `bloodType` and
+  `currentMedications` (both already returned by `getMyProfile`).
+- `ai-symptom createSession`: rolling-summary seed adds guarded
+  "Blood Type: …" and "Current Medications: …" lines (omitted when empty).
+
+Gives the triage model medication context it previously lacked (interactions,
+symptoms that are med side-effects, fever-masking drugs, anticoagulants).
+No new API call, no schema change.
+
+### AI history-token pipeline — investigated, left as-is
+`patient-service` `POST /api/patients/history-token` + `GET /api/patients/history/ai`
+(behind `verifyHistoryToken`) and `ai-symptom-service`'s `patientClient` /
+`callService` / `config/services.js` form a complete but **fully unwired** chain:
+no frontend call site, `aiController.js` never imports the client, no service hits
+`/history/ai`. It was superseded by the current "frontend reads its own profile,
+passes vitals inline" path, which is simpler and uses the **live** profile rather
+than frozen per-appointment snapshots. Leaving it has no runtime cost; the only
+note is the live, consumer-less JWT-minter (`/history-token`), which only ever
+returns the caller's own sanitised data. Kept for now (task §11.13).
+
+### Post-deploy status (2026-09-08)
+- 9 / 9 `/health` → 200; login + DB reads OK.
+- AI chat 5/5, then 8/8 with the retry path.
+- `main` HEAD `537af3f`; working tree clean.
