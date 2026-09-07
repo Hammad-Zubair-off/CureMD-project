@@ -113,7 +113,7 @@ export const searchDoctors = async (req, res, next) => {
 
         // Restrict to admin-approved doctors (fail open if auth-service is down).
         const approved = await getApprovedDoctorIdSet();
-        if (approved) {
+        if (approved && approved.size) {
             filter.userId = { $in: [...approved] };
         }
 
@@ -175,7 +175,7 @@ export const getSpecializations = async (req, res, next) => {
     try {
         const query = { isActive: true };
         const approved = await getApprovedDoctorIdSet();
-        if (approved) {
+        if (approved && approved.size) {
             query.userId = { $in: [...approved] };
         }
         const specializations = await Doctor.distinct('specialization', query);
