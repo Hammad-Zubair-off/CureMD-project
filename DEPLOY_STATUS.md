@@ -3,7 +3,7 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ Migration complete — merged to `main`, deployed, tested · ✅ regression fix pass #1 (`c7b6eba`) + security fix pass #2 (`5aa403d`) both deployed to all 9 projects and verified — see §14, §15
+**Status:** ✅ Migration complete — merged to `main`, deployed, tested · ✅ fix passes #1 (`c7b6eba`), #2 security (`5aa403d`), #3 full regression (`9b99947`) all deployed to 9 projects and verified — see §14, §15, §16 · ✅ live 2-person Agora video call verified 2026-09-07
 **Last updated:** 2026-09-07
 
 | | |
@@ -14,7 +14,8 @@
 | `main` / `backend` HEAD (deployed) | `7c77746` |
 | Regression fixes #1 | branch `bugfixes` @ `6023d9e`, merged `c7b6eba` — see §14 |
 | Security fixes #2 | `5aa403d` on `main` (pushed 2026-09-07) — IDOR, session hijack, stale-token, crashes — see §15 |
-| `main` HEAD (deployed) | `5aa403d` |
+| Regression fixes #3 | `9b99947` on `main` (pushed 2026-09-07) — full app regression test, 7 HIGH + 13 MEDIUM + LOW — see §16 |
+| `main` HEAD (deployed) | `9b99947` |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -299,17 +300,19 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 
 | # | Task | Owner | Priority |
 |---|---|---|---|
-| 1 | **Seed an admin/superadmin account** into `auth-db` (same insert `scripts/seed-admin.sh` does) — blocks #2 | user | high |
-| 2 | With that admin, verify end-to-end: admin dashboard, and all doctor-approved flows (edit profile, set availability, accept/reject appts, mark complete, prescriptions, start a telemedicine session). Only auth guards are confirmed today. | user | high |
-| 3 | Book with a real email; confirm the `$` receipt arrives (Brevo verified once on 09-04, not since) | user | high |
-| 4 | Test a live video call (Agora, 2 participants + cameras) | user | high |
-| 5 | Delete throwaway test account `curemd-sectest+1788729735@example.com` (needs admin — depends on #1) | user | low |
-| 6 | Local machine security cleanup: delete `dburi,txt.txt` and `vercel-token.txt` from Desktop; `npx vercel logout`; delete `claude-deploy` tokens at vercel.com → Account Settings → Tokens | user | high |
-| 7 | Delete / stop the Render services once satisfied with Vercel | user | medium |
-| 8 | Configure real Stripe (test then live) — steps in `MIGRATION.md` / thread; set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` **and** frontend `VITE_SKIP_PAYMENT` → `false`, redeploy | user | low |
-| 9 | ~~If Gemini keeps `503`-ing, change the model id~~ — **done 2026-09-07**: re-tested end-to-end, working; 09-04 `503` was transient | — | ✅ |
-| 10 | ~~Reconcile `README.md`~~ — **done 2026-09-07** (§15). `Insturctions.md` left as a historical tutorial. | — | ✅ |
-| 11 | Move `pk_test_` out of `docker-compose.yml` (line 39) into an env var — it's a Stripe **publishable** key (client-side by design, not a real secret), so this is tidiness not a leak | either | low |
+| 1 | ~~Seed an admin/superadmin account~~ — **done 2026-09-07**: `scripts/seed-admin-atlas.mjs` created `admin.test@curemd.dev` + `superadmin.test@curemd.dev` in `auth-db`. | — | ✅ |
+| 2 | ~~Verify admin dashboard + doctor-approved flows end-to-end~~ — **done 2026-09-07** (§16): logged in as admin, clicked through User/Doctor/Finance management, exercised approve / reject / activate / deactivate / delete; logged in as `doctor.test`, verified profile / availability / appointments / telemedicine. Findings folded into the §16 fix pass. | — | ✅ |
+| 3 | Book with a real email; confirm the `$` receipt arrives — **deferred by user** (needs live Stripe; Brevo path verified on 09-04) | user | low |
+| 4 | ~~Test a live 2-participant Agora video call~~ — **done 2026-09-07**: user confirmed the doctor↔patient video session works. | — | ✅ |
+| 5 | Delete throwaway test accounts (`curemd-sectest+…`, `curemd-gemtest+…`, `rollcheck+…`, `patient.test`, `doctor.test`, `admin.test`, `superadmin.test`, the pending `*Doc` doctors, junk `DBNAME` database) once done testing | user | low |
+| 6 | Local machine security cleanup: delete `dburi,txt.txt` and `vercel-token.txt` from Desktop (user reports done); **revoke the `curemd-db-fix` Vercel token** used 2026-09-07; delete `claude-deploy` tokens at vercel.com → Account Settings → Tokens | user | high |
+| 7 | Render services — **skipped by user** (already suspended) | — | ✅ |
+| 8 | Configure real Stripe (test then live) — set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` **and** frontend `VITE_SKIP_PAYMENT` → `false`, redeploy | user | low |
+| 9 | ~~Gemini `503`~~ — **done 2026-09-07**: re-tested end-to-end, working. | — | ✅ |
+| 10 | ~~Reconcile `README.md`~~ — **done 2026-09-07** (§15). | — | ✅ |
+| 11 | Move `pk_test_` out of `docker-compose.yml` line 39 into an env var — publishable key, tidiness not a leak | either | low |
+| 12 | Rotate the MongoDB user password (`komotech329_db_user`) to something stronger than `komotechpass123` — update all 8 `MONGODB_URI` + redeploy (`scripts/fix-mongo-uris.mjs` automates the Vercel side) | user | medium |
+| 13 | `ai-symptom-service`: decide whether the orphaned history-token chain (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI` + unused `patientClient`/`doctorClient`) should be wired up or deleted — currently the AI only sees vitals the frontend passes | either | low |
 
 ---
 
@@ -413,3 +416,67 @@ Supporting changes: `axios` added to `doctor-service` (`package.json` + regenera
 
 ### Still not verified (carried forward — see §11)
 Admin dashboard + doctor-approved actions end-to-end (no admin account seeded on prod — §11.1/§11.2); real receipt email since 09-04; live Agora video; live Stripe; Cloudinary uploads.
+*(Update: admin dashboard, doctor flows, and live Agora video all verified 2026-09-07 — see §16.)*
+
+---
+
+## 16. Full regression test & fix pass #3 — 2026-09-07
+
+Commit **`9b99947`** on `main` (40 files, +321 / −997). Deployed to all 9 projects; headline fixes verified live.
+
+### Method
+- Two static-audit agents: one over the entire frontend (`frontend/src`, every page/component/service), one over all 8 backend services (routes, controllers, middleware, validators, event bus, models), cross-referencing frontend `api.*` calls against backend routes.
+- Live click-through of every page as **patient** (`patient.test`), **doctor** (`doctor.test`), and **admin** (`admin.test`) — every nav item, button, filter, modal, and the full booking → confirm → cancel and approve/reject/activate/deactivate/delete flows.
+- Seeded fixtures: `scripts/seed-admin-atlas.mjs` (admin + superadmin), `scripts/seed-videocall-test.mjs` (patient + approved doctor + today's confirmed appointment).
+
+### Findings & fixes — `9b99947`
+
+**HIGH**
+| Finding | Fix |
+|---|---|
+| Booking rejected every non-Sri-Lankan phone number — `PHONE_REGEX = /^(?:0?7\d{8}\|\+947\d{8})$/` on `BookingDrawer.jsx` **and** `appointment-service/validators/appointmentValidator.js`; the input handler also stripped `+` and capped at 10 digits for anything not `+94`. Verified live: `+1…` was blocked. | Both regexes → `/^\+?[0-9]{7,15}$/`; input handler keeps one leading `+` and up to 15 digits; placeholder/error copy updated. Re-verified live end-to-end. |
+| No React error boundary — any render throw blanked the whole SPA (this is what turned the `ALLOW_UPCOMING_TEST_START` typo into a full outage). | New `components/common/ErrorBoundary.jsx` wrapping `<Routes>`; shows a recoverable fallback + reload button. |
+| `BookAppointment.jsx` `DoctorCard` — `doctor.firstName[0]` / `doctor.consultationFee.toLocaleString()` unguarded in `.map()`; one malformed doctor row would white-screen "Find your Specialist". | Optional-chained + `?? 0` (also hardened the 3 duplicate spots in `BookingDrawer.jsx`). |
+| **IDOR** — `patient-service` `getReportById`: ownership enforced only for `role==='patient'`; any authenticated doctor could pull any patient's report (incl. raw Cloudinary file URL) by ObjectId. | Doctor access now requires a live `DoctorHistoryAccess` grant **and** the report to be in a `MedicalHistorySnapshot` for that patient. |
+| **IDOR** — `GET /patients/:userId` had no `authorize()` and no doctor-appointment gate. | Added `authorize('patient','doctor','admin')` + a `DoctorHistoryAccess`-grant check for doctors. |
+| Stripe webhook signature bypass when `STRIPE_WEBHOOK_SECRET` unset **or** `NODE_ENV==='development'`. | Fail closed in production (500 "not configured"); bypass no longer keyed on `NODE_ENV`. |
+| QStash `/events` consumers (`appointment`, `payment`, `notification`) `verifyQstash` returned `true` when signing keys were absent → unauthenticated appointment deletion / Stripe refunds if misconfigured. | In production, missing keys → reject. Keyless acceptance only outside production. |
+
+**MEDIUM**
+| Finding | Fix |
+|---|---|
+| Patient "My Appointments" badged **PAID** from appointment *status*, not `paymentStatus` — showed PAID for unpaid appointments (doctor view was correct). Verified live. | Badge now reads `paymentStatus`; added a "Refunded" badge. Re-verified live. |
+| **IDOR** — `doctor-service` `getPrescriptionsByPatient`: any approved doctor could list any patient's issued prescriptions by patientId. | Doctors scoped to `doctorId === req.user.id`. |
+| `SymptomChecker` emergency banner said "Please call **1990** immediately" (Sri Lanka Suwa Seriya). | → "Call your local emergency number (e.g. 911)". Confirmed gone from the deployed bundle. Also guarded two crash paths (`fileUrl.split('.').pop()`, new-session id). |
+| Backend `{errors:[…]}` validation arrays never surfaced — 6 handlers read `err.error`/`err.message` only. | `MyAppointments` (load/cancel/confirm/reschedule), `DoctorProfile`, `DoctorAvailability`, `AdminDashboard` create-admin now route through `utils/apiError.getApiErrorMessage`. |
+| `appointment.rescheduled` was published but had no `EVENT_ROUTES` entry and no handler — reschedule notifications silently dropped. | Added the route + a `notification-service` handler + `appointmentRescheduledPatientSms` template. |
+| `appointment-service` `VALID_STATUSES` omitted `'past'` — `?status=past` returned 400. | Added `'past'`. |
+| `DoctorTelemedicine` "Past" / "Upcoming" tabs were always empty (list is pre-filtered to `confirmed`). | Removed those two tabs (kept All / Today). |
+| `FinanceManagement` fallback stats `reduce((s,p)=>s+p.amount,0)` → `$NaN` on one bad row. | `s + (Number(p.amount) || 0)`. |
+| `payment-service` `getAllPayments` ignored the `search` param the admin UI sends. | Implemented (`appointmentId` / `patientId` regex, escaped). |
+| `telemedicine-service` `createSession` / `ensureSessionForAppointment` — unwrapped `appointmentClient.get`; peer failure → 500 and the ownership check was skipped. | Wrapped: peer failure → 503 with a clear message; `ensureSession` returns `null`. |
+
+**LOW**
+- Deleted dead files: `pages/PaymentPage.jsx` (+ `/payment` route), `pages/Dashboard.jsx`, `components/patient/PatientProfileForm.jsx`; trimmed `data/mockDoctors.js` to `SPECIALTIES`; removed dead `appointmentService.confirmAppointment` and unused `lucide-react` imports.
+- Static Tailwind class maps for `TagInput` / profile stat tiles (interpolated `bg-${x}-50` never rendered).
+- `parseInt` NaN guards + clamps in `auth getAllUsers` and `payment getAllPayments`.
+- `prescriptionController` catches → `next(err)` (restores `CastError`→400 mapping).
+- Removed `doctor-service` debug `console.log` middleware + an emoji log line.
+- SMS templates: `en-LK` → `en-US`, `MediCare:` → `CureMD:`.
+- Patient dashboard "Next Session" now computes a calendar-day diff ("Today" / "Tomorrow" / "In N Days") instead of `Math.ceil(msDiff/day)` which showed "In 1 Day" for a same-day appointment; dropped the "Clinical Sanctuary" placeholder string.
+- Patient Telemedicine join errors show in the page banner instead of `alert()`.
+- `api.js`: removed the stale Render/gateway comment.
+
+### Deliberately not changed (need a product decision)
+- `ai-symptom-service` orphaned history-token chain (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI` + unused `patientClient`/`doctorClient`) — removing it is risky without confirming it's truly unused. Flagged only (task §11.13).
+- Global **"MediCare"** brand string vs the "CureMD" project name — appears across landing page, legal pages, email addresses. A rename, not a bug.
+- `Appointment.js:167` unique partial index uses `$in` in `partialFilterExpression` — requires MongoDB ≥ 6.3; the Atlas cluster is **8.0.32**, so it's fine.
+
+### Verified live after deploy
+- All 9 `/health` → 200; login + doctor list return real data.
+- **H1:** booked an appointment with `+12025550142` — accepted client **and** server, "Appointment Confirmed".
+- **H2/H3:** every patient + doctor page renders; no white screens.
+- **M1:** unpaid seed appointment shows no PAID badge; skip-paid one shows PAID.
+- **M3 / phone placeholders:** deployed bundle has zero `1990` / `Suwa Seriya` / `+94771234567` / `07XXXXXXXX` strings.
+- **Live 2-participant Agora video call** — confirmed working by the user.
+- Backend IDOR / webhook / QStash / notification / `next(err)` fixes: `node --check` clean, logic mirrors existing patterns; not exercisable live without multi-user fixtures.
