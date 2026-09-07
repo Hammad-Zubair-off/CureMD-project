@@ -7,7 +7,7 @@
 Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) — see §14–§19. **Consolidated defect ledger: §20.**
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
 **Totals across all 6 passes: 22 HIGH, 31 MEDIUM, ~43 LOW — all fixed and deployed.**
-**Last updated:** 2026-09-08 · `main` HEAD `f762102`
+**Last updated:** 2026-09-08 · `main` HEAD `3827bfb` (code `622fa06`)
 
 | | |
 |---|---|
@@ -21,7 +21,7 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
 | Fix pass #5 | `4bc25eb` + `43dc990` — regression re-audit 2026-09-08 (2 agents + live QA-account walkthrough): 1 SSRF + 3 auth/data-integrity HIGH, 10 MEDIUM, 2 LOW — see §18 |
 | Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3`, §20 ledger `f762102` |
-| `main` HEAD (deployed) | `f762102` (code `622fa06`) |
+| `main` HEAD (deployed) | `3827bfb` (code `622fa06`) |
 | Consolidated defect ledger | **§20** — every finding across all 6 passes, one table |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
@@ -731,7 +731,7 @@ One rolled-up view of §14–§19. **Every finding below is fixed, committed, an
 
 ### 20.6 Current state
 
-- **9 / 9 Vercel projects healthy**, all serving `main` @ `622fa06` (code) / `f762102` (docs).
+- **9 / 9 Vercel projects healthy**, all serving `main` @ `622fa06` (code) / `3827bfb` (docs).
 - **22 HIGH + 31 MEDIUM + ~43 LOW findings across 6 passes — 100 % fixed and deployed.**
 - Live-verified this session: health ×9, auth login, NaN-pagination guard, `getSpecializations`, `/reports/my`, unauthenticated `sendMessage` → 401, and the deployed frontend bundle confirmed to contain the latest fixes.
 - Working tree clean. No blocking work remains.
