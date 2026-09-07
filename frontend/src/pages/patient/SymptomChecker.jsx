@@ -64,8 +64,10 @@ export default function SymptomChecker() {
       setPatientVitals({
         age: p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 'Unknown',
         gender: p.gender,
+        bloodType: p.bloodType,
         chronicConditions: p.chronicConditions,
-        allergies: p.allergies
+        allergies: p.allergies,
+        currentMedications: p.currentMedications
       });
 
       // Pre-fetch vault reports

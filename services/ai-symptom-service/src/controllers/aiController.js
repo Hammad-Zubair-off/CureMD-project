@@ -154,13 +154,16 @@ export const createSession = async (req, res, next) => {
         });
 
         // Seed the rolling summary with patient vitals if provided by the frontend.
-        // This gives the AI baseline context (age, gender, conditions, allergies)
-        // without pulling the full medical history from patient-service.
+        // This gives the AI baseline context (age, gender, blood type, conditions,
+        // medications, allergies) without pulling the full medical history from
+        // patient-service.
         if (vitals) {
             session.rollingSummary = [
                 'Patient initialized a new symptom check.',
                 `Age/Gender: ${vitals.age || 'Unknown'} / ${vitals.gender || 'Unknown'}.`,
+                vitals.bloodType ? `Blood Type: ${vitals.bloodType}.` : '',
                 vitals.chronicConditions?.length ? `Known Conditions: ${vitals.chronicConditions.join(', ')}.` : '',
+                vitals.currentMedications?.length ? `Current Medications: ${vitals.currentMedications.join(', ')}.` : '',
                 vitals.allergies?.length ? `Allergies: ${vitals.allergies.join(', ')}.` : '',
             ].filter(Boolean).join(' ');
         }
