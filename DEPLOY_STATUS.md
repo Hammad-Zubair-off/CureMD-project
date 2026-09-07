@@ -3,10 +3,11 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ **DEPLOYED.** Migration + 5 fix passes on all 9 projects.
-Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) — see §14–§19.
+**Status:** ✅ **DEPLOYED.** Migration + 6 fix passes on all 9 projects.
+Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) — see §14–§19. **Consolidated defect ledger: §20.**
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
-**Last updated:** 2026-09-08 · `main` HEAD `18a26f3`
+**Totals across all 6 passes: 22 HIGH, 31 MEDIUM, ~43 LOW — all fixed and deployed.**
+**Last updated:** 2026-09-08 · `main` HEAD `f762102`
 
 | | |
 |---|---|
@@ -19,8 +20,9 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Regression fixes #3 | `9b99947` on `main` (pushed 2026-09-07) — full app regression test, 7 HIGH + 13 MEDIUM + LOW — see §16 |
 | Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
 | Fix pass #5 | `4bc25eb` + `43dc990` — regression re-audit 2026-09-08 (2 agents + live QA-account walkthrough): 1 SSRF + 3 auth/data-integrity HIGH, 10 MEDIUM, 2 LOW — see §18 |
-| Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3` |
-| `main` HEAD (deployed) | `18a26f3` (code `622fa06`) |
+| Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3`, §20 ledger `f762102` |
+| `main` HEAD (deployed) | `f762102` (code `622fa06`) |
+| Consolidated defect ledger | **§20** — every finding across all 6 passes, one table |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -652,3 +654,84 @@ Every LOW item from §18's deferred list is now fixed. `npx vite build` green, `
 | `18a26f3` | audit §19 |
 
 `main` HEAD after this pass: **`18a26f3`**. Working tree clean.
+
+---
+
+## 20. Consolidated defect ledger — every bug & fix, all 6 passes
+
+One rolled-up view of §14–§19. **Every finding below is fixed, committed, and live on production.** Nothing outstanding is a defect — the only open items are user-deferred optional work (§11: real Stripe, MongoDB password rotation, brand rename, test-account cleanup, `pk_test_` relocation).
+
+### 20.1 Pass summary
+
+| Pass | Date | Commit(s) | Method | HIGH | MED | LOW | Deploy & verify |
+|---|---|---|---|---|---|---|---|
+| Migration | 09-02→04 | `e251b66` merge → `7c77746` | 38-check e2e sweep | — | — | — | 35/38, no migration defects |
+| #1 | 09-04 | `6023d9e` → merged `c7b6eba` | 91 API checks + full static frontend audit | 3 | 6 | 9 | build + `node --check` clean; merged later |
+| #2 (security) | 09-07 | `5aa403d` | 2 audit agents + live browser | 5 | 4 | 2 | 9/9 health; INTERNAL_SECRET propagation proven live |
+| #3 (full regression) | 09-07 | `9b99947` | 2 static agents + live click-through as patient/doctor/admin | 7 | 11 | 10 | 9/9 health; H1/M1/M3 + Agora video verified live |
+| #4 (AI reliability) | 09-08 | `73bbe8f` `537af3f` | reproduced from user video (3/5 fail) | 1 | — | — | 8/8 then 5/5 AI messages; Cloudinary verified live |
+| #5 (re-audit) | 09-08 | `4bc25eb` `43dc990` | 2 static agents + fresh QA-account walkthrough | 4 | 10 | 2 | 9/9 health; H2 (unapproved doctors) verified live |
+| #5-LOW | 09-08 | `622fa06` | cleared §18's entire deferred list | — | — | 20 | 9/9 health; bundle + auth smoke verified live |
+| **Total** | | | | **22** | **31** | **~43** | **all deployed** |
+
+### 20.2 All HIGH findings (22) — chronological
+
+| # | Pass | Area | Defect | Fix | Commit | Verified |
+|---|---|---|---|---|---|---|
+| H-01 | #1 | frontend/admin | `AdminDashboard` used `<AlertTriangle>` unimported → `ReferenceError` blanked the whole dashboard on any admin-create failure | added to `lucide-react` import | `c7b6eba` | code |
+| H-02 | #1 | frontend/routing | no `<Route path="*">`; Stripe 3-DS `return_url` `/payment-success` wasn't a route → blank screen | catch-all `NotFound` + `PaymentSuccess` page + route | `c7b6eba` | code |
+| H-03 | #1 | payment | `constructEventAsync` not `await`ed → webhook signature **never verified**, real events ignored | added `await` | `c7b6eba` | code |
+| H-04 | #2 | auth/all services | JWT trusted for full ~7-day life; 6/8 services never re-checked account status — deactivated user kept access | `GET /internal/users/:id/status` + 60 s-cached revalidation middleware in all 6; fail-open on auth outage | `5aa403d` | **live** (propagation test) |
+| H-05 | #2 | frontend/auth | `api.js` interceptor hard-redirected on *any* 401 incl. failed login → wiped "Invalid credentials" | redirect only when the failed request carried an `Authorization` header | `5aa403d` | **live** |
+| H-06 | #2 | patient (IDOR) | `getPatientByUserId` — any authed user could read any patient record by user id | ownership check (patient → own record only) | `5aa403d` | code |
+| H-07 | #2 | doctor (IDOR) | `getPrescriptionsByPatient` returned anyone's prescriptions; `savePrescription` upserted without appointment-ownership check | patient scoped to own id; save verifies `appointment.doctorId === caller` | `5aa403d` | code |
+| H-08 | #2 | telemedicine (IDOR) | doctor could `createSession` for an appointment not theirs | appointment-ownership check via `appointmentClient` | `5aa403d` | code |
+| H-09 | #3 | frontend + appointment | phone regex `^(?:0?7\d{8}\|\+947\d{8})$` blocked every non-Sri-Lankan number (client **and** server); input handler capped at 10 digits | both regexes → `^\+?[0-9]{7,15}$`; handler keeps `+` and 15 digits | `9b99947` | **live** (`+1…` booked) |
+| H-10 | #3 | frontend | no React error boundary — any render throw blanked the SPA | `ErrorBoundary` around `<Routes>` + reload fallback | `9b99947` | code |
+| H-11 | #3 | frontend/booking | `BookAppointment` `DoctorCard` — unguarded `doctor.firstName[0]` / `.consultationFee.toLocaleString()` in `.map()` → white-screens "Find your Specialist" | optional-chain + `?? 0` (also 3 spots in `BookingDrawer`) | `9b99947` | **live** |
+| H-12 | #3 | patient (IDOR) | `getReportById` — any authed doctor could pull any patient's report (incl. raw Cloudinary URL) by ObjectId | doctor access requires a live `DoctorHistoryAccess` grant + report in that patient's `MedicalHistorySnapshot` | `9b99947` | code |
+| H-13 | #3 | patient (IDOR) | `GET /patients/:userId` had no `authorize()` and no doctor-appointment gate | `authorize('patient','doctor','admin')` + grant check for doctors | `9b99947` | code |
+| H-14 | #3 | payment | Stripe webhook signature bypassed when `STRIPE_WEBHOOK_SECRET` unset **or** `NODE_ENV==='development'` | fail closed in production (500 "not configured"); bypass not keyed on `NODE_ENV` | `9b99947` | code |
+| H-15 | #3 | events | `verifyQstash` returned `true` when signing keys absent → unauthenticated appointment deletion / Stripe refunds if misconfigured | production: missing keys → reject | `9b99947` | code |
+| H-16 | #4 | ai-symptom + frontend | `gemini-flash-latest` intermittent `503` (3/5 msgs failed); backend had no retry, frontend swallowed the error silently (message vanished) | 3× backoff retry + model fallback chain; persist user+AI msgs together only on success; clean 503; frontend keeps text + shows retry banner | `73bbe8f` | **live** (8/8, 5/5) |
+| H-17 | #5 | ai-symptom (SSRF) | `processSelectedFiles` fetched any `fileUrl` from the request body server-side (follows redirects, no host allowlist, no size cap) → cloud metadata / internal hosts reachable, bytes fed to Gemini | allowlist `res.cloudinary.com` + cloud-name path prefix; `maxRedirects:0`; 10 MB cap; array guard | `4bc25eb` | code |
+| H-18 | #5 | doctor/auth | unapproved doctors publicly listed & bookable — approval state only on `auth User.isApproved`; `Doctor` doc has no such field; `getSpecializations` filtered a non-existent field → `[]` | `GET /internal/approved-doctors` + `getApprovedDoctorIdSet()` (60 s cache, fail-open) filters `searchDoctors` / `getDoctorById` / `getSpecializations` | `4bc25eb` `43dc990` | **live** (`qa.unapproved` hidden; 18 doctors; 9 specializations) |
+| H-19 | #5 | doctor (IDOR) | `savePrescription` verified appointment ownership then wrote with `req.body.patientId` — a doctor could corrupt another patient's prescription list | `patientId` taken from the verified `apptData.appointment.patientId`; body value ignored | `4bc25eb` | code |
+| H-20 | #5 | telemedicine (IDOR) | `createSession` stored a body-supplied `patientId` — wrong value locks the real patient out of the join | uses `appointment.patientId` from the fetched appointment | `4bc25eb` | code |
+| H-21 | #5 (follow-up) | doctor | the H-18 fix cached an **empty** approved-set on a cold auth-service → `{$in: []}` → **0 doctors shown** | return `null` (not empty set) on empty/malformed result, don't cache; caller checks `approved.size` | `43dc990` | **live** (fail-open → 20 → 18) |
+| H-22 | earlier | telemedicine | dead `ALLOW_UPCOMING_TEST_START` ref crashed the doctor Telemedicine page | ref removed | `2f276cb` | code |
+
+### 20.3 MEDIUM findings (31) — by pass
+
+- **#1 (6):** admin Refund button commented out → refund path unreachable · "Payment Required" hero button had no `onClick` · `SymptomChecker` passed dead `triageSessionId` router state · `PatientDashboard` interpolated `bg-${color}-50` (Tailwind v4 can't see) · `DoctorAppointments` filter labelled "Failed" but filtered `completed` · `RejectAppointmentModal` treated a network error as success.
+- **#2 (4):** payment idempotency fall-through → double response crash + re-emitted events · `refundPayment` `ReferenceError` on undefined `Appointment` model · `createPaymentIntent` sent `NaN` to Stripe on a bad fee · timing-unsafe `===` on `x-internal-secret` at 4 endpoints.
+- **#3 (11):** "My Appointments" badged PAID from status not `paymentStatus` · IDOR `getPrescriptionsByPatient` (any doctor, any patient) · `SymptomChecker` "call 1990" + 2 crash paths · backend `{errors:[…]}` arrays never surfaced (6 handlers) · `appointment.rescheduled` had no route/handler → notifications dropped · `VALID_STATUSES` missing `'past'` → `?status=past` 400 · `DoctorTelemedicine` Past/Upcoming tabs always empty · `FinanceManagement` `$NaN` on one bad row · `payment getAllPayments` ignored `search` · `telemedicine createSession` unwrapped peer call → 500 + skipped ownership check.
+- **#5 (10):** rescheduled SMS read wrong field → "rescheduled to  at undefined" · `getMyReports` returned archived reports · `savePrescription` unwrapped `fetch` → 500 on peer down · `toUTC()` `RangeError` → 500 not 400 on invalid date string (4 call sites) · `appointment.deleted_after_refund` had no consumer → doctor keeps history access to a reversed visit · doctor prescription errors swallowed + weak Issue-button guard · `LoginPage` `{errors:[array]}` → blank message · `BookAppointment` `performBookingCheck` silent `console.error` · `DoctorDetailModal` unguarded `firstName[0]` · `normalizeInternationalPhone` still forced `07…` → `+94…`.
+
+### 20.4 LOW findings (~43)
+
+- **#1 (~9):** `CastError` on bad `:id` → 500 (shared `errorHandler` now maps `CastError`/`ValidationError`→400, `11000`→409, JWT→401 in all 8) · unguarded `.map`/`.toLocaleString()`/`.length` in 3 components · `RegisterPage` → legacy `/dashboard` · `PaymentPage` typo · `BookingDrawer` dead `pattern` · `DateRangePicker` "Checkout…" text · dead `<MoreVertical>` button.
+- **#2 (2):** `getDoctorAppointments` ignored `?status=` (server returned all, wrong pagination) · Sri-Lanka strings in AI triage + `normalizeSriLankanPhone` + stale "RabbitMQ" comment.
+- **#3 (~10):** deleted dead files (`PaymentPage`, `Dashboard.jsx`, `PatientProfileForm`) · static Tailwind class maps · `parseInt` NaN guards in `auth getAllUsers` / `payment getAllPayments` · `prescriptionController` `next(err)` · removed `doctor-service` debug middleware · SMS `en-LK`→`en-US`, `MediCare:`→`CureMD:` · "Next Session" calendar-day diff · Telemedicine join errors in-banner not `alert()` · stale `api.js` comment.
+- **#5 (2):** doctor Create-Profile name fields blank → prefilled from account · Availability "Add slot" duplicated `09:00–09:30` → advances from previous end.
+- **#5-LOW (20) — `622fa06`:** see §19 (L1–L17). Backend: `rejectAppointment`→`next(err)`; `getSessionByAppointment` idempotent (no per-poll token rewrite / `VersionError`); `paidAt` schema field + `failed`-record TTL clear + reused-intent `amount`/`currency`; `ai createSession/sendMessage` body hardening; `doctor` admin/search `parseInt` guards. Frontend: `BookAppointment` missing `error` state + banner; `PatientDashboard` load-fail banner; `PatientSettings`/`SymptomChecker` `getApiErrorMessage` + inline errors (no `alert()`); `MyAppointments` reschedule sends slot start time not local midnight; `MyProfile` name-sync only on change; `DoctorVideoRoom` chevron direction; `StripePaymentElement` missing-key guard; `LandingPage` frame-cache reset; `DoctorAppointments` dead imports removed.
+
+### 20.5 Deliberately not changed (product decisions, not defects)
+
+| Item | Why it's fine as-is |
+|---|---|
+| Real Stripe integration | `SKIP_PAYMENT=true` bypass by design; Stripe isn't available for live payouts in Sri Lanka. Unlocks card pay + `$` receipt + admin Refund when configured. |
+| `ai-symptom` history-token pipeline (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI`) | Complete but fully unwired — no call site, no runtime cost. Superseded by the "frontend passes live vitals inline" path. Investigated §17, kept. |
+| Dead events `payment.completed` / `payment.failed` / `patient.profile.*` | Publish with no consumer is an inert no-op. |
+| "MediCare" brand string vs "CureMD" project name | A rename across landing/legal/email, not a bug. User-deferred. |
+| MongoDB password still `komotechpass123` | User-deferred; `scripts/fix-mongo-uris.mjs` automates the Vercel side. |
+| `pk_test_` in `docker-compose.yml:39` | Stripe **publishable** key — client-side by design, not a leak. |
+| Test accounts + junk DB on Atlas | Harmless clutter; delete via admin login anytime. |
+| SSE `/track` degraded to ~3 s poll on serverless | No frontend change needed; true push would need Pusher/Ably/Redis. |
+
+### 20.6 Current state
+
+- **9 / 9 Vercel projects healthy**, all serving `main` @ `622fa06` (code) / `f762102` (docs).
+- **22 HIGH + 31 MEDIUM + ~43 LOW findings across 6 passes — 100 % fixed and deployed.**
+- Live-verified this session: health ×9, auth login, NaN-pagination guard, `getSpecializations`, `/reports/my`, unauthenticated `sendMessage` → 401, and the deployed frontend bundle confirmed to contain the latest fixes.
+- Working tree clean. No blocking work remains.
