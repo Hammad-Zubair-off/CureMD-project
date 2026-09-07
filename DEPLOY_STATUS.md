@@ -5,8 +5,8 @@
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
 **Status:** ✅ **DEPLOYED.** Migration + 5 fix passes on all 9 projects.
 Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) — see §14–§19.
-Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search.
-**Last updated:** 2026-09-08 · `main` HEAD `622fa06`
+Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
+**Last updated:** 2026-09-08 · `main` HEAD `18a26f3`
 
 | | |
 |---|---|
@@ -19,8 +19,8 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Regression fixes #3 | `9b99947` on `main` (pushed 2026-09-07) — full app regression test, 7 HIGH + 13 MEDIUM + LOW — see §16 |
 | Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
 | Fix pass #5 | `4bc25eb` + `43dc990` — regression re-audit 2026-09-08 (2 agents + live QA-account walkthrough): 1 SSRF + 3 auth/data-integrity HIGH, 10 MEDIUM, 2 LOW — see §18 |
-| Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed (§19) |
-| `main` HEAD (deployed) | `622fa06` |
+| Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3` |
+| `main` HEAD (deployed) | `18a26f3` (code `622fa06`) |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -606,7 +606,7 @@ Every frontend `api.*` path resolves to a backend route · routing/guards/`path=
 
 ---
 
-## §19 — Fix pass #5-LOW: all 20 deferred LOW findings (`622fa06`, 2026-09-08)
+## 19. Fix pass #5-LOW — all 20 deferred LOW findings (`622fa06`, 2026-09-08)
 
 Every LOW item from §18's deferred list is now fixed. `npx vite build` green, `node --check` green on all 20 backend files touched across passes #5 + #5-LOW.
 
@@ -635,8 +635,20 @@ Every LOW item from §18's deferred list is now fixed. `npx vite build` green, `
 | L16 | `DoctorAppointments.jsx` | Removed unused `useAuth` / `useNavigate` / `handleLogout`. |
 | L17 | `PatientVideoRoom.jsx` `cameraTestMode` | Not present in current file — no change needed. |
 
-### Post-deploy verification (`622fa06`)
-- 9 / 9 `/health` → 200.
-- Build + syntax gates green.
-- Live spot-checks: dashboard/AI-history/settings error banners render on forced failure; reschedule now stores a timed `appointmentDate`; unapproved-doctor hiding (§18 H2) still holds; specialization list still returns real values.
-- L2 / L3 / L4 not exercisable end-to-end without concurrent-poll / Stripe-webhook fixtures — verified by code + `node --check`.
+### Post-deploy verification (`622fa06` + doc `18a26f3`, 2026-09-08)
+- **9 / 9 `/health` → 200** (auth on `cure-md-project.vercel.app`, the other 8 on `curemd-<svc>.vercel.app`).
+- Build + syntax gates green: `npx vite build` OK, `node --check` OK on every touched backend file.
+- **Deployed frontend bundle confirmed live** — served JS (`curemd-frontend.vercel.app`) contains the new strings added in this pass ("You can attach at most 3 files to a message.", "Some of your dashboard data couldn't be loaded.", "Couldn't load the doctor list…"), so `622fa06` is the version being served, not a stale build.
+- Authenticated smoke as `qa.patient.0908`: login → token issued; `GET /api/doctors?limit=abc` → clean `400` validation error (no `skip(NaN)` crash — L5 guard + validator both hold); `GET /api/doctors/specializations` → `200`; `GET /api/patients/reports/my` → `200`; AI `sendMessage` unauthenticated → `401`.
+- L2 / L3 / L4 not exercisable end-to-end without concurrent-poll / Stripe-webhook fixtures — verified by code review + `node --check` + successful deploy.
+
+### Commit trail — fix pass #5 (complete)
+| Commit | Contents |
+|---|---|
+| `4bc25eb` | HIGH (H1 SSRF, H2 unapproved-doctor exposure, H3 prescription patient-id binding, H4 telemedicine patient-id binding) + 10 MEDIUM |
+| `43dc990` | follow-up — approved-doctor filter fails **open** on an empty/cold auth-service result (was `{$in: []}` → 0 doctors) |
+| `bbb7a38` | audit §18 |
+| `622fa06` | all 20 LOW findings (6 backend files, 11 frontend files) |
+| `18a26f3` | audit §19 |
+
+`main` HEAD after this pass: **`18a26f3`**. Working tree clean.
