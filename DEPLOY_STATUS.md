@@ -3,10 +3,10 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ **COMPLETE.** Migration + 4 fix passes all deployed to 9 projects and verified. All tracked tasks done or explicitly skipped by the user (§11). Nothing blocking.
-Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` — see §14–§17.
-Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking.
-**Last updated:** 2026-09-08 · `main` HEAD `fd71086`
+**Status:** ✅ **DEPLOYED.** Migration + 5 fix passes on all 9 projects.
+Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) — see §14–§18.
+Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search.
+**Last updated:** 2026-09-08 · `main` HEAD `43dc990`
 
 | | |
 |---|---|
@@ -18,7 +18,8 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Security fixes #2 | `5aa403d` on `main` (pushed 2026-09-07) — IDOR, session hijack, stale-token, crashes — see §15 |
 | Regression fixes #3 | `9b99947` on `main` (pushed 2026-09-07) — full app regression test, 7 HIGH + 13 MEDIUM + LOW — see §16 |
 | Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
-| `main` HEAD (deployed) | `537af3f` (code) · `b116d06` (incl. doc updates §15–§17 + Cloudinary verified) |
+| Fix pass #5 | `4bc25eb` + `43dc990` — regression re-audit 2026-09-08 (2 agents + live QA-account walkthrough): 1 SSRF + 3 auth/data-integrity HIGH, 10 MEDIUM, 2 LOW — see §18 |
+| `main` HEAD (deployed) | `43dc990` |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -553,3 +554,51 @@ returns the caller's own sanitised data. Kept for now (task §11.13).
 - New AI session rolling summary verified to include Blood Type + Current Medications.
 - **Cloudinary upload verified live** — file → `201` → real `res.cloudinary.com` URL → URL returns `200 image/png`. Cloud `ezslyk59`. (Was the last "never tested live" item from §14.)
 - `main` HEAD `537af3f` (+ this doc); working tree clean.
+
+---
+
+## 18. Regression re-audit & fix pass #5 — 2026-09-08
+
+Commit **`4bc25eb`** (24 files, +313 / −66). Method: two static-audit agents (full frontend, all 8 backend services) + a live walkthrough with fresh QA accounts (`qa.patient.0908@curemd.dev`, `qa.doctor.0908@curemd.dev`, pw `QaTest2026!`) covering doctor onboarding (create profile → set availability), patient booking, and every page. Findings below exclude the items already fixed in §14–17.
+
+### HIGH
+
+| Finding | Verified | Fix |
+|---|---|---|
+| **SSRF** — `ai-symptom-service` `processSelectedFiles` fetched any `report.fileUrl` from the request body server-side (`axios.get`, follows 5 redirects, no host allowlist, no size cap). A patient could point it at `http://169.254.169.254/…` (cloud metadata) or internal hosts and the bytes were fed to Gemini. | code | Allowlist `res.cloudinary.com` + our `CLOUDINARY_CLOUD_NAME` path prefix; `maxRedirects: 0`; `maxContentLength`/`maxBodyLength` 10 MB; `Array.isArray(selectedReports)` guard. |
+| **Unapproved doctors publicly listed & bookable** — approval state lived only on `auth-service User.isApproved`; the `doctor-service` `Doctor` document has no such field. `searchDoctors` / `getDoctorById` filtered only `{isActive}`, and `getSpecializations` filtered a non-existent `{isApproved:true}` → returned `[]`. | **live** — registered `qa.unapproved.0908`, never approved, gave it a profile → it appeared in `GET /api/doctors` | auth-service: new `GET /api/auth/internal/approved-doctors` (x-internal-secret, timing-safe) → `{ userIds }` of active+approved doctors. doctor-service: `getApprovedDoctorIdSet()` helper (60 s cache, fail-open on auth outage) used to filter `searchDoctors` (Mongo `userId $in`), `getDoctorById` (post-fetch check), and `getSpecializations` (now returns real data). |
+| **Prescription filed against a body-supplied `patientId`** — `savePrescription` verified the doctor owns the appointment, then wrote the prescription with `req.body.patientId`. A doctor on appointment A (patient X) could POST patient Y's id and corrupt Y's issued-prescription list. | code | `patientId` is now taken from the verified `apptData.appointment.patientId`; the body value is ignored. Validator relaxed so `patientId` is optional. |
+| **Telemedicine session stored a body-supplied `patientId`** — same pattern; a wrong value locks the real patient out of the join (`getSessionByAppointment` gates on `session.patientId === req.user.id`). | code | `createSession` uses `appointment.patientId` from the fetched appointment. |
+
+### MEDIUM
+
+| Finding | Fix |
+|---|---|
+| `appointment.rescheduled` SMS read `appointmentDate`/`timeSlot`, but the event publishes `newDate`/`newTimeSlot` → patient got *"rescheduled to  at undefined"* (regression from the §16 wiring). | Template reads `newDate`/`newTimeSlot` (falls back to the old names). |
+| `getMyReports` returned soft-deleted (archived) reports. | `find({ userId, isDeleted: { $ne: true } })`. |
+| `savePrescription` used native `fetch` to appointment-service unwrapped → peer down/slow = 500. | Wrapped in try/catch → 503. |
+| `toUTC()` (`new Date(new Date(s).toISOString())`) threw a `RangeError` for a present-but-invalid date string (`"2026-13-99"`) → 500 instead of 400, in `bookAppointment`, `rescheduleAppointment`, `getTakenSlotsForDoctorDate`. | `toUTC` returns `null` for unparseable input; the two validators, `getTakenSlotsForDoctorDate`, and `getAllAppointments`'s `date` filter all return 400. |
+| `appointment.deleted_after_refund` had no consumer — after a refund the appointment doc is deleted but the confirmed `MedicalHistorySnapshot` (no TTL) + `DoctorHistoryAccess` grants persist → doctor keeps access to a reversed visit. | patient-service: new internal `DELETE /api/patients/internal/history/by-appointment/:appointmentId` (x-internal-secret) purges both. appointment-service `handlePaymentRefunded` calls it best-effort after the delete. |
+| Doctor prescription save/issue errors were swallowed (`catch { setSaveMsg('Save failed') }`) — backend `422 {errors:[…]}` never shown; Issue button only disabled on `medications.every(m => !m.name)`. | `DoctorVideoRoom.jsx` + `PatientInfoDrawer.jsx` render `getApiErrorMessage(err.response?.data \|\| err)`; Issue disabled until every med has name + dosage + frequency + duration (`medComplete`). |
+| `LoginPage` read `err.error \|\| err.message` → `{errors:[array]}` yielded `''` → generic string shown, which also masked the specific message `AuthContext` had already set (`{error \|\| authError}`). | Routed through `getApiErrorMessage`. |
+| `BookAppointment` `performBookingCheck` catch was `console.error`-only — a failed profile fetch made "Book Now" do nothing silently. | Shows an error in the existing banner. |
+| `DoctorDetailModal` `{doctor.firstName[0]}{doctor.lastName[0]}` unguarded (missed in §16). | Optional-chained. |
+| `notification-service` `normalizeInternationalPhone` still rewrote `07…`/`7…` to Sri Lanka `+94…` — a 9-digit local number from any country → SMS to the wrong country. | Plain E.164 normalisation (`+` + 7–15 digits; bare numbers assumed to already carry a country code). |
+
+### LOW (confirmed live, fixed now)
+- Doctor **Create Profile** form left first/last name blank — now prefilled from the signed-in account.
+- Availability **"Add another time slot"** duplicated `09:00–09:30` — now advances 30 min from the previous slot's end.
+
+### LOW (documented, deferred)
+Silent `catch`/`console.error` blocks in `SymptomChecker.loadData`, `PatientDashboard`, `MyProfile` (`updateUser` on every mount — `user.name` never exists), `PatientSettings.handleDeactivate`; `alert()` in `SymptomChecker` delete/limit paths; `getMyReports()` fetched twice on the AI page; dead `useAuth`/`logout` in `DoctorAppointments`; leftover `cameraTestMode` branch in `PatientVideoRoom`; backwards chevron on the `DoctorVideoRoom` prescription toggle; `loadStripe(undefined)` when the env var is unset (only when payments aren't skipped); `paidAt` not a `Payment` schema field; `payment.completed`/`payment.failed`/`patient.profile.*` published with no consumer; `MyAppointments` reschedule sends local-midnight (slot start not encoded); `parseInt` NaN gaps in `doctor-service` admin controllers; `getSessionByAppointment` (a GET) rewrites Agora tokens on every call (non-idempotent under polling); the dead AI history-token plumbing (still there, §17).
+
+### Verified clean
+Every frontend `api.*` path resolves to a backend route · routing/guards/`path="*"` consistent · no LKR/Sri-Lanka/`+94`-placeholder strings in UI copy (the `phone.js` `+94` logic was the one code exception, now fixed) · status-revalidation middleware wired in all 6 non-auth services · QStash `/events` fail-closed in prod · all §2/§3 IDOR gates hold · error boundary + interval cleanup intact · AI chat retry path working · fresh-account empty states render cleanly.
+
+### Post-deploy status (verified 2026-09-08)
+- 9 / 9 `/health` → 200.
+- **H2 verified live:** `qa.unapproved.0908` (registered, profile created, never approved) is **no longer** in `GET /api/doctors`; approved `qa.doctor.0908` **is**. Search settled at 18 doctors (was 20 — the unapproved test doctors are now excluded). `getSpecializations` returns 9 real specializations (was `[]`).
+- Follow-up `43dc990`: the approved-doctor filter now **fails open** on a cold/empty result — the first request after a deploy briefly shows all active doctors (20) instead of hiding every doctor (the pre-fix bug was `{$in: []}` → 0 results), then settles to 18 once the 60s cache warms.
+- **M2 verified live:** an archived report no longer appears in `GET /api/patients/reports/my`.
+- **AI vitals + chat retry** (§17) still green.
+- H1 / H3 / H4 / M1 / M3–M10: `node --check` clean, deployed; not exercisable end-to-end without multi-user / refund / peer-outage fixtures.
