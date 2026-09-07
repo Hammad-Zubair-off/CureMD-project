@@ -176,7 +176,7 @@ Peer `*_SERVICE_URL` values are the production URLs from §4. `AUTH_SERVICE_URL`
 | **Brevo** | Transactional email (receipts, refunds) | Verified sending in production. |
 | **Twilio** | SMS (optional) | Not configured — SMS steps log "skipping" and no-op. |
 | **Agora** | Video session tokens | Configured; live video not tested (needs 2 participants). |
-| **Cloudinary** | Patient file/image uploads | Configured. |
+| **Cloudinary** | Patient file/image uploads (medical vault + profile pictures) | Configured **and verified live 2026-09-08** — uploaded a file via `/api/patients/reports/upload` → `201`, real `res.cloudinary.com/ezslyk59/...` URL returned, URL publicly reachable (`200 image/png`), archive works. Cloud `ezslyk59`. |
 | **Google Gemini** | AI symptom triage | Configured. Model `gemini-flash-latest`. Returned transient `503 model overloaded` during testing (retryable). |
 | **Stripe** | Payments | **Not configured** — placeholder keys. `SKIP_PAYMENT=true` bypasses the payment step. |
 | **Render** | *(legacy)* Old backend deployment | Still running; not in the request path. Rollback target until deleted. |
@@ -543,4 +543,6 @@ returns the caller's own sanitised data. Kept for now (task §11.13).
 ### Post-deploy status (2026-09-08)
 - 9 / 9 `/health` → 200; login + DB reads OK.
 - AI chat 5/5, then 8/8 with the retry path.
-- `main` HEAD `537af3f`; working tree clean.
+- New AI session rolling summary verified to include Blood Type + Current Medications.
+- **Cloudinary upload verified live** — file → `201` → real `res.cloudinary.com` URL → URL returns `200 image/png`. Cloud `ezslyk59`. (Was the last "never tested live" item from §14.)
+- `main` HEAD `537af3f` (+ this doc); working tree clean.
