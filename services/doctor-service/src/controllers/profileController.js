@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Doctor } from '../models/Doctor.js';
+import { getApprovedDoctorIdSet } from '../utils/approvedDoctors.js';
 
 // POST /api/doctors/profile 
 // Doctor creates their own profile (one per userId)
@@ -82,6 +83,12 @@ export const getDoctorById = async (req, res, next) => {
             return res.status(404).json({ success: false, error: 'Doctor not found.' });
         }
 
+        // Hide doctors that are not admin-approved (fail open if auth-service is down).
+        const approved = await getApprovedDoctorIdSet();
+        if (approved && !approved.has(String(doctor.userId))) {
+            return res.status(404).json({ success: false, error: 'Doctor not found.' });
+        }
+
         return res.status(200).json({ success: true, data: doctor });
     } catch (err) {
         next(err);
@@ -103,6 +110,12 @@ export const searchDoctors = async (req, res, next) => {
         } = req.query;
 
         const filter = { isActive: true };
+
+        // Restrict to admin-approved doctors (fail open if auth-service is down).
+        const approved = await getApprovedDoctorIdSet();
+        if (approved) {
+            filter.userId = { $in: [...approved] };
+        }
 
         // Full-text search (name, specialization, areasOfExpertise)
         if (search) {
@@ -160,11 +173,16 @@ export const searchDoctors = async (req, res, next) => {
 // Public: distinct specialization list for the search dropdown
 export const getSpecializations = async (req, res, next) => {
     try {
-        const specializations = await Doctor.distinct('specialization', {
-            isActive: true,
-            isApproved: true,
+        const query = { isActive: true };
+        const approved = await getApprovedDoctorIdSet();
+        if (approved) {
+            query.userId = { $in: [...approved] };
+        }
+        const specializations = await Doctor.distinct('specialization', query);
+        return res.status(200).json({
+            success: true,
+            data: specializations.filter(Boolean).sort(),
         });
-        return res.status(200).json({ success: true, data: specializations.sort() });
     } catch (err) {
         next(err);
     }

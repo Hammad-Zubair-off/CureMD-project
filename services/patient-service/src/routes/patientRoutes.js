@@ -12,6 +12,7 @@ import {
 import {
     createSnapshot,
     confirmSnapshot,
+    purgeHistoryForAppointment,
     getMySnapshots,
     getSnapshot,
     getHistoryForAI,
@@ -29,6 +30,10 @@ const router = Router();
 // Confirm snapshot — called by appointment-service after payment confirmed
 // No JWT — secured by x-internal-secret header
 router.patch('/snapshot/:snapshotId/confirm', confirmSnapshot);
+
+// Purge snapshot + history-access grants after a refund deletes the appointment
+// No JWT — secured by x-internal-secret header
+router.delete('/internal/history/by-appointment/:appointmentId', purgeHistoryForAppointment);
 
 
 // All routes require a valid JWT

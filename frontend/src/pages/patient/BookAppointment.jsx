@@ -78,11 +78,7 @@ const CompleteProfileModal = ({ onClose, onSuccess }) => {
             await patientService.saveBookingProfile(payload);
             onSuccess();
         } catch (err) {
-            if (Array.isArray(err?.errors) && err.errors.length > 0) {
-                setError(err.errors);
-            } else {
-                setError(getApiErrorMessage(err, 'Failed to complete profile.'));
-            }
+            setError(getApiErrorMessage(err, 'Failed to complete profile.'));
         } finally {
             setLoading(false);
         }
@@ -241,6 +237,7 @@ export default function BookAppointment() {
     // Check profile before booking
     const performBookingCheck = async (actionCallback) => {
         setCheckingProfile(true);
+        setError('');
         try {
             const res = await patientService.getMyProfile();
             const profile = res.profile || res;
@@ -253,6 +250,7 @@ export default function BookAppointment() {
             }
         } catch (err) {
             console.error('Failed to check profile:', err);
+            setError(getApiErrorMessage(err, "Couldn't start booking — please try again."));
         } finally {
             setCheckingProfile(false);
         }

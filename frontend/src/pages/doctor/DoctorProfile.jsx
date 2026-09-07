@@ -114,13 +114,22 @@ export default function DoctorProfile() {
                 });
                 setIsNew(false);
             } catch (err) {
-                if (err.response?.status === 404) setIsNew(true);
+                if (err.response?.status === 404) {
+                    setIsNew(true);
+                    // Prefill name from the signed-in account so the doctor
+                    // doesn't have to retype it.
+                    setForm(f => ({
+                        ...f,
+                        firstName: f.firstName || user?.firstName || '',
+                        lastName: f.lastName || user?.lastName || '',
+                    }));
+                }
             } finally {
                 setLoading(false);
             }
         };
         load();
-    }, []);
+    }, [user]);
 
     const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
     const setConsultationType = (type, val) =>

@@ -144,6 +144,47 @@ export const confirmSnapshot = async (req, res, next) => {
 };
 
 /**
+ * @desc    Internal — remove the medical-history snapshot and any doctor
+ *          history-access grants for an appointment. Called by
+ *          appointment-service after an appointment is deleted following a
+ *          refund, so a doctor does not retain access to a reversed visit.
+ * @route   DELETE /api/patients/internal/history/by-appointment/:appointmentId
+ * @access  Internal — x-internal-secret
+ */
+export const purgeHistoryForAppointment = async (req, res, next) => {
+    try {
+        const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
+        const provided = req.headers['x-internal-secret'];
+        if (
+            !INTERNAL_SECRET ||
+            typeof provided !== 'string' ||
+            provided.length !== INTERNAL_SECRET.length ||
+            !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(INTERNAL_SECRET))
+        ) {
+            return res.status(403).json({ success: false, error: 'Unauthorized.' });
+        }
+
+        const { appointmentId } = req.params;
+        const [snap, grants] = await Promise.all([
+            MedicalHistorySnapshot.deleteOne({ appointmentId }),
+            DoctorHistoryAccess.deleteMany({ appointmentId }),
+        ]);
+
+        logger.info(
+            `[patient-service] purged history for appointment ${appointmentId}: ` +
+            `snapshots=${snap.deletedCount} grants=${grants.deletedCount}`
+        );
+        res.status(200).json({
+            success: true,
+            snapshotsDeleted: snap.deletedCount,
+            grantsDeleted: grants.deletedCount,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
  * @desc    Get all confirmed snapshots for the logged-in patient.
  *          Excludes pending-payment snapshots (snapshotExpiresAt is set).
  *          Returns populated medicalReports so patient sees full report objects.

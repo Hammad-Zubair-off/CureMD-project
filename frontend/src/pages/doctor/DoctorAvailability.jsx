@@ -158,8 +158,22 @@ export default function DoctorAvailability() {
         }));
     };
 
+    // Add a 30-minute slot starting where the previous one ended, so slots
+    // don't stack up as duplicates.
     const addSlot = (day) => {
-        setSchedule(s => ({ ...s, [day]: { ...s[day], slots: [...s[day].slots, { ...DEFAULT_SLOT }] } }));
+        setSchedule(s => {
+            const slots = s[day].slots;
+            const last = slots[slots.length - 1];
+            let next = { ...DEFAULT_SLOT };
+            if (last?.endTime) {
+                const [h, m] = last.endTime.split(':').map(Number);
+                const startMin = h * 60 + m;
+                const endMin = Math.min(startMin + 30, 23 * 60 + 30);
+                const fmt = (mins) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+                next = { startTime: fmt(startMin), endTime: fmt(endMin) };
+            }
+            return { ...s, [day]: { ...s[day], slots: [...slots, next] } };
+        });
     };
 
     const updateSlot = (day, i, key, val) => {

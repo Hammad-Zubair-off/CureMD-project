@@ -29,7 +29,8 @@ const refreshSessionTokens = async (session) => {
 
 const createSessionForAppointment = async ({ appointmentId, doctorId, patientId }) => {
   const channelName = `appt_${appointmentId}`;
-  const patientJoinUrl = `${process.env.FRONTEND_URL}/telemedicine/join/${channelName}`;
+  const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+  const patientJoinUrl = `${frontendBase}/telemedicine/join/${channelName}`;
 
   const session = await Session.create({
     appointmentId,
@@ -110,13 +111,13 @@ const ensureSessionForAppointment = async (appointmentId, req) => {
 // Creates (or retrieves existing) session, generates Agora token for doctor
 export const createSession = async (req, res, next) => {
   try {
-    const { appointmentId, patientId } = req.body;
+    const { appointmentId } = req.body;
     const doctorId = req.user.id;
 
-    if (!appointmentId || !patientId) {
+    if (!appointmentId) {
       return res.status(400).json({
         success: false,
-        error: 'appointmentId and patientId are required',
+        error: 'appointmentId is required',
       });
     }
 
@@ -140,6 +141,10 @@ export const createSession = async (req, res, next) => {
         error: 'You are not assigned to this appointment.',
       });
     }
+
+    // Bind the session to the appointment's patient — never trust a
+    // patientId supplied in the request body.
+    const patientId = String(appointment.patientId);
 
     // Check if session already exists (doctor re-clicking start)
     let session = await Session.findOne({ appointmentId });

@@ -103,7 +103,7 @@ export const uploadReport = async (req, res, next) => {
  */
 export const getMyReports = async (req, res, next) => {
     try {
-        const reports = await MedicalReport.find({ userId: req.user.id })
+        const reports = await MedicalReport.find({ userId: req.user.id, isDeleted: { $ne: true } })
             .sort({ createdAt: -1 })
             .lean();
 

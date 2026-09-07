@@ -24,8 +24,12 @@ const SKIP_PAYMENT = process.env.SKIP_PAYMENT === 'true';
 
 // ─ Helpers ─
 
-// Normalize incoming date strings to UTC — prevents timezone issues (e.g. IST +5:30)
-const toUTC = (dateStr) => new Date(new Date(dateStr).toISOString());
+// Normalize an incoming date string to a Date. Returns null for anything
+// unparseable rather than throwing a RangeError.
+const toUTC = (dateStr) => {
+    const d = new Date(dateStr);
+    return Number.isNaN(d.getTime()) ? null : d;
+};
 
 const finalizeAppointmentConfirmation = async (appointment, { paymentId = null, changedBy = 'payment-service' } = {}) => {
     if (appointment.status === 'confirmed') {
@@ -1165,8 +1169,11 @@ export const getAllAppointments = async (req, res, next) => {
         if (doctorId) filter.doctorId = doctorId;
         if (patientId) filter.patientId = patientId;
         if (date) {
-            const start = new Date(date);
-            const end = new Date(date);
+            const start = toUTC(date);
+            if (!start) {
+                return res.status(400).json({ success: false, error: 'Invalid date value.' });
+            }
+            const end = new Date(start);
             end.setDate(end.getDate() + 1);
             filter.appointmentDate = { $gte: start, $lt: end };
         }
@@ -1278,7 +1285,7 @@ export const getTakenSlotsForDoctorDate = async (req, res, next) => {
         }
 
         const targetDate = toUTC(date);
-        if (Number.isNaN(targetDate.getTime())) {
+        if (!targetDate) {
             return res.status(400).json({
                 success: false,
                 error: 'Invalid date value.',

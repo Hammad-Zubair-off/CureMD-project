@@ -19,6 +19,7 @@ import {
     createAdmin,
     deleteAdmin,
     getUserStatus,
+    getApprovedDoctorIds,
 } from '../controllers/authController.js';
 
 const router = Router();
@@ -31,6 +32,7 @@ router.post('/login', login);
 // Internal — checked by other services' auth middleware on every request
 // No JWT — secured by x-internal-secret header
 router.get('/internal/users/:id/status', getUserStatus);
+router.get('/internal/approved-doctors', getApprovedDoctorIds);
 
 
 // Authenticated endpoints (for any user)

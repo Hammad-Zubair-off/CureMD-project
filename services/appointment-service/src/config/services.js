@@ -7,6 +7,7 @@ const SERVICES = {
         endpoints: {
             createSnapshot:  ()   => `/api/patients/snapshot`,
             confirmSnapshot: (id) => `/api/patients/snapshot/${id}/confirm`,
+            purgeHistory:    (apptId) => `/api/patients/internal/history/by-appointment/${apptId}`,
         },
     },
     doctor: {

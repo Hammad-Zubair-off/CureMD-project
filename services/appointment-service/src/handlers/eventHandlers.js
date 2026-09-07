@@ -1,5 +1,7 @@
 import Appointment from '../models/Appointment.js';
 import { publishEvent } from '../utils/eventBus.js';
+import { patientClient } from '../config/services.js';
+import SERVICES from '../config/services.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -30,6 +32,17 @@ const handlePaymentRefunded = async (data) => {
     await Appointment.findByIdAndDelete(appointment._id);
     await publishEvent('appointment.deleted_after_refund', deletedSnapshot);
     logger.info(`[events] deleted appointment after refund: ${deletedSnapshot.appointmentId}`);
+
+    // Best-effort: purge the frozen medical-history snapshot + doctor
+    // history-access grants so a doctor cannot retain access to a reversed visit.
+    try {
+        await patientClient.delete(
+            SERVICES.patient.endpoints.purgeHistory(deletedSnapshot.appointmentId),
+            { headers: { 'x-internal-secret': process.env.INTERNAL_SECRET } }
+        );
+    } catch (err) {
+        logger.warn(`[events] history purge failed for ${deletedSnapshot.appointmentId}: ${err.message}`);
+    }
 };
 
 export const EVENT_HANDLERS = {

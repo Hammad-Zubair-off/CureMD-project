@@ -335,16 +335,21 @@ export const verifyToken = (req, res) => {
  * @route   GET /api/auth/internal/users/:id/status
  * @access  Internal — other services only
  */
+// Constant-time check of the shared internal secret. Returns true on match.
+const internalSecretOk = (req) => {
+    const provided = req.headers['x-internal-secret'];
+    const expected = process.env.INTERNAL_SECRET;
+    return (
+        !!expected &&
+        typeof provided === 'string' &&
+        provided.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))
+    );
+};
+
 export const getUserStatus = async (req, res, next) => {
     try {
-        const internalSecret = req.headers['x-internal-secret'];
-        const expected = process.env.INTERNAL_SECRET;
-        if (
-            !expected ||
-            typeof internalSecret !== 'string' ||
-            internalSecret.length !== expected.length ||
-            !crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(expected))
-        ) {
+        if (!internalSecretOk(req)) {
             return res.status(403).json({ success: false, error: 'Unauthorized.' });
         }
 
@@ -359,6 +364,27 @@ export const getUserStatus = async (req, res, next) => {
             isApproved: user.isApproved,
             role: user.role,
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+/**
+ * @desc    Internal — list userIds of doctors that are active AND approved.
+ *          doctor-service uses this to hide unapproved doctors from public
+ *          search / detail / specialization listings.
+ * @route   GET /api/auth/internal/approved-doctors
+ * @access  Internal — x-internal-secret
+ */
+export const getApprovedDoctorIds = async (req, res, next) => {
+    try {
+        if (!internalSecretOk(req)) {
+            return res.status(403).json({ success: false, error: 'Unauthorized.' });
+        }
+        const docs = await User.find({ role: 'doctor', isActive: true, isApproved: true })
+            .select('_id')
+            .lean();
+        res.status(200).json({ success: true, userIds: docs.map((d) => String(d._id)) });
     } catch (err) {
         next(err);
     }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { getApiErrorMessage } from '../utils/apiError';
 import { Mail, Lock, Activity, AlertCircle, ArrowLeft, Stethoscope, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -35,7 +36,7 @@ export default function LoginPage() {
         navigate('/patient/dashboard');
       }
     } catch (err) {
-      const message = err.error || err.message || '';
+      const message = getApiErrorMessage(err, '');
       if (
         message === 'DOCTOR_PENDING' ||
         message === 'DOCTOR_PENDING_APPROVAL' ||
@@ -44,6 +45,7 @@ export default function LoginPage() {
       ) {
         setPendingApproval(true);
       } else {
+        // AuthContext already set the specific message; only fall back if it didn't.
         setError(message || 'Login failed. Please check your credentials.');
       }
     } finally {

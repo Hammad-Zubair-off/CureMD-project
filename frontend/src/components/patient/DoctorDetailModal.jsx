@@ -126,7 +126,7 @@ export default function DoctorDetailModal({ doctor, onClose, onBook }) {
                             {/* Header Info */}
                             <div className="flex items-center space-x-4">
                                 <div className="w-20 h-20 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-2xl shrink-0">
-                                    {doctor.firstName[0]}{doctor.lastName[0]}
+                                    {doctor.firstName?.[0]}{doctor.lastName?.[0]}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="text-2xl font-bold text-slate-900">{doctor.fullName}</h3>

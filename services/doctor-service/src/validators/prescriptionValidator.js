@@ -18,8 +18,10 @@ export const savePrescriptionValidator = (req, res, next) => {
     if (!appointmentId || !isMongoId(appointmentId))
         errors.push({ field: 'appointmentId', message: 'Valid appointmentId is required.' });
 
-    if (!patientId || !isMongoId(patientId))
-        errors.push({ field: 'patientId', message: 'Valid patientId is required.' });
+    // patientId is derived server-side from the verified appointment; only
+    // validate its shape if a client still sends one.
+    if (patientId !== undefined && !isMongoId(patientId))
+        errors.push({ field: 'patientId', message: 'patientId must be a valid id.' });
 
     // sessionId is optional — set when written live during a video call,
     // omitted (defaults to 'manual-entry' server-side) when written afterward

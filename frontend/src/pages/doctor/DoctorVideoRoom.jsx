@@ -9,9 +9,15 @@ import {
     FileText, Plus, Trash2, ChevronRight,
     ChevronLeft, CheckCircle, Save,
 } from 'lucide-react';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 // ── Empty medication template ─────────────────────────────────────────────────
 const emptyMed = () => ({ name: '', dosage: '', frequency: '', duration: '', notes: '' });
+
+// A medication row is complete when name, dosage, frequency and duration are set
+// (matches the doctor-service prescription validator).
+const medComplete = (m) =>
+    !!m.name?.trim() && !!m.dosage?.trim() && !!m.frequency?.trim() && !!m.duration?.trim();
 
 // ── Prescription Sidebar ──────────────────────────────────────────────────────
 const PrescriptionSidebar = ({ sessionData, appointmentId, patientId, onClose }) => {
@@ -61,9 +67,9 @@ const PrescriptionSidebar = ({ sessionData, appointmentId, patientId, onClose })
             setStatus(saved.status);
             setSaveMsg('Saved');
             setTimeout(() => setSaveMsg(''), 2000);
-        } catch {
-            setSaveMsg('Save failed');
-            setTimeout(() => setSaveMsg(''), 2500);
+        } catch (err) {
+            setSaveMsg(getApiErrorMessage(err.response?.data || err, 'Save failed'));
+            setTimeout(() => setSaveMsg(''), 4000);
         } finally {
             setSaving(false);
         }
@@ -84,9 +90,9 @@ const PrescriptionSidebar = ({ sessionData, appointmentId, patientId, onClose })
             const issued = await prescriptionService.issue(id);
             setStatus(issued.status);
             setSaveMsg('Issued ✓');
-        } catch {
-            setSaveMsg('Issue failed');
-            setTimeout(() => setSaveMsg(''), 2500);
+        } catch (err) {
+            setSaveMsg(getApiErrorMessage(err.response?.data || err, 'Issue failed'));
+            setTimeout(() => setSaveMsg(''), 4000);
         } finally {
             setIssuing(false);
         }
@@ -231,7 +237,7 @@ const PrescriptionSidebar = ({ sessionData, appointmentId, patientId, onClose })
                     </button>
                     <button
                         onClick={handleIssue}
-                        disabled={saving || issuing || medications.every(m => !m.name)}
+                        disabled={saving || issuing || medications.length === 0 || !medications.every(medComplete)}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {issuing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}

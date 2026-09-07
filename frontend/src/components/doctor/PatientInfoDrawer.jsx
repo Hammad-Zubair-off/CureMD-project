@@ -3,6 +3,7 @@ import patientService from '../../services/patientService';
 import appointmentService from '../../services/appointmentService';
 import prescriptionService from '../../services/prescriptionService';
 import RejectAppointmentModal from './RejectAppointmentModal';
+import { getApiErrorMessage } from '../../utils/apiError';
 import {
   X, User, Phone, Mail, Calendar, Droplet, AlertTriangle,
   Pill, Heart, FileText, ExternalLink, ChevronDown, ChevronUp,
@@ -10,6 +11,8 @@ import {
 } from 'lucide-react';
 
 const emptyMed = () => ({ name: '', dosage: '', frequency: '', duration: '', notes: '' });
+const medComplete = (m) =>
+  !!m.name?.trim() && !!m.dosage?.trim() && !!m.frequency?.trim() && !!m.duration?.trim();
 
 // Prescription editor for the drawer — used for completed appointments where
 // the doctor didn't (or couldn't) write one live during the video call.
@@ -62,8 +65,8 @@ const PrescriptionPanel = ({ appt }) => {
       setPrescriptionId(saved._id);
       setStatus(saved.status);
       setMsg('Saved');
-    } catch {
-      setMsg('Save failed');
+    } catch (err) {
+      setMsg(getApiErrorMessage(err.response?.data || err, 'Save failed'));
     } finally {
       setSaving(false);
     }
@@ -78,8 +81,8 @@ const PrescriptionPanel = ({ appt }) => {
       setPrescriptionId(saved._id);
       setStatus(issued.status);
       setMsg('Issued to patient');
-    } catch {
-      setMsg('Issue failed');
+    } catch (err) {
+      setMsg(getApiErrorMessage(err.response?.data || err, 'Issue failed'));
     } finally {
       setIssuing(false);
     }
@@ -177,7 +180,7 @@ const PrescriptionPanel = ({ appt }) => {
           </button>
           <button
             onClick={handleIssue}
-            disabled={saving || issuing || medications.every(m => !m.name)}
+            disabled={saving || issuing || medications.length === 0 || !medications.every(medComplete)}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-2xl transition-colors disabled:opacity-50"
           >
             {issuing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}

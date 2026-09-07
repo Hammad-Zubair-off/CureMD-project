@@ -48,6 +48,25 @@ const callGemini = async (modelName, systemInstruction, promptData, generationCo
 
 // Helpers
 
+// Only files hosted on our own Cloudinary account may be fetched server-side.
+// This blocks SSRF via a crafted `fileUrl` (internal hosts, cloud metadata, etc).
+const CLOUDINARY_HOST = 'res.cloudinary.com';
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+const isAllowedFileUrl = (url) => {
+    try {
+        const u = new URL(url);
+        if (u.protocol !== 'https:') return false;
+        if (u.hostname !== CLOUDINARY_HOST) return false;
+        // path must start with our cloud name when it is configured
+        const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+        if (cloud && !u.pathname.startsWith(`/${cloud}/`)) return false;
+        return true;
+    } catch {
+        return false;
+    }
+};
+
 /**
  * Processes selected files from Cloudinary.
  * PDFs → extracted as text (cheaper tokens).
@@ -57,9 +76,16 @@ const processSelectedFiles = async (selectedReports) => {
     let extractedText = '';
     const imageParts = [];
 
+    if (!Array.isArray(selectedReports)) return { extractedText, imageParts };
+
     for (const report of selectedReports) {
-        const url = report.fileUrl;
+        const url = report?.fileUrl;
         if (!url) continue;
+
+        if (!isAllowedFileUrl(url)) {
+            logger.warn(`[ai-symptom-service] Rejected non-Cloudinary file URL: ${String(url).slice(0, 120)}`);
+            continue;
+        }
 
         const isPDF = report.mimeType === 'application/pdf' || url.toLowerCase().includes('.pdf');
         const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(report.mimeType) ||
@@ -69,7 +95,9 @@ const processSelectedFiles = async (selectedReports) => {
             const response = await axios.get(url, {
                 responseType: 'arraybuffer',
                 timeout: 15000,
-                maxRedirects: 5,
+                maxRedirects: 0,
+                maxContentLength: MAX_FILE_BYTES,
+                maxBodyLength: MAX_FILE_BYTES,
             });
             logger.info(`[ai-symptom-service] Downloaded "${report.title}" — status: ${response.status} | content-type: ${response.headers['content-type']} | bytes: ${response.data.byteLength}`);
 

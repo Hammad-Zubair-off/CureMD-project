@@ -9,8 +9,12 @@ const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
 
 // ─ Helpers ─
 
-// Normalize incoming date strings to UTC — same helper as in controller
-const toUTC = (dateStr) => new Date(new Date(dateStr).toISOString());
+// Normalize an incoming date string to a Date. Returns null for anything
+// unparseable (an invalid but present string used to throw a RangeError here).
+export const toUTC = (dateStr) => {
+    const d = new Date(dateStr);
+    return Number.isNaN(d.getTime()) ? null : d;
+};
 
 /**
  * Validates the request body for booking a new appointment.
@@ -62,9 +66,13 @@ export const validateBookAppointment = ({
     if (!PHONE_REGEX.test(String(patientPhone).replace(/[\s()-]/g, '')))
         errors.push('Invalid phone number. Use 7-15 digits, optionally starting with "+".');
 
-    // appointmentDate — must be in the future
-    if (toUTC(appointmentDate) <= new Date())
+    // appointmentDate — must be a valid, future date
+    const apptDate = toUTC(appointmentDate);
+    if (!apptDate) {
+        errors.push('appointmentDate is not a valid date.');
+    } else if (apptDate <= new Date()) {
         errors.push('Appointment date must be in the future.');
+    }
 
     return { valid: errors.length === 0, errors, fee };
 };
@@ -88,9 +96,13 @@ export const validateRescheduleAppointment = ({
     if (!TIME_SLOT_REGEX.test(timeSlot))
         errors.push('Invalid timeSlot format. Expected HH:MM - HH:MM (e.g. "09:00 - 09:30").');
 
-    // appointmentDate — must be in the future
-    if (toUTC(appointmentDate) <= new Date())
+    // appointmentDate — must be a valid, future date
+    const apptDate = toUTC(appointmentDate);
+    if (!apptDate) {
+        errors.push('appointmentDate is not a valid date.');
+    } else if (apptDate <= new Date()) {
         errors.push('Appointment date must be in the future.');
+    }
 
     return { valid: errors.length === 0, errors };
 };
