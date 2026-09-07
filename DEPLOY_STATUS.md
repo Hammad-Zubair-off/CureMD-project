@@ -306,7 +306,7 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 | 3 | Book with a real email; confirm the `$` receipt arrives — **deferred by user** (needs live Stripe; Brevo path verified on 09-04) | user | low |
 | 4 | ~~Test a live 2-participant Agora video call~~ — **done 2026-09-07**: user confirmed the doctor↔patient video session works. | — | ✅ |
 | 5 | Delete throwaway test accounts (`curemd-sectest+…`, `curemd-gemtest+…`, `rollcheck+…`, `patient.test`, `doctor.test`, `admin.test`, `superadmin.test`, the pending `*Doc` doctors, junk `DBNAME` database) once done testing | user | low |
-| 6 | Local machine security cleanup: delete `dburi,txt.txt` and `vercel-token.txt` from Desktop (user reports done); **revoke the `curemd-db-fix` Vercel token** used 2026-09-07; delete `claude-deploy` tokens at vercel.com → Account Settings → Tokens | user | high |
+| 6 | ~~Local machine + token security cleanup~~ — **done**: `dburi,txt.txt` / `vercel-token.txt` deleted from Desktop; `curemd-db-fix` Vercel token revoked 2026-09-08; `claude-deploy` tokens deleted. | — | ✅ |
 | 7 | Render services — **skipped by user** (already suspended) | — | ✅ |
 | 8 | Configure real Stripe (test then live) — set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` **and** frontend `VITE_SKIP_PAYMENT` → `false`, redeploy | user | low |
 | 9 | ~~Gemini `503`~~ — **done 2026-09-07 / hardened 2026-09-08** (§17): `callGemini` now retries with backoff + falls back across models; verified 5/5 → 8/8. | — | ✅ |
