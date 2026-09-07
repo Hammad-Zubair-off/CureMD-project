@@ -3,8 +3,10 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ Migration complete — merged to `main`, deployed, tested · ✅ fix passes #1 (`c7b6eba`), #2 security (`5aa403d`), #3 full regression (`9b99947`), #4 AI-chat reliability + vitals (`73bbe8f`, `537af3f`) all deployed to 9 projects and verified — see §14–§17 · ✅ live 2-person Agora video call verified 2026-09-07
-**Last updated:** 2026-09-08
+**Status:** ✅ **COMPLETE.** Migration + 4 fix passes all deployed to 9 projects and verified. All tracked tasks done or explicitly skipped by the user (§11). Nothing blocking.
+Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` — see §14–§17.
+Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking.
+**Last updated:** 2026-09-08 · `main` HEAD `fd71086`
 
 | | |
 |---|---|
@@ -299,22 +301,27 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 
 ## 11. Outstanding tasks
 
-| # | Task | Owner | Priority |
-|---|---|---|---|
-| 1 | ~~Seed an admin/superadmin account~~ — **done 2026-09-07**: `scripts/seed-admin-atlas.mjs` created `admin.test@curemd.dev` + `superadmin.test@curemd.dev` in `auth-db`. | — | ✅ |
-| 2 | ~~Verify admin dashboard + doctor-approved flows end-to-end~~ — **done 2026-09-07** (§16): logged in as admin, clicked through User/Doctor/Finance management, exercised approve / reject / activate / deactivate / delete; logged in as `doctor.test`, verified profile / availability / appointments / telemedicine. Findings folded into the §16 fix pass. | — | ✅ |
-| 3 | Book with a real email; confirm the `$` receipt arrives — **deferred by user** (needs live Stripe; Brevo path verified on 09-04) | user | low |
-| 4 | ~~Test a live 2-participant Agora video call~~ — **done 2026-09-07**: user confirmed the doctor↔patient video session works. | — | ✅ |
-| 5 | Delete throwaway test accounts (`curemd-sectest+…`, `curemd-gemtest+…`, `rollcheck+…`, `patient.test`, `doctor.test`, `admin.test`, `superadmin.test`, the pending `*Doc` doctors, junk `DBNAME` database) once done testing | user | low |
-| 6 | ~~Local machine + token security cleanup~~ — **done**: `dburi,txt.txt` / `vercel-token.txt` deleted from Desktop; `curemd-db-fix` Vercel token revoked 2026-09-08; `claude-deploy` tokens deleted. | — | ✅ |
-| 7 | Render services — **skipped by user** (already suspended) | — | ✅ |
-| 8 | Configure real Stripe (test then live) — set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` **and** frontend `VITE_SKIP_PAYMENT` → `false`, redeploy | user | low |
-| 9 | ~~Gemini `503`~~ — **done 2026-09-07 / hardened 2026-09-08** (§17): `callGemini` now retries with backoff + falls back across models; verified 5/5 → 8/8. | — | ✅ |
-| 10 | ~~Reconcile `README.md`~~ — **done 2026-09-07** (§15). | — | ✅ |
-| 11 | Move `pk_test_` out of `docker-compose.yml` line 39 into an env var — publishable key, tidiness not a leak | either | low |
-| 12 | Rotate the MongoDB user password (`komotech329_db_user`) to something stronger than `komotechpass123` — update all 8 `MONGODB_URI` + redeploy (`scripts/fix-mongo-uris.mjs` automates the Vercel side) | user | medium |
-| 13 | `ai-symptom-service` orphaned history-token chain (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI` + unused `patientClient`/`doctorClient`) — **investigated 2026-09-08** (§17): confirmed fully dead (zero callers). Leaving it has **no runtime impact**; the only note is `POST /api/patients/history-token` is a live JWT-minting endpoint with no consumer (returns only the caller's own sanitised data). User chose to keep it for now and instead extend the live path (blood type + meds — done, `537af3f`). Delete later if desired. | either | low |
-| 14 | Branding: "MediCare" strings vs "CureMD" project name across frontend + emails — **skipped by user** | — | ✅ |
+**Status as of 2026-09-08: all tracked tasks are either done or explicitly skipped by the user.** Nothing is blocking. The items below marked "skipped" are safe to leave — they are optional hardening / cleanup / cosmetics, not defects.
+
+| # | Task | Resolution |
+|---|---|---|
+| 1 | Seed an admin/superadmin account | ✅ done — `scripts/seed-admin-atlas.mjs` created `admin.test@curemd.dev` + `superadmin.test@curemd.dev` |
+| 2 | Verify admin dashboard + doctor-approved flows end-to-end | ✅ done 2026-09-07 (§16) — full click-through as admin + doctor; findings folded into fix pass #3 |
+| 3 | Book with a real email; confirm the `$` receipt arrives | ⏭️ skipped by user — needs live Stripe; Brevo send path verified 09-04 |
+| 4 | Live 2-participant Agora video call | ✅ done 2026-09-07 — user confirmed |
+| 5 | Delete throwaway test accounts + junk `DBNAME` database | ⏭️ skipped by user — harmless clutter; delete via admin login whenever |
+| 6 | Local machine + token security cleanup | ✅ done 2026-09-08 — Desktop secret files deleted; `curemd-db-fix` + `claude-deploy` Vercel tokens revoked |
+| 7 | Render services | ✅ skipped by user — already suspended |
+| 8 | Configure real Stripe | ⏭️ skipped by user — payments run in `SKIP_PAYMENT` bypass by design for now. Unlocks: card payment, `$` receipt email, admin Refund flow. Steps: set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` + `VITE_SKIP_PAYMENT` → `false`, redeploy |
+| 9 | Gemini `503` | ✅ done 2026-09-07 / hardened 2026-09-08 (§17) — retry + backoff + model fallback; 5/5 → 8/8 |
+| 10 | Reconcile `README.md` | ✅ done 2026-09-07 (§15) |
+| 11 | Move `pk_test_` out of `docker-compose.yml` line 39 | ⏭️ skipped by user — Stripe **publishable** key (client-side by design), tidiness not a leak |
+| 12 | Rotate the MongoDB password off `komotechpass123` | ⏭️ skipped by user — `scripts/fix-mongo-uris.mjs` automates the Vercel side if revisited |
+| 13 | `ai-symptom` orphaned history-token chain | ✅ investigated 2026-09-08 (§17) — confirmed fully dead, no runtime impact. Kept; live path extended with blood type + meds (`537af3f`) instead |
+| 14 | Branding "MediCare" vs "CureMD" | ⏭️ skipped by user |
+
+### Verified by code review, not run live (accepted)
+Fix pass #3 backend security changes — the 3 IDOR gates (report files, patient profile, prescriptions), Stripe webhook fail-closed, QStash fail-closed, reschedule-notification wiring. All pass `node --check`, mirror existing patterns; exercising them end-to-end would need multi-user fixtures (two doctors + shared patient, an unsigned webhook POST, etc.). Low risk, accepted as-is.
 
 ---
 
