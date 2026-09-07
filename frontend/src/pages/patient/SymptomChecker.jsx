@@ -20,6 +20,7 @@ export default function SymptomChecker() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('AI is thinking...');
+  const [chatError, setChatError] = useState('');
 
   // File Sharing State
   const [showFileModal, setShowFileModal] = useState(false);
@@ -119,6 +120,7 @@ export default function SymptomChecker() {
 
     setInput('');
     setSelectedReports([]);
+    setChatError('');
     setLoadingText(attachedReports.length > 0
       ? `Parsing and analyzing ${attachedReports.length} file${attachedReports.length > 1 ? 's' : ''}...`
       : 'AI is thinking...'
@@ -146,6 +148,19 @@ export default function SymptomChecker() {
 
     } catch (error) {
       console.error("Chat Error:", error);
+      // Keep the user's message visible and tell them what happened —
+      // do NOT silently drop the bubble.
+      const status = error?.response?.status;
+      const serverMsg = error?.response?.data?.error || error?.error;
+      setChatError(
+        serverMsg
+        || (status === 429
+          ? 'The AI is busy right now. Wait a few seconds and send it again.'
+          : 'The AI didn\'t respond. Your message wasn\'t sent — please try again.')
+      );
+      // put the text back in the box so they can resend with one tap
+      setInput(userMessage);
+      setSelectedReports(attachedReports);
       setViewingSession(prev => {
         if (!prev) return prev;
         return {
@@ -473,6 +488,16 @@ export default function SymptomChecker() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {chatError && (
+                  <div className="mb-2 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span className="flex-1">{chatError}</span>
+                    <button type="button" onClick={() => setChatError('')} className="text-red-400 hover:text-red-600">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 )}
 

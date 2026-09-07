@@ -12,13 +12,38 @@ if (!isGeminiConfigured) {
 
 const geminiClient = isGeminiConfigured ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Gemini free-tier `*-flash-latest` models 503 ("high demand") fairly often.
+// These are transient, so retry with exponential backoff before giving up.
+// On sustained 503 for the primary model, fall back to a lighter model.
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+const FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.0-flash'];
+
 const callGemini = async (modelName, systemInstruction, promptData, generationConfig) => {
-    const model = geminiClient.getGenerativeModel({ model: modelName, systemInstruction });
-    const completion = await model.generateContent({
-        contents: [{ role: 'user', parts: promptData }],
-        generationConfig,
-    });
-    return completion.response.text();
+    const models = [modelName, ...FALLBACK_MODELS.filter((m) => m !== modelName)];
+    let lastErr;
+
+    for (const model of models) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const gm = geminiClient.getGenerativeModel({ model, systemInstruction });
+                const completion = await gm.generateContent({
+                    contents: [{ role: 'user', parts: promptData }],
+                    generationConfig,
+                });
+                return completion.response.text();
+            } catch (err) {
+                lastErr = err;
+                const status = err?.status ?? err?.response?.status;
+                if (!RETRYABLE.has(status)) throw err;         // non-transient — bail immediately
+                logger.warn(`[ai-symptom-service] Gemini ${model} attempt ${attempt + 1} failed (${status}); retrying`);
+                await sleep(400 * 2 ** attempt);               // 400ms, 800ms, 1600ms
+            }
+        }
+        logger.warn(`[ai-symptom-service] Gemini ${model} exhausted retries — trying next model`);
+    }
+    throw lastErr;
 };
 
 // Helpers
@@ -185,10 +210,6 @@ export const sendMessage = async (req, res, next) => {
             return res.status(403).json({ success: false, error: 'You are not authorized to message this session.' });
         }
 
-        // Save user message immediately
-        session.messages.push({ role: 'user', content: message });
-        await session.save();
-
         // Process any attached files
         const { extractedText, imageParts } = await processSelectedFiles(selectedReports);
 
@@ -253,13 +274,15 @@ export const sendMessage = async (req, res, next) => {
             });
         }
 
-        // Update session with AI response
+        // Persist the exchange only after a successful AI reply — a failed
+        // attempt leaves no orphaned user message in the transcript.
         session.rollingSummary = aiResponse.rollingSummary;
         session.triageOutcome = {
             isEmergency: aiResponse.isEmergency,
             triageLevel: aiResponse.triageLevel,
             suggestedDepartment: aiResponse.suggestedDepartment,
         };
+        session.messages.push({ role: 'user', content: message });
         session.messages.push({ role: 'ai', content: aiResponse.userFacingMessage });
 
         await session.save();
@@ -270,17 +293,27 @@ export const sendMessage = async (req, res, next) => {
     } catch (err) {
         logger.error(`[ai-symptom-service] sendMessage error: ${err.message}`);
 
-        // Gemini rate limit — surface clearly to frontend
-        if (err.status === 429) {
+        const status = err?.status ?? err?.response?.status;
+        const msg = String(err.message || '').toLowerCase();
+
+        // Gemini rate limit
+        if (status === 429) {
             return res.status(429).json({
                 success: false,
-                error: 'AI service is currently busy. Please try again in a few moments.',
+                error: 'The AI is busy right now. Please wait a few seconds and send your message again.',
             });
         }
 
-        // Invalid/expired API key — surface as a service-unavailable, not a generic 500
-        const msg = String(err.message || '').toLowerCase();
-        if (err.status === 400 || err.status === 403 || msg.includes('api key')) {
+        // Gemini overloaded / transient upstream failure (survived all retries + fallbacks)
+        if (status === 503 || status === 500 || status === 502 || status === 504 || msg.includes('high demand') || msg.includes('overloaded')) {
+            return res.status(503).json({
+                success: false,
+                error: 'The AI is temporarily overloaded. Your message was not sent — please try again in a moment.',
+            });
+        }
+
+        // Invalid/expired API key
+        if (status === 400 || status === 403 || msg.includes('api key')) {
             return res.status(503).json({
                 success: false,
                 error: 'AI triage is temporarily unavailable. Please try again later or contact a doctor directly.',
