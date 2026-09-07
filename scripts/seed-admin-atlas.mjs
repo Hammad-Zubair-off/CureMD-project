@@ -35,18 +35,25 @@ if (!MONGODB_URI) {
     process.exit(1);
 }
 
+// Passwords are NOT hardcoded — supply them at run time:
+//   SUPERADMIN_PASSWORD=... ADMIN_PASSWORD=... MONGODB_URI=... node scripts/seed-admin-atlas.mjs
+if (!process.env.SUPERADMIN_PASSWORD || !process.env.ADMIN_PASSWORD) {
+    console.error('ERROR: set SUPERADMIN_PASSWORD and ADMIN_PASSWORD (min 8 chars each).');
+    process.exit(1);
+}
+
 const accounts = [
     {
         role: 'superadmin',
         email: process.env.SUPERADMIN_EMAIL || 'superadmin.test@curemd.dev',
-        password: process.env.SUPERADMIN_PASSWORD || 'SuperTest123!',
+        password: process.env.SUPERADMIN_PASSWORD,
         firstName: 'Super',
         lastName: 'Admin',
     },
     {
         role: 'admin',
         email: process.env.ADMIN_EMAIL || 'admin.test@curemd.dev',
-        password: process.env.ADMIN_PASSWORD || 'AdminTest123!',
+        password: process.env.ADMIN_PASSWORD,
         firstName: 'Platform',
         lastName: 'Admin',
     },

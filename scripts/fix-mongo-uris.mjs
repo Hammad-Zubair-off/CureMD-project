@@ -1,15 +1,22 @@
 /**
- * One-off: repair the MONGODB_URI env var on all 8 backend Vercel projects.
- * They were saved with the literal placeholder "DBNAME" instead of the real
- * database name. This sets each to the correct value via the Vercel API.
+ * Set/repair the MONGODB_URI env var on all 8 backend Vercel projects at once.
+ * Originally written to fix a "DBNAME" placeholder; also the fastest way to roll
+ * a rotated Atlas password across every project.
  *
- * Run from the repo root:
+ * Run from the repo root — NOTHING is hardcoded, both values come from env:
  *
- *   VERCEL_TOKEN="vcp_xxx" node scripts/fix-mongo-uris.mjs           # apply
- *   VERCEL_TOKEN="vcp_xxx" node scripts/fix-mongo-uris.mjs --dry-run # preview only
+ *   VERCEL_TOKEN="vcp_xxx" \
+ *   MONGO_CRED="user:newpassword@cluster0.xxxxx.mongodb.net" \
+ *   node scripts/fix-mongo-uris.mjs            # apply
+ *
+ *   ...same env... node scripts/fix-mongo-uris.mjs --dry-run   # preview only
+ *
+ * MONGO_CRED is the "<user>:<password>@<host>" section of the SRV URI (no
+ * "mongodb+srv://" prefix, no "/dbname", no "?query"). Optionally override the
+ * Vercel team with VERCEL_TEAM_ID and the query tail with MONGO_URI_TAIL.
  *
  * After it prints all-OK, the projects still need a redeploy to pick up the
- * new values (a git push does that).
+ * new values (a git push, or `vercel --prod` per project).
  */
 
 const TOKEN = process.env.VERCEL_TOKEN;
@@ -17,10 +24,18 @@ if (!TOKEN) {
     console.error('ERROR: set VERCEL_TOKEN');
     process.exit(1);
 }
+const CRED = process.env.MONGO_CRED;
+if (!CRED || !/^[^:/@\s]+:[^@\s]+@[^/@\s]+$/.test(CRED)) {
+    console.error('ERROR: set MONGO_CRED to "<user>:<password>@<host>" (no scheme, no /db, no ?query)');
+    process.exit(1);
+}
 const DRY = process.argv.includes('--dry-run');
-const TEAM = 'team_Nb2l3Jww2VYJVceMmxfIzf6k';
-const CRED = 'komotech329_db_user:komotechpass123@cluster0.lpkysyi.mongodb.net';
-const TAIL = 'retryWrites=true&w=majority&appName=Cluster0';
+const TEAM = process.env.VERCEL_TEAM_ID;
+if (!TEAM) {
+    console.error('ERROR: set VERCEL_TEAM_ID (find it in the Vercel dashboard URL or `vercel teams ls`).');
+    process.exit(1);
+}
+const TAIL = process.env.MONGO_URI_TAIL || 'retryWrites=true&w=majority&appName=Cluster0';
 
 const targets = [
     ['prj_Upgv9fND38OaX0Qai60nmGTUFIXl', 'cure-md-project',     'auth-db'],

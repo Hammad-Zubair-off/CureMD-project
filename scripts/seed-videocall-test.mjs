@@ -10,7 +10,7 @@
  * "Start Session", so it is not seeded here.
  *
  * Run from anywhere:
- *   MONGODB_URI="mongodb+srv://USER:PASS@cluster0.lpkysyi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" \
+ *   MONGODB_URI="mongodb+srv://USER:PASS@<your-cluster-host>/?retryWrites=true&w=majority&appName=Cluster0" \
  *   node scripts/seed-videocall-test.mjs
  *
  * (no database name in the URI — the script targets auth-db / doctor-db /
@@ -29,8 +29,15 @@ const bcrypt = (await import(pathToFileURL(req.resolve('bcryptjs')).href)).defau
 const URI = process.env.MONGODB_URI;
 if (!URI) { console.error('ERROR: set MONGODB_URI (no db name in it)'); process.exit(1); }
 
-const PATIENT = { email: 'patient.test@curemd.dev', password: 'PatientTest123!', firstName: 'Pat', lastName: 'Tester' };
-const DOCTOR  = { email: 'doctor.test@curemd.dev',  password: 'DoctorTest123!',  firstName: 'Doc', lastName: 'Tester' };
+// Passwords come from the environment — nothing hardcoded:
+//   TEST_PATIENT_PASSWORD=... TEST_DOCTOR_PASSWORD=... MONGODB_URI=... node scripts/seed-videocall-test.mjs
+if (!process.env.TEST_PATIENT_PASSWORD || !process.env.TEST_DOCTOR_PASSWORD) {
+    console.error('ERROR: set TEST_PATIENT_PASSWORD and TEST_DOCTOR_PASSWORD.');
+    process.exit(1);
+}
+
+const PATIENT = { email: process.env.TEST_PATIENT_EMAIL || 'patient.test@curemd.dev', password: process.env.TEST_PATIENT_PASSWORD, firstName: 'Pat', lastName: 'Tester' };
+const DOCTOR  = { email: process.env.TEST_DOCTOR_EMAIL  || 'doctor.test@curemd.dev',  password: process.env.TEST_DOCTOR_PASSWORD,  firstName: 'Doc', lastName: 'Tester' };
 
 const now = new Date();
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

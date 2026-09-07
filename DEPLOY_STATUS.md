@@ -7,6 +7,7 @@
 Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) — see §14–§19. **Consolidated defect ledger: §20.**
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
 **Totals across all 6 passes: 22 HIGH, 31 MEDIUM, ~43 LOW — all fixed and deployed.**
+**Security:** committed-credentials sweep 2026-09-08 — one real Atlas password was hardcoded in a script in this **public** repo; rotated + de-hardcoded + docs redacted. See §21.
 **Last updated:** 2026-09-08 · `main` HEAD `3827bfb` (code `622fa06`)
 
 | | |
@@ -176,7 +177,7 @@ Peer `*_SERVICE_URL` values are the production URLs from §4. `AUTH_SERVICE_URL`
 
 | Service | Role | Notes |
 |---|---|---|
-| **MongoDB Atlas** | Databases (8: `auth-db`, `patient_db`, `doctor-db`, `appointment-db`, `payment-db`, `notification-db`, `telemedicine-db`, `ai_symptoms`) | Cluster `cluster0.lpkysyi.mongodb.net`. Unchanged by the migration. Network access must allow `0.0.0.0/0` (Vercel egress isn't static). |
+| **MongoDB Atlas** | Databases (8: `auth-db`, `patient_db`, `doctor-db`, `appointment-db`, `payment-db`, `notification-db`, `telemedicine-db`, `ai_symptoms`) | Cluster host redacted from this doc. Unchanged by the migration. Network access must allow `0.0.0.0/0` (Vercel egress isn't static). |
 | **Upstash QStash** | Async event delivery (EU region, free tier ~500 msg/day) | `QSTASH_TOKEN` on publishers; `QSTASH_CURRENT_SIGNING_KEY` + `QSTASH_NEXT_SIGNING_KEY` on consumers. No topics/queues — publishers POST to explicit consumer URLs. |
 | **cron-job.org** | Appointment-expiry trigger | `POST https://curemd-appointment.vercel.app/api/appointments/internal/run-expiry`, header `x-internal-secret`, every 10 min. Verified: 200 with correct secret, 401 without. |
 | **Brevo** | Transactional email (receipts, refunds) | Verified sending in production. |
@@ -320,7 +321,7 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 | 9 | Gemini `503` | ✅ done 2026-09-07 / hardened 2026-09-08 (§17) — retry + backoff + model fallback; 5/5 → 8/8 |
 | 10 | Reconcile `README.md` | ✅ done 2026-09-07 (§15) |
 | 11 | Move `pk_test_` out of `docker-compose.yml` line 39 | ⏭️ skipped by user — Stripe **publishable** key (client-side by design), tidiness not a leak |
-| 12 | Rotate the MongoDB password off `komotechpass123` | ⏭️ skipped by user — `scripts/fix-mongo-uris.mjs` automates the Vercel side if revisited |
+| 12 | Rotate the MongoDB password (old value had leaked in a committed script) | ✅ done 2026-09-08 — user rotated the Atlas password after the security sweep found `scripts/fix-mongo-uris.mjs` had it hardcoded in a **public** repo. Script de-hardcoded (`MONGO_CRED` env var); doc references redacted. `MONGODB_URI` on all 8 Vercel projects re-set + redeployed. See §21. |
 | 13 | `ai-symptom` orphaned history-token chain | ✅ investigated 2026-09-08 (§17) — confirmed fully dead, no runtime impact. Kept; live path extended with blood type + meds (`537af3f`) instead |
 | 14 | Branding "MediCare" vs "CureMD" | ⏭️ skipped by user |
 
@@ -562,7 +563,7 @@ returns the caller's own sanitised data. Kept for now (task §11.13).
 
 ## 18. Regression re-audit & fix pass #5 — 2026-09-08
 
-Commit **`4bc25eb`** (24 files, +313 / −66). Method: two static-audit agents (full frontend, all 8 backend services) + a live walkthrough with fresh QA accounts (`qa.patient.0908@curemd.dev`, `qa.doctor.0908@curemd.dev`, pw `QaTest2026!`) covering doctor onboarding (create profile → set availability), patient booking, and every page. Findings below exclude the items already fixed in §14–17.
+Commit **`4bc25eb`** (24 files, +313 / −66). Method: two static-audit agents (full frontend, all 8 backend services) + a live walkthrough with fresh QA accounts (`qa.patient.0908@curemd.dev`, `qa.doctor.0908@curemd.dev`; passwords not recorded here) covering doctor onboarding (create profile → set availability), patient booking, and every page. Findings below exclude the items already fixed in §14–17.
 
 ### HIGH
 
@@ -724,7 +725,7 @@ One rolled-up view of §14–§19. **Every finding below is fixed, committed, an
 | `ai-symptom` history-token pipeline (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI`) | Complete but fully unwired — no call site, no runtime cost. Superseded by the "frontend passes live vitals inline" path. Investigated §17, kept. |
 | Dead events `payment.completed` / `payment.failed` / `patient.profile.*` | Publish with no consumer is an inert no-op. |
 | "MediCare" brand string vs "CureMD" project name | A rename across landing/legal/email, not a bug. User-deferred. |
-| MongoDB password still `komotechpass123` | User-deferred; `scripts/fix-mongo-uris.mjs` automates the Vercel side. |
+| ~~MongoDB password~~ | **Resolved 2026-09-08** — the old password had leaked in a committed script in the public repo. Rotated in Atlas; script de-hardcoded; doc redacted; all 8 `MONGODB_URI` re-set + redeployed. See §21. |
 | `pk_test_` in `docker-compose.yml:39` | Stripe **publishable** key — client-side by design, not a leak. |
 | Test accounts + junk DB on Atlas | Harmless clutter; delete via admin login anytime. |
 | SSE `/track` degraded to ~3 s poll on serverless | No frontend change needed; true push would need Pusher/Ably/Redis. |
@@ -735,3 +736,43 @@ One rolled-up view of §14–§19. **Every finding below is fixed, committed, an
 - **22 HIGH + 31 MEDIUM + ~43 LOW findings across 6 passes — 100 % fixed and deployed.**
 - Live-verified this session: health ×9, auth login, NaN-pagination guard, `getSpecializations`, `/reports/my`, unauthenticated `sendMessage` → 401, and the deployed frontend bundle confirmed to contain the latest fixes.
 - Working tree clean. No blocking work remains.
+
+---
+
+## 21. Committed-credentials sweep & MongoDB password rotation — 2026-09-08
+
+### Trigger
+User asked for a full check that no credentials / `.env` / secrets were committed by accident.
+
+### What the sweep covered
+Every tracked file + full commit history: `.env*` files, `.gitignore` coverage, `mongodb+srv://` strings, Stripe `sk_`/`whsec_`, generic `apikey/secret/password/token = …` assignments, `Bearer`/`Basic` literals, `BEGIN … PRIVATE KEY` blocks, hardcoded `process.env.X || 'literal'` fallbacks in service source, build artifacts (`dist/`, `.vercel/`, `.env.local`), and repo visibility.
+
+### Findings
+
+| Sev | Finding | Status |
+|---|---|---|
+| **CRITICAL** | **Repo is PUBLIC** (`gh repo view` → `visibility: PUBLIC`) and `scripts/fix-mongo-uris.mjs:22` had the **real Atlas credential hardcoded** — `komotech329_db_user:komotechpass123@<cluster>`. Committed in `2f276cb` (2026-09-07), never private in practice. Atlas network access is `0.0.0.0/0`, so this was a world-readable path to all 8 production DBs. | **Resolved** — user rotated the Atlas password 2026-09-08. Script now requires `MONGO_CRED` + `VERCEL_TEAM_ID` from the environment; nothing hardcoded. |
+| HIGH | `DEPLOY_STATUS.md` repeated the password string + cluster host in prose (§6, §11.12, §20.5). | **Redacted** — password references removed, cluster host replaced with "redacted". |
+| MEDIUM | `scripts/seed-admin-atlas.mjs` fell back to `AdminTest123!` / `SuperTest123!`; `scripts/seed-videocall-test.mjs` hardcoded `PatientTest123!` / `DoctorTest123!`; cluster host in a usage comment. | **De-hardcoded** — both scripts now require the passwords via env vars (`ADMIN_PASSWORD`, `SUPERADMIN_PASSWORD`, `TEST_PATIENT_PASSWORD`, `TEST_DOCTOR_PASSWORD`); comment host → `<your-cluster-host>`. **Action still needed:** the seeded accounts on the prod auth DB still have those passwords — change them or delete the accounts (esp. `admin.test@curemd.dev`). |
+| LOW | Vercel team ID + 8 project IDs in `fix-mongo-uris.mjs`. Not credentials (inert without a token). | Team ID moved to `VERCEL_TEAM_ID` env; project IDs kept (the script needs them, they carry no access). |
+| VERIFY | `Insturctions.md` (old build tutorial) uses `JWT_SECRET=healthcare_jwt_secret_2026` as its worked example in ~8 places. | Tutorial example, not necessarily production. **Confirm the real `JWT_SECRET` in Vercel is a strong random value, not this string.** |
+
+### Verified clean (no action)
+- All 9 `.env.example` files — placeholders only (`replace_with_shared_*`, `pk_test_your_*`, `xkeysib-your_*`, `sk_test_your_*`).
+- **No `.env` / `.env.local` ever committed** — only `.env.example` in all of history.
+- `.env.local` (×9 on disk) and `.vercel/` (×9) — all git-ignored, confirmed.
+- **No real Stripe / Brevo / Gemini / Agora / SendGrid keys** anywhere in tracked files or history.
+- No hardcoded secret fallbacks in service source (all fall back to URLs/ports).
+- No private-key / certificate blocks in any commit.
+- No `dist/` / `build/` output tracked.
+- `agoraTokenGenerator.js` reads `process.env` only.
+
+### Post-rotation impact & recovery
+Rotating the Atlas password **immediately 503'd 7 of 8 backends** (their Vercel `MONGODB_URI` still had the old password; `auth`'s `/health` doesn't ping the DB so it stayed 200). Recovery:
+1. Re-set `MONGODB_URI` on all 8 projects — either via the Vercel dashboard, or:
+   `VERCEL_TOKEN=… VERCEL_TEAM_ID=… MONGO_CRED="user:newpass@host" node scripts/fix-mongo-uris.mjs`
+2. Redeploy all 8 (a `git push`, or `vercel --prod` per project).
+3. Re-check `/health` ×9 and a DB-backed route (`GET /api/doctors`).
+
+### Residual risk
+`komotechpass123` stays in git history (`2f276cb` and later doc commits) and, because the repo is public, must be assumed already scraped. The **rotation** is what closes it; history rewrite (`git filter-repo` + force-push) is optional hygiene. Also recommended: set the repo private if it isn't meant to be public, and narrow Atlas Network Access from `0.0.0.0/0`.
