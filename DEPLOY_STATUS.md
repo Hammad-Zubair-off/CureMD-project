@@ -8,7 +8,7 @@ Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
 **Totals across 7 passes: 22 HIGH, 32 MEDIUM, ~44 LOW — all fixed and deployed.** Pass #6 (`73ffc61`, 2026-09-09): full manual regression — 1 MEDIUM (telemedicine session-start returned 503 for a 403/404) + 3 LOW. See §22.
 **Security:** committed-credentials sweep 2026-09-08 (§21). ⚠️ **Open:** the Atlas password was reverted to its previously-leaked value and still lives in public git history — rotation + `MONGODB_URI` update on the 8 backends is outstanding.
-**Last updated:** 2026-09-10 · `main` HEAD `c6b6ed7` · admin/superadmin pass §23 (no code change)
+**Last updated:** 2026-09-10 · `main` HEAD `55b5c62` · §23 admin/superadmin pass — 4 UX gaps fixed
 
 | | |
 |---|---|
@@ -24,7 +24,7 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3`, §20 ledger `f762102` |
 | Credential sweep | `930cd78` — hardcoded Atlas cred removed from scripts; docs redacted (§21) |
 | Fix pass #6 | `73ffc61` — full manual regression 2026-09-09: 1 MEDIUM (telemedicine session-start error semantics) + 3 LOW — see §22 |
-| `main` HEAD (deployed) | `c6b6ed7` |
+| `main` HEAD (deployed) | `55b5c62` |
 | Consolidated defect ledger | **§20** — every finding across passes #1–#5, one table (§22 for pass #6) |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
@@ -858,13 +858,14 @@ Focused live walkthrough (browser, no sub-agents) of every admin surface, plus t
 - **Delete:** superadmin → `200`, deleted admin can no longer log in; delete a **patient** id → `400` ("User is not an admin."); delete a **missing** id → `404`.
 - **Cleanup:** every scratch admin (UI + API) created and deleted; `Dr. Test Doc` restored to `isApproved:false, isActive:true`; user count back to 65; **zero residue**.
 
-### Minor observations (not defects, not fixed)
+### Minor observations — all 4 fixed in `55b5c62` (2026-09-10)
 
-1. **Create Admin doesn't refresh the user list.** After a successful create, the superadmin must hit Refresh (or change the filter) to see the new admin. The toast confirms success, so this is a small UX gap, not a bug — `UserManagement` is a separate component with its own fetch and no external refresh signal.
-2. **User Management has no "All users" view** — only Patients or Admins. Doctors live under Doctor Management. Intentional split; there is no single list of every user.
-3. **Appointment Rejections "Refund" column shows `paid`** for rejected-but-not-refunded appointments — it reflects `paymentStatus`, and under `SKIP_PAYMENT` no real Stripe refund occurs. Resolves once real Stripe is wired.
-4. Doctor list briefly renders "—" for specialization / rating before the async profile-map fetch resolves — cosmetic flash.
+1. **Create Admin didn't refresh the user list** — superadmin had to hit Refresh to see the new admin. **Fixed:** `AdminDashboard` bumps a `userRefreshKey` on create success; `UserManagement` re-fetches when it changes (no remount — filter/page preserved). *Verified live: total went 66 → 67 with no manual Refresh.*
+2. **No "All users" view** — filter offered only Patients / Admins. **Fixed:** added an "All Users" option; dropped the redundant hardcoded `role:'patient'` in the request params so an empty filter means no role filter. *Verified live: "All Users" → 66 total, rows span patient / doctor / admin / superadmin.*
+3. **Appointment Rejections "Refund" column showed the raw `paymentStatus`** ("paid"). **Fixed:** column renamed "Payment"; a shared `refundBadge()` helper (used by the desktop table and mobile cards) maps `refunded → "Refunded"`, `paid/succeeded → "Refund pending"`, `unpaid → "No payment"`. *Verified live: header reads "PAYMENT", badge reads "Refund pending".*
+4. **Doctor list flashed "—" for spec/rating** before the separate profile fetch resolved. **Fixed:** `profilesLoaded` flag — those cells show a pulse placeholder until the fetch completes once, then "—" only for doctors genuinely without a profile. *Verified live: post-load, "—" shows only for profile-less junk accounts.*
 
 ### Status
-- No code changes. `main` HEAD unchanged at `c6b6ed7`. 9/9 healthy.
-- Admin + superadmin dashboards, every tab, RBAC in both directions, and the create/delete-admin lifecycle are **live-verified** with no residue.
+- `55b5c62` — 3 files (`AdminDashboard.jsx`, `UserManagement.jsx`, `DoctorManagement.jsx`), `vite build` green, `curemd-frontend` redeployed.
+- Admin + superadmin dashboards, every tab, RBAC in both directions, and the create/delete-admin lifecycle are **live-verified**. All 4 §23 observations fixed and confirmed on the deployed site. No test residue (scratch admins created + deleted; user-count delta is an organic external signup).
+- 9/9 `/health` → 200. `main` HEAD `55b5c62`.
