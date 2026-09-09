@@ -147,3 +147,11 @@ secrets.yaml
 
 # Vercel
 .vercel
+
+# Credentials / secrets reference files — NEVER commit (repo is public)
+CREDENTIALS*
+credentials*
+*credentials*
+*CREDENTIALS*
+*.secrets.md
+secrets.md
