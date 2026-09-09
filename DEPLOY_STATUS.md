@@ -8,7 +8,7 @@ Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
 **Totals across 7 passes: 22 HIGH, 32 MEDIUM, ~44 LOW — all fixed and deployed.** Pass #6 (`73ffc61`, 2026-09-09): full manual regression — 1 MEDIUM (telemedicine session-start returned 503 for a 403/404) + 3 LOW. See §22.
 **Security:** committed-credentials sweep 2026-09-08 (§21). ⚠️ **Open:** the Atlas password was reverted to its previously-leaked value and still lives in public git history — rotation + `MONGODB_URI` update on the 8 backends is outstanding.
-**Last updated:** 2026-09-09 · `main` HEAD `c6b6ed7`
+**Last updated:** 2026-09-10 · `main` HEAD `c6b6ed7` · admin/superadmin pass §23 (no code change)
 
 | | |
 |---|---|
@@ -822,3 +822,49 @@ Commit **`73ffc61`**. Done directly (no sub-agents), against the live production
 - `curemd-telemedicine` redeployed from `73ffc61` then `c6b6ed7`; `curemd-frontend` from `73ffc61`. Session-start error semantics confirmed live (403 / 404, no longer 503); auto-session 4xx path still → 404.
 - `main` HEAD `c6b6ed7`. Working tree clean.
 - **Outstanding (unchanged):** the §21 credential exposure — `komotechpass123` is the live Atlas password again and is present in public git history. Rotation + `MONGODB_URI` update on the 8 backend projects still required.
+
+---
+
+## 23. Admin & superadmin pass — 2026-09-10
+
+Focused live walkthrough (browser, no sub-agents) of every admin surface, plus the superadmin create-admin / delete-admin flows exercised end to end with full cleanup. Companion API probe with precise state control. **No bugs found.**
+
+### Admin (`admin.test`) — live browser
+
+| Surface | Verified |
+|---|---|
+| Login → Admin Dashboard | Loads; **"Super Admin Controls" block correctly absent** for a plain admin |
+| **User Management** | Live search (list + stat tiles update per keystroke); role filter (Patients / Admins — no "All"/"Doctors", by design); Refresh; pagination ("Page 1 of 4 · 34 total") |
+| Deactivate → Activate cycle | Confirm modal → status badge flips to "Deactivated" + stat tiles update + success toast → Activate reverses it cleanly. Ran on the junk `regtest-…` account; **state fully restored** |
+| RBAC | A plain admin sees **no** action buttons on other admin rows — cannot deactivate/delete a peer admin |
+| **Doctor Mgmt → Registration Approvals** | Search; filter (All / Pending / Approved / Inactive); **Approve** fires immediately (row leaves Pending, "21→22 Approved / 5→4 Pending"); **Reject** opens a confirm modal ("…account will be deactivated"), cancelable. Approve tested on junk `regdoc-…`, then restored to pending via API |
+| **Doctor Mgmt → Appointment Rejections** | Loads; lists doctor-rejected appointments with Doctor / Patient / Appointment / Reason / Refund / Rejected-At. The two pass-#6 reject-flow appointments appear with their reasons ("Doctor unavailable that day" / "No reason provided") |
+| **Finance Management** | 5 stat tiles (Total Revenue / Transactions / Refunded / Pending / Net — all `$0` / `0`); search; filter (All / Paid / Pending / Failed / Refunded); clean "No payments found" empty state. All-zero is expected — `SKIP_PAYMENT=true` means no `Payment` docs are ever created |
+
+### Superadmin (`superadmin.test`) — live browser
+
+| Surface | Verified |
+|---|---|
+| Login → Admin Dashboard | **"Super Admin Controls" block present** (Crown icon + orange "Create Admin") — shown only for `role === 'superadmin'` |
+| **Create Admin** form | Inline; fields First/Last/Email/Password (hint "8+ chars, upper, lower, number, symbol"); submit → toast "Admin account created successfully", form closes. New admin appears under the Admins filter (after Refresh) as `role: admin`, Active |
+| RBAC | Superadmin **sees** deactivate + delete buttons on **every** admin row (incl. other admins) — the inverse of the plain-admin case above |
+| **Delete Admin** | Confirm modal ("Permanently delete … This cannot be undone.") → row removed + stat tiles update + toast. Used to delete the scratch admin just created |
+
+### API probe (with exact cleanup)
+
+- **Guards:** `POST /superadmin/create-admin` → patient `403`, admin `403` ("Super admin only"), no-token `401`. `DELETE /superadmin/admins/:id` → admin `403`.
+- **Validation:** empty body → `400` + `errors[]`; bad email + weak password → `400` + itemised `errors[]` (length / uppercase / …).
+- **Happy path:** create → `201` (`role: admin`); duplicate email → `409`; the new admin can log in and `GET /admin/users` → `200`, but `POST /superadmin/create-admin` → `403`.
+- **Delete:** superadmin → `200`, deleted admin can no longer log in; delete a **patient** id → `400` ("User is not an admin."); delete a **missing** id → `404`.
+- **Cleanup:** every scratch admin (UI + API) created and deleted; `Dr. Test Doc` restored to `isApproved:false, isActive:true`; user count back to 65; **zero residue**.
+
+### Minor observations (not defects, not fixed)
+
+1. **Create Admin doesn't refresh the user list.** After a successful create, the superadmin must hit Refresh (or change the filter) to see the new admin. The toast confirms success, so this is a small UX gap, not a bug — `UserManagement` is a separate component with its own fetch and no external refresh signal.
+2. **User Management has no "All users" view** — only Patients or Admins. Doctors live under Doctor Management. Intentional split; there is no single list of every user.
+3. **Appointment Rejections "Refund" column shows `paid`** for rejected-but-not-refunded appointments — it reflects `paymentStatus`, and under `SKIP_PAYMENT` no real Stripe refund occurs. Resolves once real Stripe is wired.
+4. Doctor list briefly renders "—" for specialization / rating before the async profile-map fetch resolves — cosmetic flash.
+
+### Status
+- No code changes. `main` HEAD unchanged at `c6b6ed7`. 9/9 healthy.
+- Admin + superadmin dashboards, every tab, RBAC in both directions, and the create/delete-admin lifecycle are **live-verified** with no residue.
