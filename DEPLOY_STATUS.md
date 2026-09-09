@@ -3,12 +3,12 @@
 **Project:** CureMD — AI-Enabled Smart Healthcare & Telemedicine Platform
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
-**Status:** ✅ **DEPLOYED.** Migration + 6 fix passes on all 9 projects.
-Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) — see §14–§19. **Consolidated defect ledger: §20.**
+**Status:** ✅ **DEPLOYED.** Migration + 7 fix passes on all 9 projects.
+Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) · #6 `73ffc61` full manual regression (telemedicine session-start 503→403/404, +3 LOW) — see §14–§22. **Consolidated defect ledger: §20.**
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
-**Totals across all 6 passes: 22 HIGH, 31 MEDIUM, ~43 LOW — all fixed and deployed.**
-**Security:** committed-credentials sweep 2026-09-08 — one real Atlas password was hardcoded in a script in this **public** repo; rotated + de-hardcoded + docs redacted. See §21.
-**Last updated:** 2026-09-08 · `main` HEAD `3827bfb` (code `622fa06`)
+**Totals across 7 passes: 22 HIGH, 32 MEDIUM, ~44 LOW — all fixed and deployed.** Pass #6 (`73ffc61`, 2026-09-09): full manual regression — 1 MEDIUM (telemedicine session-start returned 503 for a 403/404) + 3 LOW. See §22.
+**Security:** committed-credentials sweep 2026-09-08 (§21). ⚠️ **Open:** the Atlas password was reverted to its previously-leaked value and still lives in public git history — rotation + `MONGODB_URI` update on the 8 backends is outstanding.
+**Last updated:** 2026-09-09 · `main` HEAD `73ffc61`
 
 | | |
 |---|---|
@@ -22,8 +22,10 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Fix pass #4 | `73bbe8f` (AI chat Gemini-503 retry/fallback + no silent failure), `537af3f` (AI seeds blood type + current medications) — pushed 2026-09-08 — see §17 |
 | Fix pass #5 | `4bc25eb` + `43dc990` — regression re-audit 2026-09-08 (2 agents + live QA-account walkthrough): 1 SSRF + 3 auth/data-integrity HIGH, 10 MEDIUM, 2 LOW — see §18 |
 | Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3`, §20 ledger `f762102` |
-| `main` HEAD (deployed) | `3827bfb` (code `622fa06`) |
-| Consolidated defect ledger | **§20** — every finding across all 6 passes, one table |
+| Credential sweep | `930cd78` — hardcoded Atlas cred removed from scripts; docs redacted (§21) |
+| Fix pass #6 | `73ffc61` — full manual regression 2026-09-09: 1 MEDIUM (telemedicine session-start error semantics) + 3 LOW — see §22 |
+| `main` HEAD (deployed) | `73ffc61` |
+| Consolidated defect ledger | **§20** — every finding across passes #1–#5, one table (§22 for pass #6) |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
 ---
@@ -776,3 +778,44 @@ Rotating the Atlas password **immediately 503'd 7 of 8 backends** (their Vercel 
 
 ### Residual risk
 `komotechpass123` stays in git history (`2f276cb` and later doc commits) and, because the repo is public, must be assumed already scraped. The **rotation** is what closes it; history rewrite (`git filter-repo` + force-push) is optional hygiene. Also recommended: set the repo private if it isn't meant to be public, and narrow Atlas Network Access from `0.0.0.0/0`.
+
+---
+
+## 22. Full manual regression pass #6 — 2026-09-09
+
+Commit **`73ffc61`**. Done directly (no sub-agents), against the live production deployment, after the app was restored (Atlas password reverted to its previous value — see §21; the credential-exposure remediation is still outstanding).
+
+### Method
+- **API sweep** — 73 probes across all 8 services: every route, each hit for happy-path, auth guard (401 no-token / 403 wrong-role), validation (400/422), bad id (400/404), and internal-secret / QStash-signature gates. Driven by fresh QA + seeded admin/superadmin logins.
+- **End-to-end flows** — booking → skip-payment → confirm → "my appointments" (patient + doctor views) → reschedule → SSE track → telemedicine session (create + 3× poll) → prescription (save + issue + fetch) → mark-complete; patient booking-profile save + profile update; Cloudinary report upload (+ public URL fetch + archive); AI 3-turn chat with triage escalation; admin approve/reject doctor round-trip.
+- **Frontend static audit** — every `*.jsx` under `src/`: all 60+ `xxxService.method()` call sites cross-checked against the service definitions; every `<button>` checked for a handler; every `navigate()` / `<Link to>` / `<Navigate to>` target checked against the route table; hook import/call consistency; `alert()` / silent-`catch` / TODO scan; `vite build`.
+
+### Findings
+
+| Sev | Finding | Fix (`73ffc61`) |
+|---|---|---|
+| **MEDIUM** | `telemedicine createSession` — the appointment-service peer lookup uses axios, which throws on any non-2xx. The catch returned a blanket **503 "Could not verify the appointment right now. Please try again in a moment."** So a doctor clicking **Start Session** for an appointment that isn't theirs, or one already deleted, was told to *retry* a permanent condition (and never saw why). | Catch now inspects `err.response.status`: 403/401 → **403** "You are not assigned to this appointment.", 404/400 → **404** "Appointment not found."; only a missing response (peer down / timeout / 5xx) stays **503**. Verified live: wrong-doctor → 403, missing appt → 404. |
+| LOW | `DoctorTelemedicine.jsx` used `alert('Failed to start session…')` — the **last `alert()` in the codebase** — and swallowed appointment-load failures in a `console.error`-only catch. | Dismissible inline error banner + `getApiErrorMessage` (so the new 403/404 messages above actually reach the doctor); load failures now surface. |
+| LOW | `telemedicineService.createSession(appointmentId, patientId)` still passed a body `patientId` that the backend ignores since pass-#5 H4. | Dropped the argument; one call site updated. |
+| LOW | `patientService.js` had two byte-identical **duplicate method definitions** (`getSnapshotById`, `getDoctorHistory`) — silently shadowed (last-wins). Flagged in §14, still present. | Removed the trailing duplicates. |
+
+### Verified clean (no defect)
+- **73/73 API probes pass.** (2 rows read as "want 400, got 422" — 422 with `{success:false, errors:[…]}` is the prescription validator's correct structured response, not a defect.)
+- Every frontend service call resolves to a defined method; **zero** `<button>` without `onClick`/`type=submit`; every navigation target is a real route; no `<form>` without `onSubmit`.
+- Full e2e chain green: book → skip-pay → reschedule → **telemedicine session create + 3× `getSessionByAppointment` poll with no `VersionError`** (confirms the §19 L2 idempotency fix) → prescription save/issue/fetch → mark-complete.
+- Patient profile save + update; **Cloudinary upload** → `201`, real `res.cloudinary.com` URL, URL serves `200 image/png`, archive `200`.
+- **AI chat** — 3-turn conversation, all `200`, coherent replies, triage escalated Pending → Urgent appropriately (retry/fallback path from §17 holding).
+- **Admin approve/reject doctor** round-trip works; a reverted doctor drops out of `GET /api/doctors` once the 60 s `getApprovedDoctorIdSet` cache expires (18 → 19 → 18, as designed).
+- Doctor **reject appointment** persists `rejectionReason` and the appointment surfaces in the patient's "Rejected" tab with the reason.
+- All IDOR gates, `x-internal-secret` (403), QStash unsigned `/events` (401), and `run-expiry` (401) hold.
+- Only remaining `console.error`-only catch is `DoctorVideoRoom` `endSession` on unmount — benign (nothing actionable for a user leaving the room).
+
+### Not changed (noted, not defects)
+- With `SKIP_PAYMENT=true`, booking auto-confirms to `confirmed`/`paid`; `POST /payments/create-intent` then correctly returns 400 ("not awaiting payment") and `GET /payments/appointment/:id` returns 404 ("Payment not found"). The frontend with `VITE_SKIP_PAYMENT=true` never calls those paths. Expected.
+- `ensureSessionForAppointment` (telemedicine, active only when `TELEMEDICINE_DEV_AUTO_SESSION=true`) returns `null` on any peer error including a real outage → surfaces as 404 "No session found" on the GET poll. Low impact (the poll self-heals); left as-is.
+
+### Post-deploy status (verified 2026-09-09)
+- 9 / 9 `/health` → 200; frontend serving `index-tcEs1yhf.js`.
+- `curemd-telemedicine` + `curemd-frontend` redeployed from `73ffc61`; new session-start error semantics confirmed live (403 / 404, no longer 503).
+- `main` HEAD `73ffc61`. Working tree clean.
+- **Outstanding (unchanged):** the §21 credential exposure — `komotechpass123` is the live Atlas password again and is present in public git history. Rotation + `MONGODB_URI` update on the 8 backend projects still required.
