@@ -6,8 +6,9 @@ import {
     Video, Calendar, Clock, Phone, Mail,
     CheckCircle, XCircle, Loader2,
     RefreshCw, Monitor, Wifi, Mic, Camera,
-    ChevronRight, Users, Activity,
+    ChevronRight, Users, Activity, AlertCircle, X,
 } from 'lucide-react';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 // Avatar component
 const Avatar = ({ firstName, lastName, size = 'md' }) => {
@@ -228,6 +229,7 @@ export default function DoctorTelemedicine() {
     const [selectedAppt, setSelectedAppt] = useState(null);
     const [filter, setFilter] = useState('all');
     const [sessionLoading, setSessionLoading] = useState(false);
+    const [pageError, setPageError] = useState('');
 
     const fetchAppointments = useCallback(async () => {
         setLoading(true);
@@ -237,8 +239,10 @@ export default function DoctorTelemedicine() {
                 a => a.status === 'confirmed'
             );
             setAppointments(confirmedOnly);
+            setPageError('');
         } catch (err) {
             console.error('fetchAppointments error:', err);
+            setPageError(getApiErrorMessage(err, "Couldn't load your telemedicine appointments. Try Refresh."));
         } finally {
             setLoading(false);
         }
@@ -252,25 +256,23 @@ export default function DoctorTelemedicine() {
     // 3. Navigates to DoctorVideoRoom, passing the session data via router state
     const handleStartSession = async (appt) => {
         setSessionLoading(true);
+        setPageError('');
         try {
-            const sessionData = await telemedicineService.createSession(
-                appt._id,
-                appt.patientId
-            );
+            const sessionData = await telemedicineService.createSession(appt._id);
             navigate('/doctor/video-room', {
                 state: {
                     sessionData,
                     patientName: appt.patientFullName,
-                    appointmentId: appt._id,       // ← added
-                    patientId: appt.patientId,     // ← added
+                    appointmentId: appt._id,
+                    patientId: appt.patientId,
                 },
             });
         } catch (err) {
             console.error('Failed to create session:', err);
-            alert('Failed to start session. Please try again.');
+            setPageError(getApiErrorMessage(err, 'Failed to start the session. Please try again.'));
+            setSelectedAppt(null);
         } finally {
             setSessionLoading(false);
-            setSelectedAppt(null);
         }
     };
 
@@ -315,6 +317,16 @@ export default function DoctorTelemedicine() {
                         Refresh
                     </button>
                 </div>
+
+                {pageError && (
+                    <div className="mb-6 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span className="flex-1">{pageError}</span>
+                        <button type="button" onClick={() => setPageError('')} className="text-red-400 hover:text-red-600">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
 
                 {/* Stat strip */}
                 <div className="grid grid-cols-3 gap-4 mb-8">

@@ -2,11 +2,9 @@ import api from './api';
 
 const telemedicineService = {
   // Creates session and returns { channelName, token, agoraAppId, uid, sessionId, patientJoinUrl }
-  createSession: async (appointmentId, patientId) => {
-    const response = await api.post('/telemedicine/session/create', {
-      appointmentId,
-      patientId,
-    });
+  // patientId is derived server-side from the appointment — never sent from the client.
+  createSession: async (appointmentId) => {
+    const response = await api.post('/telemedicine/session/create', { appointmentId });
     return response.data.data;
   },
 

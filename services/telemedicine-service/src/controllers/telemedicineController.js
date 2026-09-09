@@ -127,6 +127,17 @@ export const createSession = async (req, res, next) => {
         headers: { Authorization: req.headers.authorization },
       });
     } catch (err) {
+      // axios throws on any non-2xx. A response with a 4xx status is the peer
+      // telling us this caller can't have this appointment — surface that as-is
+      // instead of a misleading "try again" 503. Only a missing response (peer
+      // down / timeout / 5xx) is a real transient failure.
+      const peerStatus = err.response?.status;
+      if (peerStatus === 403 || peerStatus === 401) {
+        return res.status(403).json({ success: false, error: 'You are not assigned to this appointment.' });
+      }
+      if (peerStatus === 404 || peerStatus === 400) {
+        return res.status(404).json({ success: false, error: 'Appointment not found.' });
+      }
       logger.error(`createSession: appointment lookup failed: ${err.message}`);
       return res.status(503).json({
         success: false,
