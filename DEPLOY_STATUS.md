@@ -4,11 +4,11 @@
 **Migration:** Render (Docker) → Vercel (serverless); RabbitMQ → Upstash QStash
 **Repository:** [Hammad-Zubair-off/CureMD-project](https://github.com/Hammad-Zubair-off/CureMD-project)
 **Status:** ✅ **DEPLOYED.** Migration + 7 fix passes on all 9 projects.
-Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` (SSRF, unapproved-doctor exposure, prescription/telemedicine patient-id binding, +10 MEDIUM) · #5-LOW `622fa06` (20 LOW findings cleared) · #6 `73ffc61` full manual regression (telemedicine session-start 503→403/404, +3 LOW) — see §14–§22. **Consolidated defect ledger: §20.**
-Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
-**Totals across 7 passes: 22 HIGH, 32 MEDIUM, ~44 LOW — all fixed and deployed.** Pass #6 (`73ffc61`, 2026-09-09): full manual regression — 1 MEDIUM (telemedicine session-start returned 503 for a 403/404) + 3 LOW. See §22.
-**Security:** committed-credentials sweep 2026-09-08 (§21). ⚠️ **Open:** the Atlas password was reverted to its previously-leaked value and still lives in public git history — rotation + `MONGODB_URI` update on the 8 backends is outstanding.
-**Last updated:** 2026-09-10 · `main` HEAD `55b5c62` · §23 admin/superadmin pass — 4 UX gaps fixed
+Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947` · #4 AI reliability + vitals `73bbe8f` `537af3f` · #5 regression re-audit `4bc25eb` `43dc990` · #5-LOW `622fa06` (20 LOW cleared) · credential sweep `930cd78` (§21) · #6 `73ffc61` `c6b6ed7` full manual regression (telemedicine 503→403/404, +4 LOW) · #23 `55b5c62` admin/superadmin walkthrough (no bugs; 4 UX-polish fixes) — see §14–§23. **Consolidated defect ledger: §20.**
+Live-verified: 9/9 health · auth + DB · AI 3-turn chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden · admin + superadmin dashboards (create/delete-admin, RBAC both ways) · 71/73 API probes (the 2 are `422` structured-validation, not defects).
+**Totals across 7 passes: 22 HIGH · 32 MEDIUM · ~47 LOW · +4 UX-polish — all fixed and deployed.**
+**⚠️ One open security item:** the Atlas password was rotated 2026-09-08 (§21) then reverted by the user to the previously-leaked value; it is again the live credential and sits in public git history. Rotation + `MONGODB_URI` update on the 8 backends is outstanding.
+**Last updated:** 2026-09-10 · `main` HEAD `ddd024f`
 
 | | |
 |---|---|
@@ -23,10 +23,12 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Fix pass #5 | `4bc25eb` + `43dc990` — regression re-audit 2026-09-08 (2 agents + live QA-account walkthrough): 1 SSRF + 3 auth/data-integrity HIGH, 10 MEDIUM, 2 LOW — see §18 |
 | Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3`, §20 ledger `f762102` |
 | Credential sweep | `930cd78` — hardcoded Atlas cred removed from scripts; docs redacted (§21) |
-| Fix pass #6 | `73ffc61` — full manual regression 2026-09-09: 1 MEDIUM (telemedicine session-start error semantics) + 3 LOW — see §22 |
-| `main` HEAD (deployed) | `55b5c62` |
-| Consolidated defect ledger | **§20** — every finding across passes #1–#5, one table (§22 for pass #6) |
+| Fix pass #6 | `73ffc61` + `c6b6ed7` — full manual regression 2026-09-09 (no agents): 1 MEDIUM (telemedicine session-start error semantics) + 4 LOW — see §22 |
+| Admin/superadmin pass | §23 — live walkthrough 2026-09-10, no bugs; 4 UX-gap fixes `55b5c62` |
+| `main` HEAD (deployed) | `ddd024f` |
+| Consolidated defect ledger | **§20** — every finding across all 7 passes, one table |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
+| ⚠️ Open | Atlas password (§21) — rotate + `MONGODB_URI` update on the 8 backends |
 
 ---
 
@@ -308,7 +310,7 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 
 ## 11. Outstanding tasks
 
-**Status as of 2026-09-08: all tracked tasks are either done or explicitly skipped by the user.** Nothing is blocking. The items below marked "skipped" are safe to leave — they are optional hardening / cleanup / cosmetics, not defects.
+**Status as of 2026-09-10:** one real security item is **open** — the Atlas password (row 12). Everything else is done or explicitly skipped by the user; items marked "skipped" are optional hardening / cleanup / cosmetics, not defects.
 
 | # | Task | Resolution |
 |---|---|---|
@@ -322,8 +324,10 @@ Automated end-to-end pass against production URLs: **35 / 38 checks passed.**
 | 8 | Configure real Stripe | ⏭️ skipped by user — payments run in `SKIP_PAYMENT` bypass by design for now. Unlocks: card payment, `$` receipt email, admin Refund flow. Steps: set 3 keys, add webhook `https://curemd-payment.vercel.app/api/payments/webhook`, flip `SKIP_PAYMENT` + `VITE_SKIP_PAYMENT` → `false`, redeploy |
 | 9 | Gemini `503` | ✅ done 2026-09-07 / hardened 2026-09-08 (§17) — retry + backoff + model fallback; 5/5 → 8/8 |
 | 10 | Reconcile `README.md` | ✅ done 2026-09-07 (§15) |
-| 11 | Move `pk_test_` out of `docker-compose.yml` line 39 | ⏭️ skipped by user — Stripe **publishable** key (client-side by design), tidiness not a leak |
-| 12 | Rotate the MongoDB password (old value had leaked in a committed script) | ✅ done 2026-09-08 — user rotated the Atlas password after the security sweep found `scripts/fix-mongo-uris.mjs` had it hardcoded in a **public** repo. Script de-hardcoded (`MONGO_CRED` env var); doc references redacted. `MONGODB_URI` on all 8 Vercel projects re-set + redeployed. See §21. |
+| 11 | Move `pk_test_` out of `docker-compose.yml` line 39 | ✅ done 2026-09-09 (`c6b6ed7`) — now `${VITE_STRIPE_PUBLIC_KEY:-pk_test_replace_me}` from env. (Publishable key, never a real leak — done for consistency.) |
+| 12 | Rotate the MongoDB password (leaked in a committed script, public repo) | ⚠️ **OPEN.** Rotated 2026-09-08, then the user **reverted it to the previously-leaked value** to bring the app back up fast. It is again the live Atlas credential and is in public git history. Script is de-hardcoded (`MONGO_CRED` env). To close: rotate in Atlas → update `MONGODB_URI` on all 8 backend projects (dashboard, or `scripts/fix-mongo-uris.mjs`) → redeploy → narrow Atlas Network Access off `0.0.0.0/0`. See §21. |
+| 15 | Change / delete the seeded test + admin accounts | ⏭️ open — `AdminTest123!` / `SuperTest123!` / `PatientTest123!` / `DoctorTest123!` were in the public repo before `930cd78`; values remain in history. `admin.test` is a working admin login. |
+| 16 | Verify prod `JWT_SECRET` ≠ tutorial `healthcare_jwt_secret_2026` | ⏭️ open — check the env var value on any backend Vercel project. |
 | 13 | `ai-symptom` orphaned history-token chain | ✅ investigated 2026-09-08 (§17) — confirmed fully dead, no runtime impact. Kept; live path extended with blood type + meds (`537af3f`) instead |
 | 14 | Branding "MediCare" vs "CureMD" | ⏭️ skipped by user |
 
@@ -660,9 +664,9 @@ Every LOW item from §18's deferred list is now fixed. `npx vite build` green, `
 
 ---
 
-## 20. Consolidated defect ledger — every bug & fix, all 6 passes
+## 20. Consolidated defect ledger — every bug & fix, all 7 passes
 
-One rolled-up view of §14–§19. **Every finding below is fixed, committed, and live on production.** Nothing outstanding is a defect — the only open items are user-deferred optional work (§11: real Stripe, MongoDB password rotation, brand rename, test-account cleanup, `pk_test_` relocation).
+One rolled-up view of §14–§23. **Every finding below is fixed, committed, and live on production.** The **one open security item** is the Atlas credential (§21) — rotated 09-08, then reverted by the user to the previously-leaked value; it is again the live password and sits in public git history. Everything else outstanding is user-deferred optional work (§11: real Stripe, brand rename, test-account cleanup).
 
 ### 20.1 Pass summary
 
@@ -675,7 +679,10 @@ One rolled-up view of §14–§19. **Every finding below is fixed, committed, an
 | #4 (AI reliability) | 09-08 | `73bbe8f` `537af3f` | reproduced from user video (3/5 fail) | 1 | — | — | 8/8 then 5/5 AI messages; Cloudinary verified live |
 | #5 (re-audit) | 09-08 | `4bc25eb` `43dc990` | 2 static agents + fresh QA-account walkthrough | 4 | 10 | 2 | 9/9 health; H2 (unapproved doctors) verified live |
 | #5-LOW | 09-08 | `622fa06` | cleared §18's entire deferred list | — | — | 20 | 9/9 health; bundle + auth smoke verified live |
-| **Total** | | | | **22** | **31** | **~43** | **all deployed** |
+| Credential sweep | 09-08 | `930cd78` | full tracked-file + history secret scan (§21) | — | — | — | de-hardcoded Atlas cred from scripts; docs redacted |
+| #6 (manual regression) | 09-09 | `73ffc61` `c6b6ed7` | **direct, no agents** — 73 API probes + e2e booking/telemedicine/prescription/AI/admin flows + full frontend static audit (§22) | — | 1 | 4 | 9/9 health; telemedicine 503→403/404 verified live |
+| #6-admin (§23) | 09-10 | `55b5c62` | live browser walkthrough of every admin + superadmin tab; create/delete-admin lifecycle; RBAC both directions | — | — | — | **no bugs**; 4 UX-gap fixes verified live |
+| **Total** | | | | **22** | **32** | **~47** | **+ 4 UX-polish (§23); all deployed** |
 
 ### 20.2 All HIGH findings (22) — chronological
 
@@ -710,6 +717,7 @@ One rolled-up view of §14–§19. **Every finding below is fixed, committed, an
 - **#2 (4):** payment idempotency fall-through → double response crash + re-emitted events · `refundPayment` `ReferenceError` on undefined `Appointment` model · `createPaymentIntent` sent `NaN` to Stripe on a bad fee · timing-unsafe `===` on `x-internal-secret` at 4 endpoints.
 - **#3 (11):** "My Appointments" badged PAID from status not `paymentStatus` · IDOR `getPrescriptionsByPatient` (any doctor, any patient) · `SymptomChecker` "call 1990" + 2 crash paths · backend `{errors:[…]}` arrays never surfaced (6 handlers) · `appointment.rescheduled` had no route/handler → notifications dropped · `VALID_STATUSES` missing `'past'` → `?status=past` 400 · `DoctorTelemedicine` Past/Upcoming tabs always empty · `FinanceManagement` `$NaN` on one bad row · `payment getAllPayments` ignored `search` · `telemedicine createSession` unwrapped peer call → 500 + skipped ownership check.
 - **#5 (10):** rescheduled SMS read wrong field → "rescheduled to  at undefined" · `getMyReports` returned archived reports · `savePrescription` unwrapped `fetch` → 500 on peer down · `toUTC()` `RangeError` → 500 not 400 on invalid date string (4 call sites) · `appointment.deleted_after_refund` had no consumer → doctor keeps history access to a reversed visit · doctor prescription errors swallowed + weak Issue-button guard · `LoginPage` `{errors:[array]}` → blank message · `BookAppointment` `performBookingCheck` silent `console.error` · `DoctorDetailModal` unguarded `firstName[0]` · `normalizeInternationalPhone` still forced `07…` → `+94…`.
+- **#6 (1) — `73ffc61`:** `telemedicine createSession` — the appointment-service peer lookup uses axios (throws on any non-2xx); the catch returned a blanket **503 "Could not verify… please try again"** for a 403 (not the caller's appointment) or 404 (appointment gone) — a transient-error message for a permanent condition. Now forwards `403→403` / `404→404`; only a missing response (peer down / timeout / 5xx) stays 503. Verified live.
 
 ### 20.4 LOW findings (~43)
 
@@ -718,6 +726,9 @@ One rolled-up view of §14–§19. **Every finding below is fixed, committed, an
 - **#3 (~10):** deleted dead files (`PaymentPage`, `Dashboard.jsx`, `PatientProfileForm`) · static Tailwind class maps · `parseInt` NaN guards in `auth getAllUsers` / `payment getAllPayments` · `prescriptionController` `next(err)` · removed `doctor-service` debug middleware · SMS `en-LK`→`en-US`, `MediCare:`→`CureMD:` · "Next Session" calendar-day diff · Telemedicine join errors in-banner not `alert()` · stale `api.js` comment.
 - **#5 (2):** doctor Create-Profile name fields blank → prefilled from account · Availability "Add slot" duplicated `09:00–09:30` → advances from previous end.
 - **#5-LOW (20) — `622fa06`:** see §19 (L1–L17). Backend: `rejectAppointment`→`next(err)`; `getSessionByAppointment` idempotent (no per-poll token rewrite / `VersionError`); `paidAt` schema field + `failed`-record TTL clear + reused-intent `amount`/`currency`; `ai createSession/sendMessage` body hardening; `doctor` admin/search `parseInt` guards. Frontend: `BookAppointment` missing `error` state + banner; `PatientDashboard` load-fail banner; `PatientSettings`/`SymptomChecker` `getApiErrorMessage` + inline errors (no `alert()`); `MyAppointments` reschedule sends slot start time not local midnight; `MyProfile` name-sync only on change; `DoctorVideoRoom` chevron direction; `StripePaymentElement` missing-key guard; `LandingPage` frame-cache reset; `DoctorAppointments` dead imports removed.
+- **#6 (4) — `73ffc61` / `c6b6ed7`:** `DoctorTelemedicine` used the **last `alert()` in the codebase** for session-start failures + swallowed appointment-load errors → dismissible inline banner + `getApiErrorMessage` (so the new 403/404 messages reach the doctor) · `telemedicineService.createSession` dropped its stale `patientId` argument (backend derives it from the appointment since §18 H4, ignores anything sent) · `patientService.js` removed 2 byte-identical **duplicate method definitions** (`getSnapshotById`, `getDoctorHistory`) that were silently shadowed · `ensureSessionForAppointment` now rethrows on a real peer outage (no `err.response`) instead of returning `null` → the GET poll surfaces a 5xx rather than a misleading 404 "No session found".
+- **#23 UX polish (4) — `55b5c62`:** **Create Admin** now bumps a `userRefreshKey` so the User Management list reloads without a manual Refresh · User Management filter gains an **"All Users"** option (dropped the redundant hardcoded `role:'patient'`) · Appointment-Rejections **"Refund" column → "Payment"** with a `refundBadge()` helper mapping `refunded`→"Refunded" / `paid`→"Refund pending" / `unpaid`→"No payment" (desktop + mobile) · Doctor list shows a **pulse placeholder** in the spec/rating cells until the profile fetch resolves, instead of flashing "—". All 4 verified live 2026-09-10.
+- **hygiene — `c6b6ed7`:** `docker-compose.yml` local frontend service — a real `pk_test_` Stripe **publishable** key inline → `${VITE_STRIPE_PUBLIC_KEY:-pk_test_replace_me}` from `.env`/shell. Not a leak (publishable keys are client-side by design); now consistent with every other credential in the file. `git grep` for `pk_`/`sk_` literals across tracked files: none.
 
 ### 20.5 Deliberately not changed (product decisions, not defects)
 
@@ -727,21 +738,23 @@ One rolled-up view of §14–§19. **Every finding below is fixed, committed, an
 | `ai-symptom` history-token pipeline (`generateHistoryToken` / `verifyHistoryToken` / `getHistoryForAI`) | Complete but fully unwired — no call site, no runtime cost. Superseded by the "frontend passes live vitals inline" path. Investigated §17, kept. |
 | Dead events `payment.completed` / `payment.failed` / `patient.profile.*` | Publish with no consumer is an inert no-op. |
 | "MediCare" brand string vs "CureMD" project name | A rename across landing/legal/email, not a bug. User-deferred. |
-| ~~MongoDB password~~ | **Resolved 2026-09-08** — the old password had leaked in a committed script in the public repo. Rotated in Atlas; script de-hardcoded; doc redacted; all 8 `MONGODB_URI` re-set + redeployed. See §21. |
-| `pk_test_` in `docker-compose.yml:39` | Stripe **publishable** key — client-side by design, not a leak. |
+| **MongoDB password** | ⚠️ **OPEN — the one real security item.** Rotated 2026-09-08 after it was found hardcoded in a committed script in the **public** repo (§21); the user then **reverted it to the previously-leaked value** to restore the app quickly. It is again the live Atlas credential and is present in public git history (`2f276cb` + later doc commits). Atlas Network Access is `0.0.0.0/0`. Fix: rotate in Atlas → update `MONGODB_URI` on all 8 backend projects → redeploy. |
+| ~~`pk_test_` in `docker-compose.yml`~~ | **Resolved 2026-09-09 (`c6b6ed7`)** — publishable key (safe to expose), now `${VITE_STRIPE_PUBLIC_KEY:-pk_test_replace_me}` from env, matching every other credential in the file. |
+| Test / admin account passwords in git history | `AdminTest123!` / `SuperTest123!` / `PatientTest123!` / `DoctorTest123!` were in the public repo before `930cd78` de-hardcoded the scripts; the values remain in history. Recommend changing those account passwords or deleting the accounts (`admin.test` is a working admin login). |
+| `JWT_SECRET` verification | `Insturctions.md` (old tutorial) uses `healthcare_jwt_secret_2026` as its worked example ~8×. Confirm the production `JWT_SECRET` in Vercel is a strong random value, not that string. |
 | Test accounts + junk DB on Atlas | Harmless clutter; delete via admin login anytime. |
 | SSE `/track` degraded to ~3 s poll on serverless | No frontend change needed; true push would need Pusher/Ably/Redis. |
 
-### 20.6 Current state
+### 20.6 Current state (2026-09-10)
 
-- **9 / 9 Vercel projects healthy**, all serving `main` @ `622fa06` (code) / `3827bfb` (docs).
-- **22 HIGH + 31 MEDIUM + ~43 LOW findings across 6 passes — 100 % fixed and deployed.**
-- Live-verified this session: health ×9, auth login, NaN-pagination guard, `getSpecializations`, `/reports/my`, unauthenticated `sendMessage` → 401, and the deployed frontend bundle confirmed to contain the latest fixes.
-- Working tree clean. No blocking work remains.
+- **9 / 9 Vercel projects healthy**; `main` HEAD `ddd024f`.
+- **22 HIGH + 32 MEDIUM + ~47 LOW + 4 UX-polish across 7 passes — 100 % fixed and deployed.**
+- Latest live verification: 9/9 `/health` → 200; **71/73 API probes pass** (the 2 are the prescription validator returning `422`+`errors[]` where the probe expected 400 — correct structured validation, not a defect); AI 3-turn chat with triage escalation; telemedicine `session/create` bad-appointment → 404 (pass-#6 fix holding); full admin + superadmin browser walkthrough with create/delete-admin lifecycle and RBAC verified both directions; all 4 §23 UX fixes confirmed on the deployed site.
+- Working tree clean. **One open item:** the §21 Atlas credential (rotate + `MONGODB_URI` update on the 8 backends).
 
 ---
 
-## 21. Committed-credentials sweep & MongoDB password rotation — 2026-09-08
+## 21. Committed-credentials sweep & MongoDB password — 2026-09-08 → 09-10 (⚠️ item still open)
 
 ### Trigger
 User asked for a full check that no credentials / `.env` / secrets were committed by accident.
@@ -753,7 +766,7 @@ Every tracked file + full commit history: `.env*` files, `.gitignore` coverage, 
 
 | Sev | Finding | Status |
 |---|---|---|
-| **CRITICAL** | **Repo is PUBLIC** (`gh repo view` → `visibility: PUBLIC`) and `scripts/fix-mongo-uris.mjs:22` had the **real Atlas credential hardcoded** — `komotech329_db_user:komotechpass123@<cluster>`. Committed in `2f276cb` (2026-09-07), never private in practice. Atlas network access is `0.0.0.0/0`, so this was a world-readable path to all 8 production DBs. | **Resolved** — user rotated the Atlas password 2026-09-08. Script now requires `MONGO_CRED` + `VERCEL_TEAM_ID` from the environment; nothing hardcoded. |
+| **CRITICAL** | **Repo is PUBLIC** (`gh repo view` → `visibility: PUBLIC`) and `scripts/fix-mongo-uris.mjs:22` had the **real Atlas credential hardcoded** — `komotech329_db_user:komotechpass123@<cluster>`. Committed in `2f276cb` (2026-09-07), never private in practice. Atlas network access is `0.0.0.0/0`, so this was a world-readable path to all 8 production DBs. | **Partially addressed / STILL OPEN.** Script de-hardcoded (`MONGO_CRED` + `VERCEL_TEAM_ID` from env). Password rotated 2026-09-08 — **then reverted by the user** to `komotechpass123` to restore the app quickly (see the Update note below). The live credential is again the leaked value. |
 | HIGH | `DEPLOY_STATUS.md` repeated the password string + cluster host in prose (§6, §11.12, §20.5). | **Redacted** — password references removed, cluster host replaced with "redacted". |
 | MEDIUM | `scripts/seed-admin-atlas.mjs` fell back to `AdminTest123!` / `SuperTest123!`; `scripts/seed-videocall-test.mjs` hardcoded `PatientTest123!` / `DoctorTest123!`; cluster host in a usage comment. | **De-hardcoded** — both scripts now require the passwords via env vars (`ADMIN_PASSWORD`, `SUPERADMIN_PASSWORD`, `TEST_PATIENT_PASSWORD`, `TEST_DOCTOR_PASSWORD`); comment host → `<your-cluster-host>`. **Action still needed:** the seeded accounts on the prod auth DB still have those passwords — change them or delete the accounts (esp. `admin.test@curemd.dev`). |
 | LOW | Vercel team ID + 8 project IDs in `fix-mongo-uris.mjs`. Not credentials (inert without a token). | Team ID moved to `VERCEL_TEAM_ID` env; project IDs kept (the script needs them, they carry no access). |
@@ -778,6 +791,16 @@ Rotating the Atlas password **immediately 503'd 7 of 8 backends** (their Vercel 
 
 ### Residual risk
 `komotechpass123` stays in git history (`2f276cb` and later doc commits) and, because the repo is public, must be assumed already scraped. The **rotation** is what closes it; history rewrite (`git filter-repo` + force-push) is optional hygiene. Also recommended: set the repo private if it isn't meant to be public, and narrow Atlas Network Access from `0.0.0.0/0`.
+
+### Update — 2026-09-09/10: rotation reverted, item re-opened
+After the 09-08 rotation 503'd 7 of 8 backends (Vercel `MONGODB_URI` still held the old password) and the Vercel env-var update turned out to require logging in to a **different** Vercel account (`hammadzubair329@gmail.com` / team "Hammad's projects" — the browser was on a separate account with a stale `cure-md-project`), the user chose to **set the Atlas password back to `komotechpass123`** to bring the app up immediately. The services reconnected on their own; 9/9 healthy.
+
+Net effect: the de-hardcoding, doc redaction, `pk_test_` fix and script hardening all stand, but **the live database password is once again the value that is public in git history.** This is the single open security item. Recommended close-out, in order:
+1. Rotate the Atlas password to a fresh value (letters + digits avoids URI-encoding).
+2. Update `MONGODB_URI` on all 8 backend Vercel projects — dashboard, or `VERCEL_TOKEN=… VERCEL_TEAM_ID=… MONGO_CRED="user:newpass@host" node scripts/fix-mongo-uris.mjs`.
+3. Redeploy the 8 (a `git push`) and re-check `/health` ×9 + `GET /api/doctors`.
+4. Narrow Atlas Network Access off `0.0.0.0/0`; consider making the repo private and scrubbing history.
+5. Separately: change or delete the seeded `*.test@curemd.dev` accounts (passwords were in the public repo), and confirm the prod `JWT_SECRET` is not the tutorial's `healthcare_jwt_secret_2026`.
 
 ---
 
