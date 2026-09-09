@@ -67,6 +67,9 @@ export default function DoctorManagement({ showToast, statusFilter: initialStatu
 
     // Doctor-service profiles (for rating, specialization, etc.)
     const [doctorProfiles, setDoctorProfiles] = useState({});
+    // False until the profile fetch has resolved once, so the spec/rating cells
+    // can show a placeholder instead of a misleading "—" during the initial load.
+    const [profilesLoaded, setProfilesLoaded] = useState(false);
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
@@ -111,6 +114,8 @@ export default function DoctorManagement({ showToast, statusFilter: initialStatu
         } catch (err) {
             // Non-critical — cards still work without profile data
             console.error('Failed to fetch doctor profiles:', err);
+        } finally {
+            setProfilesLoaded(true);
         }
     }, []);
 
@@ -283,12 +288,18 @@ export default function DoctorManagement({ showToast, statusFilter: initialStatu
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="text-sm text-slate-600">
-                                                    {profile?.specialization || '—'}
-                                                </span>
+                                                {!profilesLoaded && !profile ? (
+                                                    <span className="inline-block h-3.5 w-20 rounded bg-slate-100 animate-pulse" />
+                                                ) : (
+                                                    <span className="text-sm text-slate-600">
+                                                        {profile?.specialization || '—'}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                {profile ? (
+                                                {!profilesLoaded && !profile ? (
+                                                    <span className="inline-block h-3.5 w-14 rounded bg-slate-100 animate-pulse" />
+                                                ) : profile ? (
                                                     <div className="flex items-center space-x-1">
                                                         <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                                                         <span className="text-sm font-medium text-slate-700">{profile.rating?.toFixed(1) || '0.0'}</span>

@@ -75,7 +75,7 @@ const StatusBadge = ({ isActive, isApproved, role }) => {
     );
 };
 
-export default function UserManagement({ currentUser, showToast }) {
+export default function UserManagement({ currentUser, showToast, refreshKey = 0 }) {
     const [users, setUsers] = useState([]);
     const [total, setTotal] = useState(0);
     const [activeCount, setActiveCount] = useState(0);
@@ -102,9 +102,9 @@ export default function UserManagement({ currentUser, showToast }) {
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-            const params = { page, limit: LIMIT, role: 'patient' };
+            const params = { page, limit: LIMIT };
             if (search) params.search = search;
-            if (roleFilter) params.role = roleFilter;
+            if (roleFilter) params.role = roleFilter; // '' => no role filter => all users
             const data = await authService.getAllUsers(params);
             setUsers(data.users || []);
             setTotal(data.total || 0);
@@ -118,7 +118,9 @@ export default function UserManagement({ currentUser, showToast }) {
         }
     }, [page, search, roleFilter]);
 
-    useEffect(() => { fetchUsers(); }, [fetchUsers]);
+    // `refreshKey` is bumped by the parent after it creates an admin, so the
+    // list picks the new row up without the user hitting Refresh.
+    useEffect(() => { fetchUsers(); }, [fetchUsers, refreshKey]);
     useEffect(() => { setPage(1); }, [search, roleFilter]);
 
     const handleAction = async (type, userId) => {
@@ -188,13 +190,14 @@ export default function UserManagement({ currentUser, showToast }) {
                         className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                     />
                 </div>
-                <Dropdown 
+                <Dropdown
                     value={roleFilter}
                     onChange={setRoleFilter}
                     options={[
+                        { value: '', label: 'All Users' },
                         { value: 'patient', label: 'Patients' },
                         { value: 'admin', label: 'Admins' }
-                    ]}  
+                    ]}
                 />
                 <button
                     onClick={fetchUsers}

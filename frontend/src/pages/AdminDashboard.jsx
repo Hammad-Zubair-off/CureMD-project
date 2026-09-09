@@ -16,6 +16,23 @@ import Toast from '../components/common/Toast';
 import adminService from '../services/adminService';
 import { getApiErrorMessage } from '../utils/apiError';
 
+// The rejection feed carries the appointment's `paymentStatus` (not a true
+// refund state — there is no live Stripe integration yet). Present it as a
+// payment/refund progress label rather than a raw enum.
+const refundBadge = (status) => {
+    switch (status) {
+        case 'refunded':
+            return { label: 'Refunded', cls: 'bg-green-50 text-green-700 border-green-200' };
+        case 'paid':
+        case 'succeeded':
+            return { label: 'Refund pending', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+        case 'unpaid':
+            return { label: 'No payment', cls: 'bg-slate-50 text-slate-600 border-slate-200' };
+        default:
+            return { label: status || 'unknown', cls: 'bg-slate-50 text-slate-600 border-slate-200' };
+    }
+};
+
 // Simplified Navigation Structure
 const navItems = [
     {
@@ -53,6 +70,9 @@ export default function AdminDashboard() {
     const [createAdminForm, setCreateAdminForm] = useState({ firstName: '', lastName: '', email: '', password: '' });
     const [createAdminError, setCreateAdminError] = useState('');
     const [createAdminLoading, setCreateAdminLoading] = useState(false);
+    // Bumped after a successful admin creation so the User Management list reloads
+    // without the superadmin having to hit Refresh.
+    const [userRefreshKey, setUserRefreshKey] = useState(0);
 
     const [rejectionRequests, setRejectionRequests] = useState([]);
     const [rejectionLoading, setRejectionLoading] = useState(false);
@@ -94,6 +114,7 @@ export default function AdminDashboard() {
             showToast('Admin account created successfully');
             setShowCreateAdmin(false);
             setCreateAdminForm({ firstName: '', lastName: '', email: '', password: '' });
+            setUserRefreshKey(k => k + 1);
         } catch (err) {
             setCreateAdminError(getApiErrorMessage(err, 'Failed to create admin'));
         } finally {
@@ -351,7 +372,7 @@ export default function AdminDashboard() {
 
                     {/* Tab Content Rendering */}
                     <div className="transition-opacity duration-300">
-                        {activeTab === 'users' && <UserManagement currentUser={user} showToast={showToast} />}
+                        {activeTab === 'users' && <UserManagement currentUser={user} showToast={showToast} refreshKey={userRefreshKey} />}
                         
                         {activeTab === 'doctors' && (
                             <DoctorManagement showToast={showToast} statusFilter="" />
@@ -400,7 +421,7 @@ export default function AdminDashboard() {
                                                             <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Patient</th>
                                                             <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Appointment</th>
                                                             <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Reason</th>
-                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Refund</th>
+                                                            <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Payment</th>
                                                             <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-6 py-3">Rejected At</th>
                                                         </tr>
                                                     </thead>
@@ -427,17 +448,14 @@ export default function AdminDashboard() {
                                                                     </p>
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <span
-                                                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                                                                            r.refundStatus === 'refunded'
-                                                                                ? 'bg-green-50 text-green-700 border-green-200'
-                                                                                : r.refundStatus === 'paid' || r.refundStatus === 'succeeded'
-                                                                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                                                                : 'bg-slate-50 text-slate-600 border-slate-200'
-                                                                        }`}
-                                                                    >
-                                                                        {r.refundStatus || 'unknown'}
-                                                                    </span>
+                                                                    {(() => {
+                                                                        const b = refundBadge(r.refundStatus);
+                                                                        return (
+                                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${b.cls}`}>
+                                                                                {b.label}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <p className="text-sm text-slate-600">
@@ -459,17 +477,14 @@ export default function AdminDashboard() {
                                                                 <p className="text-sm font-semibold text-slate-900">{r.doctorFullName || '-'}</p>
                                                                 <p className="text-xs text-slate-500">Doctor</p>
                                                             </div>
-                                                            <span
-                                                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
-                                                                    r.refundStatus === 'refunded'
-                                                                        ? 'bg-green-50 text-green-700 border-green-200'
-                                                                        : r.refundStatus === 'paid' || r.refundStatus === 'succeeded'
-                                                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                                                        : 'bg-slate-50 text-slate-600 border-slate-200'
-                                                                }`}
-                                                            >
-                                                                {r.refundStatus || 'unknown'}
-                                                            </span>
+                                                            {(() => {
+                                                                const b = refundBadge(r.refundStatus);
+                                                                return (
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${b.cls}`}>
+                                                                        {b.label}
+                                                                    </span>
+                                                                );
+                                                            })()}
                                                         </div>
 
                                                         <p className="text-sm text-slate-700">
