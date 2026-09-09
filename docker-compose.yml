@@ -36,7 +36,10 @@ services:
       - frontend_modules:/app/node_modules
     environment:
       - NGINX_HOST=nginx
-      - VITE_STRIPE_PUBLIC_KEY=pk_test_51SrwQUIr67jlhsA0wRKDUtEQME3i7U9iJzviUOLM32RDGehQJHoKsqacl6VXFFxM2PQW4Eq08tJ72sJPpMatW7Qb005tOPm6pi
+      # Supply your own Stripe test publishable key via .env (or the shell).
+      # Publishable keys are safe to expose, but keeping it out of the repo
+      # matches how every other credential here is handled.
+      - VITE_STRIPE_PUBLIC_KEY=${VITE_STRIPE_PUBLIC_KEY:-pk_test_replace_me}
     networks:
       - healthcare-net
     restart: unless-stopped

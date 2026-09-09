@@ -78,8 +78,17 @@ const ensureSessionForAppointment = async (appointmentId, req) => {
       headers: { Authorization: authHeader },
     });
   } catch (err) {
+    // A 4xx from the peer is a definitive answer — the appointment is gone or
+    // this caller can't have it — so there's genuinely no session to create:
+    // return null and let the caller answer 404. A missing response (peer down /
+    // timeout / 5xx) is transient: rethrow so the caller surfaces a 5xx instead
+    // of a misleading "No session found".
+    const peerStatus = err.response?.status;
+    if (peerStatus && peerStatus >= 400 && peerStatus < 500) {
+      return null;
+    }
     logger.error(`ensureSessionForAppointment: appointment lookup failed: ${err.message}`);
-    return null;
+    throw err;
   }
 
   const appointment = apptRes.data?.appointment;
