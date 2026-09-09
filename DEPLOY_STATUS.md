@@ -8,7 +8,7 @@ Fix passes: #1 `c7b6eba` · #2 security `5aa403d` · #3 full regression `9b99947
 Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora video · Cloudinary uploads · international-phone booking · unapproved doctors hidden from search · NaN-pagination guarded · deployed frontend bundle confirmed serving latest.
 **Totals across 7 passes: 22 HIGH, 32 MEDIUM, ~44 LOW — all fixed and deployed.** Pass #6 (`73ffc61`, 2026-09-09): full manual regression — 1 MEDIUM (telemedicine session-start returned 503 for a 403/404) + 3 LOW. See §22.
 **Security:** committed-credentials sweep 2026-09-08 (§21). ⚠️ **Open:** the Atlas password was reverted to its previously-leaked value and still lives in public git history — rotation + `MONGODB_URI` update on the 8 backends is outstanding.
-**Last updated:** 2026-09-09 · `main` HEAD `73ffc61`
+**Last updated:** 2026-09-09 · `main` HEAD `c6b6ed7`
 
 | | |
 |---|---|
@@ -24,7 +24,7 @@ Live-verified: 9/9 health · auth + DB · AI chat (retry path) · 2-person Agora
 | Fix pass #5-LOW | `622fa06` — all 20 deferred LOW findings fixed; audit §19 `18a26f3`, §20 ledger `f762102` |
 | Credential sweep | `930cd78` — hardcoded Atlas cred removed from scripts; docs redacted (§21) |
 | Fix pass #6 | `73ffc61` — full manual regression 2026-09-09: 1 MEDIUM (telemedicine session-start error semantics) + 3 LOW — see §22 |
-| `main` HEAD (deployed) | `73ffc61` |
+| `main` HEAD (deployed) | `c6b6ed7` |
 | Consolidated defect ledger | **§20** — every finding across passes #1–#5, one table (§22 for pass #6) |
 | Vercel team | `hammads-projects-60b1d2d4` ("Hammad's projects", Hobby plan) |
 
@@ -812,10 +812,13 @@ Commit **`73ffc61`**. Done directly (no sub-agents), against the live production
 
 ### Not changed (noted, not defects)
 - With `SKIP_PAYMENT=true`, booking auto-confirms to `confirmed`/`paid`; `POST /payments/create-intent` then correctly returns 400 ("not awaiting payment") and `GET /payments/appointment/:id` returns 404 ("Payment not found"). The frontend with `VITE_SKIP_PAYMENT=true` never calls those paths. Expected.
-- `ensureSessionForAppointment` (telemedicine, active only when `TELEMEDICINE_DEV_AUTO_SESSION=true`) returns `null` on any peer error including a real outage → surfaces as 404 "No session found" on the GET poll. Low impact (the poll self-heals); left as-is.
+
+### Follow-up (`c6b6ed7`, 2026-09-09)
+- `ensureSessionForAppointment` (telemedicine auto-session helper) previously returned `null` on **any** peer error → the GET poll answered 404 "No session found" even during a real appointment-service outage. Now a 4xx from the peer still returns `null` (definitive — appointment gone / not the caller's), but a missing response (peer down / timeout / 5xx) **rethrows** so `getSessionByAppointment` surfaces a 5xx. Verified: non-existent / malformed appointment id still → 404 "No session found"; happy path (create + 3× poll) still green. Mirrors the pass-#6 `createSession` fix.
+- `docker-compose.yml` local frontend service had a real `pk_test_` Stripe publishable key inline → now `${VITE_STRIPE_PUBLIC_KEY:-pk_test_replace_me}` from `.env`/shell. Publishable keys are safe to expose; this just matches how every other credential in the file is handled. No functional change (prod uses its own Vercel var; `frontend/.env.example` documents the key). **`git grep` for `pk_/sk_` literals across tracked files: none.**
 
 ### Post-deploy status (verified 2026-09-09)
-- 9 / 9 `/health` → 200; frontend serving `index-tcEs1yhf.js`.
-- `curemd-telemedicine` + `curemd-frontend` redeployed from `73ffc61`; new session-start error semantics confirmed live (403 / 404, no longer 503).
-- `main` HEAD `73ffc61`. Working tree clean.
+- 9 / 9 `/health` → 200; frontend serving the pass-#6 bundle.
+- `curemd-telemedicine` redeployed from `73ffc61` then `c6b6ed7`; `curemd-frontend` from `73ffc61`. Session-start error semantics confirmed live (403 / 404, no longer 503); auto-session 4xx path still → 404.
+- `main` HEAD `c6b6ed7`. Working tree clean.
 - **Outstanding (unchanged):** the §21 credential exposure — `komotechpass123` is the live Atlas password again and is present in public git history. Rotation + `MONGODB_URI` update on the 8 backend projects still required.
